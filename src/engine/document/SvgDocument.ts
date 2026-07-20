@@ -93,25 +93,22 @@ export class SvgDocument {
     node.element.removeAttribute("display");
   }
 
-  setImage(id: string, href: string) {
-    const node = this.getNode(id);
-    if (!node) return;
+  private updateImageElement(
+    element: Element,
+    href: string
+  ) {
+    element.setAttribute("href", href);
+    element.setAttributeNS(
+      "http://www.w3.org/1999/xlink",
+      "href",
+      href
+    );
+  }
 
-    // Caso seja um <image> direto
-    if (node.element.tagName.toLowerCase() === "image") {
-      node.element.setAttribute("href", href);
-      node.element.setAttributeNS(
-        "http://www.w3.org/1999/xlink",
-        "href",
-        href
-      );
-      return;
-    }
-
-    // Procura o <rect> que usa um pattern
-    const rect = node.element.querySelector("rect");
-    if (!rect) return;
-
+  private updatePatternRect(
+    rect: Element,
+    href: string
+  ) {
     const fill = rect.getAttribute("fill");
     if (!fill) return;
 
@@ -119,7 +116,6 @@ export class SvgDocument {
     if (!match) return;
 
     const patternId = match[1];
-
     const pattern = this.xml.getElementById(patternId);
     if (!pattern) return;
 
@@ -136,16 +132,32 @@ export class SvgDocument {
     if (!imageRef) return;
 
     const imageId = imageRef.replace(/^#/, "");
-
     const image = this.xml.getElementById(imageId);
     if (!image) return;
 
-    image.setAttribute("href", href);
-    image.setAttributeNS(
-      "http://www.w3.org/1999/xlink",
-      "href",
-      href
-    );
+    this.updateImageElement(image, href);
+  }
+
+  setImage(id: string, href: string) {
+    const node = this.getNode(id);
+    if (!node) return;
+
+    // Caso seja um <image> direto
+    if (node.element.tagName.toLowerCase() === "image") {
+      this.updateImageElement(node.element, href);
+      return;
+    }
+
+    // Procura TODOS os <rect> que usam pattern fill
+    // (SVGs do Figma podem ter múltiplos rects: um na
+    //  mask e outro visível, ambos precisam ser atualizados)
+    const rects = node.element.querySelectorAll("rect");
+    rects.forEach((rect) => {
+      const fill = rect.getAttribute("fill");
+      if (fill && fill.startsWith("url(#")) {
+        this.updatePatternRect(rect, href);
+      }
+    });
   }
 
   toString() {
