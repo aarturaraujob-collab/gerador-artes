@@ -1,0 +1,8 @@
+{
+  "templates": [
+    { "id": "agenda_1jogo_feed", "name": "Agenda - 1 Jogo", "file": "agenda_1jogo_feed.svg" },
+    { "id": "agenda_2jogos_feed", "name": "Agenda - 2 Jogos", "file": "agenda_2jogos_feed.svg" },
+    { "id": "agenda_3jogos_feed", "name": "Agenda - 3 Jogos", "file": "agenda_3jogos_feed.svg" },
+    { "id": "agenda_4jogos_feed", "name": "Agenda - 4 Jogos", "file": "agenda_4jogos_feed.svg" }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "competition": {
+    "name": "Campeonato Brasileiro Série B",
+    "round": "15ª Rodada",
+    "logo": "/assets/competicoes/serie_b.png"
+  },
+  "games": [
+    {
+      "home": {
+        "name": "CSA",
+        "shortName": "CSA",
+        "shield": "/assets/escudos/csa.png"
+      },
+      "away": {
+        "name": "Sport Recife",
+        "shortName": "Sport",
+        "shield": "/assets/escudos/sport.png"
+      },
+      "date": "15/07",
+      "time": "16:00",
+      "venue": "Estádio Rei Pelé"
+    },
+    {
+      "home": {
+        "name": "Avaí",
+        "shortName": "Avaí",
+        "shield": "/assets/escudos/avai.png"
+      },
+      "away": {
+        "name": "Guarani",
+        "shortName": "Guarani",
+        "shield": "/assets/escudos/guarani.png"
+      },
+      "date": "15/07",
+      "time": "18:30",
+      "venue": "Estádio da Ressacada"
+    },
+    {
+      "home": {
+        "name": "Ponte Preta",
+        "shortName": "Ponte",
+        "shield": "/assets/escudos/ponte_preta.png"
+      },
+      "away": {
+        "name": "Botafogo-SP",
+        "shortName": "Botafogo",
+        "shield": "/assets/escudos/botafogo_sp.png"
+      },
+      "date": "15/07",
+      "time": "19:00",
+      "venue": "Estádio Moisés Lucarelli"
+    },
+    {
+      "home": {
+        "name": "Vila Nova",
+        "shortName": "Vila Nova",
+        "shield": "/assets/escudos/vila_nova.png"
+      },
+      "away": {
+        "name": "Goiás",
+        "shortName": "Goiás",
+        "shield": "/assets/escudos/goias.png"
+      },
+      "date": "15/07",
+      "time": "21:00",
+      "venue": "Estádio Onésio Brasileiro Alvarenga"
+    }
+  ]
+}
