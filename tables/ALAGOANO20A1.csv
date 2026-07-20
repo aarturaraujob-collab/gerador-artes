@@ -1,0 +1,71 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,VISITANTE,ESTÁDIO,CIDADE
+Primeira Fase,002,1ª,18/07/2026,Sáb,15:00,Jaciobá,Independente Atalaia,Elísio Maia,Pão de Açúcar
+Primeira Fase,003,1ª,18/07/2026,Sáb,15:00,CSA,Ponte Preta,CT Gustavo Paiva,Maceió
+Primeira Fase,005,1ª,18/07/2026,Sáb,15:00,Guarani de Paripueira,Canoense,Municipal de Paripueira,Paripueira
+Primeira Fase,006,1ª,18/07/2026,Sáb,15:00,Desportivo Aliança,Murici SC,Enokão,Girau do Ponciano
+Primeira Fase,008,1ª,18/07/2026,Sáb,15:00,ASA,Inter Arábia,CT Noel Alves,Arapiraca
+Primeira Fase,007,1ª,22/07/2026,Qua,15:00,Zumbi,AA Coruripe,Orlandão,União dos Palmares
+Primeira Fase,009,2ª,25/07/2026,Sáb,15:00,Murici SC,Guarani de Paripueira,José Gomes da Costa,Murici
+Primeira Fase,010,2ª,25/07/2026,Sáb,15:00,Ponte Preta,ASA,Andradão,Barra de São Miguel
+Primeira Fase,011,2ª,25/07/2026,Sáb,15:00,M10 Rio Largo,Desportivo Aliança,Universitário da UFAL,Maceió
+Primeira Fase,015,2ª,25/07/2026,Sáb,15:00,Canoense,Jaciobá,Fonsecão,Lagoa da Canoa
+Primeira Fase,013,2ª,26/07/2026,Dom,15:00,Inter Arábia,CRB,José Cícero,Santa Luzia do Norte
+Primeira Fase,014,2ª,26/07/2026,Dom,15:00,AA Coruripe,CSA,Gerson Amaral,Coruripe
+Primeira Fase,016,2ª,26/07/2026,Dom,15:00,Miguelense,CSE,Ivson Ferreira,São Brás
+Primeira Fase,001,2ª,28/07/2026,Ter,15:00,U CSE,M10 Rio Largo,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,021,3ª,31/07/2026,Sex,15:00,Zumbi,Ponte Preta,Orlandão,União dos Palmares
+Primeira Fase,017,3ª,31/07/2026,Sex,15:00,CRB,Murici SC,CT Ninho do Galo,Barra de São Miguel
+Primeira Fase,018,3ª,01/08/2026,Sáb,15:00,CSE,Canoense,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,019,3ª,01/08/2026,Sáb,15:00,Jaciobá,AA Coruripe,Elísio Maia,Pão de Açúcar
+Primeira Fase,020,3ª,01/08/2026,Sáb,15:00,ASA,M10 Rio Largo,Clube do Servidor,Arapiraca
+Primeira Fase,022,3ª,02/08/2026,Dom,15:00,CSA,Miguelense,CT Gustavo Paiva,Maceió
+Primeira Fase,023,3ª,02/08/2026,Dom,15:00,Desportivo Aliança,Independente Atalaia,Enokão,Girau do Ponciano
+Primeira Fase,024,3ª,02/08/2026,Dom,15:00,Guarani de Paripueira,Inter Arábia,Municipal de Paripueira,Paripueira
+Primeira Fase,012,4ª,05/08/2026,Qua,15:00,Independente Atalaia,Zumbi,Luiz Pontes,Atalaia
+Primeira Fase,025,4ª,08/08/2026,Sáb,15:00,Inter Arábia,CSA,José Cícero,Santa Luzia do Norte
+Primeira Fase,026,4ª,08/08/2026,Sáb,15:00,M10 Rio Largo,Zumbi,Universitário da UFAL,Maceió
+Primeira Fase,027,4ª,08/08/2026,Sáb,15:00,Independente Atalaia,ASA,Luiz Pontes,Atalaia
+Primeira Fase,028,4ª,08/08/2026,Sáb,15:00,Murici SC,CSE,José Gomes da Costa,Murici
+Primeira Fase,029,4ª,09/08/2026,Dom,15:00,Ponte Preta,CRB,Andradão,Barra de São Miguel
+Primeira Fase,030,4ª,09/08/2026,Dom,15:00,Jaciobá,Miguelense,Elísio Maia,Pão de Açúcar
+Primeira Fase,031,4ª,09/08/2026,Dom,15:00,Canoense,Desportivo Aliança,Fonsecão,Lagoa da Canoa
+Primeira Fase,032,4ª,09/08/2026,Dom,15:00,AA Coruripe,Guarani de Paripueira,Gerson Amaral,Coruripe
+Primeira Fase,004,5ª,12/08/2026,Qua,15:00,CRB,Miguelense,CT Ninho do Galo,Barra de São Miguel
+Primeira Fase,033,5ª,15/08/2026,Sáb,15:00,CSA,Murici SC,CT Gustavo Paiva,Maceió
+Primeira Fase,034,5ª,15/08/2026,Sáb,15:00,Zumbi,Inter Arábia,Orlandão,União dos Palmares
+Primeira Fase,035,5ª,15/08/2026,Sáb,15:00,ASA,Jaciobá,Clube do Servidor,Arapiraca
+Primeira Fase,036,5ª,15/08/2026,Sáb,15:00,Miguelense,M10 Rio Largo,Ivson Ferreira,São Brás
+Primeira Fase,037,5ª,15/08/2026,Sáb,15:00,CSE,Ponte Preta,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,038,5ª,16/08/2026,Dom,15:00,CRB,Canoense,CT Ninho do Galo,Barra de São Miguel
+Primeira Fase,039,5ª,16/08/2026,Dom,15:00,Guarani de Paripueira,Independente Atalaia,Municipal de Paripueira,Paripueira
+Primeira Fase,040,5ª,16/08/2026,Dom,15:00,Desportivo Aliança,AA Coruripe,Enokão,Girau do Ponciano
+Primeira Fase,041,6ª,22/08/2026,Sáb,15:00,Ponte Preta,Guarani de Paripueira,Andradão,Barra de São Miguel
+Primeira Fase,042,6ª,22/08/2026,Sáb,15:00,Canoense,Miguelense,Fonsecão,Lagoa da Canoa
+Primeira Fase,043,6ª,22/08/2026,Sáb,15:00,AA Coruripe,ASA,Gerson Amaral,Coruripe
+Primeira Fase,044,6ª,23/08/2026,Dom,15:00,Independente Atalaia,CRB,Luiz Pontes,Atalaia
+Primeira Fase,045,6ª,23/08/2026,Dom,15:00,M10 Rio Largo,CSA,Universitário da UFAL,Maceió
+Primeira Fase,046,6ª,23/08/2026,Dom,15:00,Inter Arábia,Desportivo Aliança,José Cícero,Santa Luzia do Norte
+Primeira Fase,047,6ª,23/08/2026,Dom,15:00,Jaciobá,CSE,Elísio Maia,Pão de Açúcar
+Primeira Fase,048,6ª,23/08/2026,Dom,15:00,Murici SC,Zumbi,José Gomes da Costa,Murici
+Primeira Fase,049,7ª,29/08/2026,Sáb,15:00,Guarani de Paripueira,M10 Rio Largo,Municipal de Paripueira,Paripueira
+Primeira Fase,050,7ª,29/08/2026,Sáb,15:00,CSE,Inter Arábia,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,051,7ª,29/08/2026,Sáb,15:00,Miguelense,Ponte Preta,Ivson Ferreira,São Brás
+Primeira Fase,052,7ª,29/08/2026,Sáb,15:00,CSA,Independente Atalaia,CT Gustavo Paiva,Maceió
+Primeira Fase,053,7ª,29/08/2026,Sáb,15:00,CRB,AA Coruripe,CT Ninho do Galo,Barra de São Miguel
+Primeira Fase,054,7ª,29/08/2026,Sáb,15:00,Desportivo Aliança,Jaciobá,Enokão,Girau do Ponciano
+Primeira Fase,055,7ª,29/08/2026,Sáb,15:00,Zumbi,Canoense,Orlandão,União dos Palmares
+Primeira Fase,056,7ª,29/08/2026,Sáb,15:00,ASA,Murici SC,Clube do Servidor,Arapiraca
+Quartas de Final,057,Ida,,,,8º Colocado,1º Colocado,,
+Quartas de Final,058,Ida,,,,7º Colocado,2º Colocado,,
+Quartas de Final,059,Ida,,,,6º Colocado,3º Colocado,,
+Quartas de Final,060,Ida,,,,5º Colocado,4º Colocado,,
+Quartas de Final,061,Volta,,,,1º Colocado,8º Colocado,,
+Quartas de Final,062,Volta,,,,2º Colocado,7º Colocado,,
+Quartas de Final,063,Volta,,,,3º Colocado,6º Colocado,,
+Quartas de Final,064,Volta,,,,4º Colocado,5º Colocado,,
+Semifinal,065,Ida,,,,1º Gr. B ou E,1º Gr. B ou E,,
+Semifinal,066,Ida,,,,1º Gr. C ou D,1º Gr. C ou D,,
+Semifinal,067,Volta,,,,1º Gr. B ou E,1º Gr. B ou E,,
+Semifinal,068,Volta,,,,1º Gr. C ou D,1º Gr. C ou D,,
+Final,069,Ida,,,,1º Gr. F ou G,1º Gr. F ou G,,
+Final,070,Volta,,,,1º Gr. F ou G,1º Gr. F ou G,,

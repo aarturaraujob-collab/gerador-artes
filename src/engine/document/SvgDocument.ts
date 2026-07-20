@@ -1,3 +1,4 @@
+// SvgDocument.ts
 export type SvgNodeType =
   | "text"
   | "image"
@@ -12,15 +13,14 @@ export interface SvgNode {
 
 export class SvgDocument {
   private xml: Document;
-
   private nodes = new Map<string, SvgNode>();
+  private cloneCounter = 0;
 
   constructor(svg: string) {
     this.xml = new DOMParser().parseFromString(
       svg,
       "image/svg+xml"
     );
-
     this.index();
   }
 
@@ -31,7 +31,6 @@ export class SvgDocument {
 
     elements.forEach((element) => {
       const id = element.getAttribute("id");
-
       if (!id) return;
 
       let type: SvgNodeType = "shape";
@@ -40,11 +39,7 @@ export class SvgDocument {
       else if (id.startsWith("img_")) type = "image";
       else if (id.startsWith("grp_")) type = "group";
 
-      this.nodes.set(id, {
-        id,
-        type,
-        element,
-      });
+      this.nodes.set(id, { id, type, element });
     });
   }
 
@@ -66,7 +61,8 @@ export class SvgDocument {
     const node = this.getNode(id);
     if (!node) return;
 
-    const tspans = node.element.querySelectorAll("tspan");
+    const tspans =
+      node.element.querySelectorAll("tspan");
 
     if (tspans.length > 0) {
       tspans.forEach((ts, i) => {
@@ -79,17 +75,13 @@ export class SvgDocument {
 
   hide(id: string) {
     const node = this.getNode(id);
-
     if (!node) return;
-
     node.element.setAttribute("display", "none");
   }
 
   show(id: string) {
     const node = this.getNode(id);
-
     if (!node) return;
-
     node.element.removeAttribute("display");
   }
 
@@ -105,6 +97,70 @@ export class SvgDocument {
     );
   }
 
+  private ensureUniquePatternImage(
+    pattern: Element
+  ): Element | null {
+    const direct =
+      pattern.querySelector("image");
+
+    if (direct) return direct;
+
+    const use = pattern.querySelector("use");
+    if (!use) return null;
+
+    const ref =
+      use.getAttribute("href") ??
+      use.getAttributeNS(
+        "http://www.w3.org/1999/xlink",
+        "href"
+      );
+
+    if (!ref) return null;
+
+    const imageId = ref.replace(/^#/, "");
+
+    const image =
+      this.xml.getElementById(imageId);
+
+    if (!image) return null;
+
+    const users = Array.from(
+      this.xml.querySelectorAll("pattern use")
+    ).filter((u) => {
+      const href =
+        u.getAttribute("href") ??
+        u.getAttributeNS(
+          "http://www.w3.org/1999/xlink",
+          "href"
+        );
+
+      return href === `#${imageId}`;
+    });
+
+    if (users.length <= 1) {
+      return image;
+    }
+
+    const clone =
+      image.cloneNode(true) as Element;
+
+    const newId =
+      `${imageId}__clone_${++this.cloneCounter}`;
+
+    clone.setAttribute("id", newId);
+
+    image.parentNode!.appendChild(clone);
+
+    use.setAttribute("href", `#${newId}`);
+    use.setAttributeNS(
+      "http://www.w3.org/1999/xlink",
+      "href",
+      `#${newId}`
+    );
+
+    return clone;
+  }
+
   private updatePatternRect(
     rect: Element,
     href: string
@@ -112,27 +168,21 @@ export class SvgDocument {
     const fill = rect.getAttribute("fill");
     if (!fill) return;
 
-    const match = fill.match(/url\(#([^)]+)\)/);
+    const match =
+      fill.match(/url\(#([^)]+)\)/);
+
     if (!match) return;
 
-    const patternId = match[1];
-    const pattern = this.xml.getElementById(patternId);
+    const pattern =
+      this.xml.getElementById(match[1]);
+
     if (!pattern) return;
 
-    const use = pattern.querySelector("use");
-    if (!use) return;
-
-    const imageRef =
-      use.getAttribute("href") ??
-      use.getAttributeNS(
-        "http://www.w3.org/1999/xlink",
-        "href"
+    const image =
+      this.ensureUniquePatternImage(
+        pattern
       );
 
-    if (!imageRef) return;
-
-    const imageId = imageRef.replace(/^#/, "");
-    const image = this.xml.getElementById(imageId);
     if (!image) return;
 
     this.updateImageElement(image, href);
@@ -142,21 +192,30 @@ export class SvgDocument {
     const node = this.getNode(id);
     if (!node) return;
 
-    // Caso seja um <image> direto
-    if (node.element.tagName.toLowerCase() === "image") {
-      this.updateImageElement(node.element, href);
+    const tag =
+      node.element.tagName.toLowerCase();
+
+    if (tag === "image") {
+      this.updateImageElement(
+        node.element,
+        href
+      );
       return;
     }
 
-    // Procura TODOS os <rect> que usam pattern fill
-    // (SVGs do Figma podem ter múltiplos rects: um na
-    //  mask e outro visível, ambos precisam ser atualizados)
-    const rects = node.element.querySelectorAll("rect");
+    if (tag === "rect") {
+      this.updatePatternRect(
+        node.element,
+        href
+      );
+      return;
+    }
+
+    const rects =
+      node.element.querySelectorAll("rect");
+
     rects.forEach((rect) => {
-      const fill = rect.getAttribute("fill");
-      if (fill && fill.startsWith("url(#")) {
-        this.updatePatternRect(rect, href);
-      }
+      this.updatePatternRect(rect, href);
     });
   }
 

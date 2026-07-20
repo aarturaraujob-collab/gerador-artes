@@ -1,0 +1,40 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,VISITANTE,ESTÁDIO,CIDADE
+Primeira Fase,001,1ª,24/07/2026,Sex,15:00,Dimensão Saúde,DZM,Universitário da UFAL,Maceió
+Primeira Fase,002,1ª,25/07/2026,Sáb,15:00,São Domingos,Penedense,Cordeirão,Marechal Deodoro
+Primeira Fase,003,1ª,25/07/2026,Sáb,15:00,Cruzeiro,UNEC,Clube do Servidor,Arapiraca
+Primeira Fase,004,1ª,26/07/2026,Dom,15:00,Maceió EC,Chute Inicial,Universitário da UFAL,Maceió
+Primeira Fase,005,1ª,26/07/2026,Dom,15:00,Sporting FC,Santa Cruz,O Medalhão,Teotônio Vilela
+Primeira Fase,006,2ª,01/08/2026,Sáb,15:00,Santa Cruz,Cruzeiro,Municipal de Paripueira,Paripueira
+Primeira Fase,007,2ª,01/08/2026,Sáb,15:00,DZM,São Domingos,Flor do Cambará,Passo de Camaragibe
+Primeira Fase,008,2ª,01/08/2026,Sáb,15:00,Atlético São José,Sporting FC,Luiz da Silva Maia,São José da Tapera
+Primeira Fase,009,2ª,02/08/2026,Dom,15:00,Penedense,Dimensão Saúde,Alfredo Leahy,Penedo
+Primeira Fase,010,2ª,02/08/2026,Dom,15:00,Chute Inicial,FF Sport,Goleiro,Quebrangulo
+Primeira Fase,011,2ª,02/08/2026,Dom,15:00,CAP Paulo Jacinto,Maceió EC,José Chaves Vasconcelos,Paulo Jacinto
+Primeira Fase,012,3ª,04/08/2026,Ter,15:00,Sporting FC,DZM,O Medalhão,Teotônio Vilela
+Primeira Fase,013,3ª,05/08/2026,Qua,15:00,UNEC,Santa Cruz,Universitário da UFAL,Maceió
+Primeira Fase,014,3ª,05/08/2026,Qua,17:00,Cruzeiro,Atlético São José,Clube do Servidor,Arapiraca
+Primeira Fase,015,3ª,06/08/2026,Qui,15:00,São Domingos,FF Sport,Cordeirão,Marechal Deodoro
+Primeira Fase,016,3ª,06/08/2026,Qui,15:00,Dimensão Saúde,CAP Paulo Jacinto,Universitário da UFAL,Maceió
+Primeira Fase,017,4ª,07/08/2026,Sex,15:00,Maceió EC,Sporting FC,Universitário da UFAL,Maceió
+Primeira Fase,018,4ª,08/08/2026,Sáb,15:00,Santa Cruz,Chute Inicial,Municipal de Paripueira,Paripueira
+Primeira Fase,019,4ª,08/08/2026,Sáb,15:00,Atlético São José,Penedense,Luiz da Silva Maia,São José da Tapera
+Primeira Fase,020,4ª,09/08/2026,Dom,15:00,CAP Paulo Jacinto,São Domingos,José Chaves Vasconcelos,Paulo Jacinto
+Primeira Fase,021,4ª,09/08/2026,Dom,15:00,DZM,UNEC,Flor do Cambará,Passo de Camaragibe
+Primeira Fase,022,4ª,09/08/2026,Dom,15:00,FF Sport,Cruzeiro,Universitário da UFAL,Maceió
+Primeira Fase,023,5ª,12/08/2026,Qua,15:00,Chute Inicial,Atlético São José,Goleiro,Quebrangulo
+Primeira Fase,024,5ª,12/08/2026,Qua,15:00,Penedense,Maceió EC,Alfredo Leahy,Penedo
+Primeira Fase,025,5ª,12/08/2026,Qua,15:00,UNEC,CAP Paulo Jacinto,Universitário da UFAL,Maceió
+Primeira Fase,026,5ª,13/08/2026,Qui,15:00,FF Sport,DZM,Universitário da UFAL,Maceió
+Primeira Fase,027,5ª,13/08/2026,Qui,17:00,Cruzeiro,Dimensão Saúde,Clube do Servidor,Arapiraca
+Primeira Fase,028,6ª,15/08/2026,Sáb,15:00,Maceió EC,Cruzeiro,Universitário da UFAL,Maceió
+Primeira Fase,029,6ª,15/08/2026,Sáb,15:00,Sporting FC,UNEC,O Medalhão,Teotônio Vilela
+Primeira Fase,030,6ª,15/08/2026,Sáb,15:00,CAP Paulo Jacinto,Santa Cruz,José Chaves Vasconcelos,Paulo Jacinto
+Primeira Fase,031,6ª,16/08/2026,Dom,15:00,Penedense,FF Sport,Alfredo Leahy,Penedo
+Primeira Fase,032,6ª,16/08/2026,Dom,15:00,Dimensão Saúde,Chute Inicial,Universitário da UFAL,Maceió
+Primeira Fase,033,6ª,16/08/2026,Dom,15:00,São Domingos,Atlético São José,Cordeirão,Marechal Deodoro
+Primeira Fase,034,7ª,21/08/2026,Sex,15:00,UNEC,Penedense,Universitário da UFAL,Maceió
+Primeira Fase,035,7ª,22/08/2026,Sáb,15:00,Atlético São José,CAP Paulo Jacinto,Luiz da Silva Maia,São José da Tapera
+Primeira Fase,036,7ª,22/08/2026,Sáb,15:00,DZM,Maceió EC,Flor do Cambará,Passo de Camaragibe
+Primeira Fase,037,7ª,22/08/2026,Sáb,15:00,Chute Inicial,São Domingos,Goleiro,Quebrangulo
+Primeira Fase,038,7ª,23/08/2026,Dom,15:00,Santa Cruz,Dimensão Saúde,Municipal de Paripueira,Paripueira
+Primeira Fase,039,7ª,23/08/2026,Dom,15:00,FF Sport,Sporting FC,Universitário da UFAL,Maceió

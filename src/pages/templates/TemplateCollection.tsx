@@ -5,7 +5,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { SvgDocument } from "@/engine/document/SvgDocument";
 import { exportToPng } from "@/engine/export/PngExporter";
 import { importSpreadsheet, type GameData } from "@/engine/import/SpreadsheetImporter";
-import { clubs, type Club } from "@/data/clubs";
+// Use tables/*.ts as the authoritative data source
+import { loadAll, getClubs as getTableClubs, getCompetitions as getTableCompetitions, getMatches as getTableMatches } from "@/modules/dataStore";
+import type { Club } from "@/modules/dataStore";
 import { Image, Download, Upload, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
 
 const EMPTY_GAME: GameData = {
@@ -32,8 +34,8 @@ async function imageToDataUri(path: string): Promise<string> {
   });
 }
 
-function ClubPicker({ label, value, onChange }: {
-  label: string; value: string; onChange: (v: string) => void;
+function ClubPicker({ label, value, onChange, clubs, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; clubs: Club[]; disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col space-y-2">
@@ -41,20 +43,22 @@ function ClubPicker({ label, value, onChange }: {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+        disabled={disabled}
+        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
       >
         <option value="">Selecione...</option>
         {clubs.map((c) => (
-          <option key={c.id} value={c.id}>{c.name}</option>
+          <option key={c.id} value={c.id}>{(c as any).shortName ?? (c as any).name ?? c.id}</option>
         ))}
       </select>
     </div>
   );
 }
 
-function GameForm({ index, game, onChange }: {
+function GameForm({ index, game, onChange, clubs, disabled }: {
   index: number; game: GameData;
   onChange: (field: keyof GameData, value: string) => void;
+  clubs: Club[]; disabled?: boolean;
 }) {
   const inputField = (key: keyof GameData, label: string, placeholder: string) => (
     <div className="flex flex-col space-y-2">
@@ -64,7 +68,8 @@ function GameForm({ index, game, onChange }: {
         value={game[key]}
         placeholder={placeholder}
         onChange={(e) => onChange(key, e.target.value)}
-        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+        disabled={disabled}
+        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
       />
     </div>
   );
@@ -79,8 +84,8 @@ function GameForm({ index, game, onChange }: {
       <div className="space-y-3">
         <div className="text-xs font-semibold text-slate-500">Clubes</div>
         <div className="grid grid-cols-2 gap-3">
-          <ClubPicker label="Mandante" value={game.homeId} onChange={(v) => onChange("homeId", v)} />
-          <ClubPicker label="Visitante" value={game.awayId} onChange={(v) => onChange("awayId", v)} />
+          <ClubPicker label="Mandante" value={game.homeId} onChange={(v) => onChange("homeId", v)} clubs={clubs} disabled={disabled} />
+          <ClubPicker label="Visitante" value={game.awayId} onChange={(v) => onChange("awayId", v)} clubs={clubs} disabled={disabled} />
         </div>
       </div>
 
@@ -90,8 +95,8 @@ function GameForm({ index, game, onChange }: {
         <div className="grid grid-cols-4 gap-3">
           <div className="flex flex-col">
             <label className="text-sm font-semibold text-slate-700">Dia</label>
-            <select value={game.dia} onChange={(e) => onChange("dia", e.target.value)}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <select value={game.dia} onChange={(e) => onChange("dia", e.target.value)} disabled={disabled}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60">
               <option value="">...</option>
               {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -101,8 +106,8 @@ function GameForm({ index, game, onChange }: {
 
           <div className="flex flex-col">
             <label className="text-sm font-semibold text-slate-700">Mês</label>
-            <select value={game.mes} onChange={(e) => onChange("mes", e.target.value)}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <select value={game.mes} onChange={(e) => onChange("mes", e.target.value)} disabled={disabled}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60">
               <option value="">...</option>
               {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -124,12 +129,41 @@ function GameForm({ index, game, onChange }: {
   );
 }
 
+
+function makeSvgResponsive(svg: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, "image/svg+xml");
+  const svgEl = doc.documentElement;
+
+  svgEl.removeAttribute("width");
+  svgEl.removeAttribute("height");
+
+  svgEl.setAttribute("width", "100%");
+  svgEl.setAttribute("height", "100%");
+  svgEl.style.width = "100%";
+  svgEl.style.height = "auto";
+  svgEl.style.maxWidth = "100%";
+  svgEl.style.maxHeight = "100%";
+  svgEl.style.display = "block";
+
+  return new XMLSerializer().serializeToString(doc);
+}
+
 export function TemplateCollection() {
   const { folder } = useParams<{ folder: string }>();
   const [count, setCount] = useState(1);
   const [games, setGames] = useState<GameData[]>([{ ...EMPTY_GAME }]);
   const [svgResult, setSvgResult] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Tables data (loaded once, can be refreshed)
+  const [tableCompetitions, setTableCompetitions] = useState<any[]>([]);
+  const [tableMatches, setTableMatches] = useState<any[]>([]);
+  const [tableClubs, setTableClubs] = useState<Club[]>([]);
+
+  // selected competition / round for autofill
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>("");
+  const [selectedRound, setSelectedRound] = useState<string>("");
 
   // ── Batch (importação) ──────────────────────────────────────────────────
   const [batchQueue, setBatchQueue] = useState<GameData[][]>([]);
@@ -150,6 +184,18 @@ export function TemplateCollection() {
     }
   }, [count, isBatch]);
 
+  // Load tables data once
+  useEffect(() => {
+    loadAll().then(() => {
+      const comp = getTableCompetitions();
+      const mt = getTableMatches();
+      const cl = getTableClubs();
+      setTableCompetitions(comp || []);
+      setTableMatches(mt || []);
+      setTableClubs(cl || []);
+    }).catch(() => {});
+  }, []);
+
   const updateGame = useCallback((idx: number, field: keyof GameData, value: string) => {
     setGames((prev) => {
       const next = [...prev];
@@ -158,7 +204,7 @@ export function TemplateCollection() {
     });
   }, []);
 
-  const findClub = (id: string): Club | undefined => clubs.find((c) => c.id === id);
+  const findClub = (id: string): Club | undefined => tableClubs.find((c) => c.id === id) || undefined;
 
   // ── Importar planilha ───────────────────────────────────────────────────
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,7 +258,69 @@ export function TemplateCollection() {
     setSvgResult("");
   }, []);
 
+  // Fill a game slot from a match object from tables
+  function fillGameFromMatch(slotIndex: number, match: any) {
+    const parsed = parseDateToFields(match.date, match.time);
+    setGames((prev) => {
+      const next = [...prev];
+      while (next.length <= slotIndex) next.push({ ...EMPTY_GAME });
+      const g = { ...next[slotIndex] };
+      g.homeId = match.homeClubId ?? match.home ?? g.homeId;
+      g.awayId = match.awayClubId ?? match.away ?? g.awayId;
+      g.data = parsed.data || (match.date ?? g.data);
+      g.dia = parsed.dia || g.dia;
+      g.mes = parsed.mes || g.mes;
+      g.hora = match.time ?? g.hora ?? "";
+      g.cidade = (match.city ?? g.cidade ?? "").toUpperCase();
+      g.estadio = (match.stadium ?? g.estadio ?? "").toUpperCase();
+      next[slotIndex] = g;
+      return next;
+    });
+  }
+
   // ── Gerar arte (1 lote) ─────────────────────────────────────────────────
+  function parseDateToFields(dateStr?: string, timeStr?: string) {
+    const DAYS = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+    const MONTHS = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+    if (!dateStr) return { dia: "", data: "", mes: "" };
+
+    let day = "";
+    let month = "";
+    try {
+      let dt: Date | null = null;
+      const d1 = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      const d2 = dateStr.match(/^(\d{2})\/(\d{2})$/);
+      const d3 = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (d1) {
+      dt = new Date(Number(d1[3]), Number(d1[2]) - 1, Number(d1[1]));
+      } else if (d2) {
+      const now = new Date();
+      dt = new Date(now.getFullYear(), Number(d2[2]) - 1, Number(d2[1]));
+      } else if (d3) {
+      dt = new Date(Number(d3[1]), Number(d3[2]) - 1, Number(d3[3]));
+      }
+      if (dt) {
+      day = DAYS[dt.getDay()];
+      month = MONTHS[dt.getMonth()];
+      return { dia: day, data: String(dt.getDate()), mes: month };
+      }
+    } catch (e) {}
+
+    // fallback: try to extract numbers
+    const mm = dateStr.match(/(\d{1,2})\D+(\d{1,2})/);
+    if (mm) {
+      const d = Number(mm[1]);
+      const m = Number(mm[2]);
+      const now = new Date();
+      try {
+      const dt = new Date(now.getFullYear(), m - 1, d);
+      return { dia: DAYS[dt.getDay()], data: String(d), mes: MONTHS[m - 1] };
+      } catch (e){}
+    }
+
+    return { dia: "", data: dateStr, mes: "" };
+  }
+
   const generate = useCallback(async (gamesToUse?: GameData[]) => {
     const gamesForGen = gamesToUse ?? games;
 
@@ -230,7 +338,7 @@ export function TemplateCollection() {
 
       const effectiveCount = Math.min(gamesForGen.length, 4);
       const variant = config.variants.find(
-        (v: { games: number }) => v.games === effectiveCount
+      (v: { games: number }) => v.games === effectiveCount
       );
       if (!variant) { toast.error("Variante não encontrada para esse número de jogos."); return ""; }
 
@@ -239,32 +347,31 @@ export function TemplateCollection() {
       const doc = new SvgDocument(svgText);
 
       for (let i = 0; i < effectiveCount; i++) {
-        const s = suffix(i);
-        const g = gamesForGen[i];
-        if (!g) continue;
+      const s = suffix(i);
+      const g = gamesForGen[i];
+      if (!g) continue;
 
-        doc.setText(`txt_dia${s}`, g.dia);
-        doc.setText(`txt_data${s}`, g.data);
-        doc.setText(`txt_mes${s}`, `.${g.mes}`);
-        doc.setText(`txt_hora${s}`, g.hora);
-        doc.setText(`txt_cidade${s}`, g.cidade.toUpperCase());
-        doc.setText(`txt_estadio${s}`, g.estadio.toUpperCase());
+      doc.setText(`txt_dia${s}`, g.dia);
+      doc.setText(`txt_data${s}`, g.data);
+      doc.setText(`txt_mes${s}`, `.${g.mes}`);
+      doc.setText(`txt_hora${s}`, g.hora);
+      doc.setText(`txt_cidade${s}`, g.cidade.toUpperCase());
+      doc.setText(`txt_estadio${s}`, g.estadio.toUpperCase());
 
-        const home = findClub(g.homeId);
-        const away = findClub(g.awayId);
+      const home = findClub(g.homeId);
+      const away = findClub(g.awayId);
 
-        if (home) {
-          const uri = await imageToDataUri(home.shield);
-          doc.setImage(`img_escudo_mandante${s}`, uri);
-          // thumb-faftv usa img_mandante e img_mandante_2
-          doc.setImage(`img_mandante${s}`, uri);
-          doc.setImage(`img_mandante_2${s}`, uri);
-        }
-        if (away) {
-          const uri = await imageToDataUri(away.shield);
-          doc.setImage(`img_escudo_visitante${s}`, uri);
-          doc.setImage(`img_visitante${s}`, uri);
-        }
+      if (home && home.shield) {
+        const uri = await imageToDataUri(home.shield);
+        doc.setImage(`img_escudo_mandante${s}`, uri);
+        doc.setImage(`img_mandante${s}`, uri);
+        doc.setImage(`img_mandante_2${s}`, uri);
+      }
+      if (away && away.shield) {
+        const uri = await imageToDataUri(away.shield);
+        doc.setImage(`img_escudo_visitante${s}`, uri);
+        doc.setImage(`img_visitante${s}`, uri);
+      }
       }
 
       const result = doc.toString();
@@ -374,9 +481,49 @@ export function TemplateCollection() {
                   </div>
                 )}
 
+                {/* Seleção por competição / rodada (autopreenchimento) */}
+                <div className="space-y-3">
+                 <div>
+                   <label className="text-sm font-semibold text-slate-700">Competição</label>
+                   <select value={selectedCompetitionId} onChange={(e) => { setSelectedCompetitionId(e.target.value); setSelectedRound(""); }}
+                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                     <option value="">— Selecione —</option>
+                     {tableCompetitions.map((c: any) => (
+                       <option key={c.id} value={c.id}>{c.name}</option>
+                     ))}
+                   </select>
+                 </div>
+
+                 <div>
+                   <label className="text-sm font-semibold text-slate-700">Rodada</label>
+                   <select value={selectedRound} onChange={(e) => setSelectedRound(e.target.value)}
+                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                     <option value="">— Todas —</option>
+                     {Array.from(new Set(tableMatches.filter((m: any) => !selectedCompetitionId || m.competitionId === selectedCompetitionId).map((m: any) => m.round))).map((r: any) => (
+                       <option key={r} value={r}>{r}</option>
+                     ))}
+                   </select>
+                 </div>
+
+                 <div>
+                   <label className="text-sm font-semibold text-slate-700">Jogos (clique para preencher)</label>
+                   <div className="max-h-40 overflow-auto rounded-md border border-slate-100 bg-white p-2 space-y-1">
+                     {tableMatches.filter((m: any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound)).slice(0,200).map((m: any, mi: number) => (
+                       <button key={mi} onClick={() => {
+                         // Preenche o primeiro jogo aberto (ou substitui o jogo 0)
+                         fillGameFromMatch(0, m);
+                       }} className="w-full text-left p-2 hover:bg-slate-50 rounded">{(m.home || m.homeClubId || 'Mandante')} x {(m.away || m.awayClubId || 'Visitante')} — {m.date || ''} {m.time || ''}</button>
+                     ))}
+                     {tableMatches.filter((m: any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound)).length === 0 && (
+                       <div className="text-sm text-slate-400 p-2">Nenhum jogo encontrado para a seleção.</div>
+                     )}
+                   </div>
+                 </div>
+                </div>
+
                 {/* Batch navigation */}
                 {isBatch && (
-                  <div className="flex items-center justify-between rounded-xl bg-violet-50 border border-violet-200 p-3">
+                 <div className="flex items-center justify-between rounded-xl bg-violet-50 border border-violet-200 p-3">
                     <button
                       onClick={() => goToBatch(batchIndex - 1)}
                       disabled={batchIndex === 0}
@@ -423,7 +570,15 @@ export function TemplateCollection() {
                 <div className="space-y-3">
                   {games.map((g, i) => (
                     <div key={i}>
-                      <GameForm index={i} game={g} onChange={(field, value) => updateGame(i, field, value)} />
+                      <GameForm index={i} game={g} onChange={(field, value) => updateGame(i, field, value)} clubs={tableClubs} disabled={true} />
+                      <div className="mt-2 flex gap-2">
+                        <button onClick={() => { /* fill this slot with first matching game if selection active */ if (selectedCompetitionId || selectedRound) {
+                          const candidates = tableMatches.filter((m:any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound));
+                          if (candidates.length) fillGameFromMatch(i, candidates[0]);
+                        }}}
+                          className="px-3 py-2 rounded bg-slate-100 text-sm">Preencher com primeiro jogo da seleção</button>
+                        <button onClick={() => {/* open selector handled above: user can click in list */}} className="px-3 py-2 rounded bg-slate-50 text-sm">Escolher jogo (use lista acima)</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -488,10 +643,15 @@ export function TemplateCollection() {
                   </div>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 min-h-0">
                   {svgResult ? (
-                    <div className="w-full h-full flex items-center justify-center overflow-auto">
-                      <div className="max-w-[520px] w-full" dangerouslySetInnerHTML={{ __html: svgResult }} />
+                    <div className="w-full h-full overflow-auto rounded-xl bg-slate-100 p-6 flex items-center justify-center">
+                      <div
+                        className="w-full max-w-6xl"
+                        dangerouslySetInnerHTML={{
+                          __html: makeSvgResponsive(svgResult),
+                        }}
+                      />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center text-slate-400 space-y-3">
