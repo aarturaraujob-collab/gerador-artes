@@ -1,5 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
+import "@fontsource/prompt/400.css";
+import "@fontsource/prompt/400-italic.css";
+import "@fontsource/prompt/600.css";
+import "@fontsource/prompt/700.css";
+import "@fontsource/prompt/800.css";
+import "@fontsource/prompt/900.css";
 
 import App from './App';
 

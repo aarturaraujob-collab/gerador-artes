@@ -1,685 +1,209 @@
-﻿import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
+import { Download, Image, Search } from "lucide-react";
 import { toast } from "sonner";
+
+import { Dashboard } from "@/components/Dashboard";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { SvgDocument } from "@/engine/document/SvgDocument";
 import { exportToPng } from "@/engine/export/PngExporter";
-import { importSpreadsheet, type GameData } from "@/engine/import/SpreadsheetImporter";
-// Use tables/*.ts as the authoritative data source
-import { loadAll, getClubs as getTableClubs, getCompetitions as getTableCompetitions, getMatches as getTableMatches } from "@/modules/dataStore";
-import type { Club } from "@/modules/dataStore";
-import { Image, Download, Upload, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { dataStore, type Match } from "@/modules/dataStore";
 
-const EMPTY_GAME: GameData = {
-  homeId: "", awayId: "",
-  dia: "", data: "",
-  mes: "", hora: "",
-  cidade: "", estadio: "",
-};
+const DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÃB"];
+const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+const FALLBACK_SHIELD = "/assets/logos/faf.png";
 
-const DAYS = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"];
-const MONTHS = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+interface TemplateConfig {
+  id: string;
+  variants: Array<{ games: number; file: string }>;
+}
 
-function suffix(index: number) {
-  return index === 0 ? "" : `_${index + 1}`;
+function parseMatchDate(value: string) {
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return { day: "", date: value, month: "" };
+
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return { day: DAYS[date.getDay()], date: String(Number(day)), month: MONTHS[date.getMonth()] };
 }
 
 async function imageToDataUri(path: string): Promise<string> {
-  const res = await fetch(path);
-  const blob = await res.blob();
-  return new Promise((resolve) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.readAsDataURL(blob);
+  const response = await fetch(path);
+  if (!response.ok) return imageToDataUri(FALLBACK_SHIELD);
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
   });
 }
 
-function ClubPicker({ label, value, onChange, clubs, disabled }: {
-  label: string; value: string; onChange: (v: string) => void; clubs: Club[]; disabled?: boolean;
-}) {
-  return (
-    <div className="flex flex-col space-y-2">
-      <label className="text-sm font-semibold text-slate-700">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
-      >
-        <option value="">Selecione...</option>
-        {clubs.map((c) => (
-          <option key={c.id} value={c.id}>{(c as any).shortName ?? (c as any).name ?? c.id}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function GameForm({ index, game, onChange, clubs, disabled }: {
-  index: number; game: GameData;
-  onChange: (field: keyof GameData, value: string) => void;
-  clubs: Club[]; disabled?: boolean;
-}) {
-  const inputField = (key: keyof GameData, label: string, placeholder: string) => (
-    <div className="flex flex-col space-y-2">
-      <label className="text-sm font-semibold text-slate-700">{label}</label>
-      <input
-        type="text"
-        value={game[key]}
-        placeholder={placeholder}
-        onChange={(e) => onChange(key, e.target.value)}
-        disabled={disabled}
-        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
-      />
-    </div>
-  );
-
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Jogo {index + 1}</h3>
-      </div>
-
-      {/* Seção: Clubes */}
-      <div className="space-y-3">
-        <div className="text-xs font-semibold text-slate-500">Clubes</div>
-        <div className="grid grid-cols-2 gap-3">
-          <ClubPicker label="Mandante" value={game.homeId} onChange={(v) => onChange("homeId", v)} clubs={clubs} disabled={disabled} />
-          <ClubPicker label="Visitante" value={game.awayId} onChange={(v) => onChange("awayId", v)} clubs={clubs} disabled={disabled} />
-        </div>
-      </div>
-
-      {/* Seção: Data da partida */}
-      <div className="space-y-3">
-        <div className="text-xs font-semibold text-slate-500">Data da partida</div>
-        <div className="grid grid-cols-4 gap-3">
-          <div className="flex flex-col">
-            <label className="text-sm font-semibold text-slate-700">Dia</label>
-            <select value={game.dia} onChange={(e) => onChange("dia", e.target.value)} disabled={disabled}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60">
-              <option value="">...</option>
-              {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-
-          {inputField("data", "Data", "17")}
-
-          <div className="flex flex-col">
-            <label className="text-sm font-semibold text-slate-700">Mês</label>
-            <select value={game.mes} onChange={(e) => onChange("mes", e.target.value)} disabled={disabled}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60">
-              <option value="">...</option>
-              {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-
-          {inputField("hora", "Hora", "19:00")}
-        </div>
-      </div>
-
-      {/* Seção: Local */}
-      <div className="space-y-3">
-        <div className="text-xs font-semibold text-slate-500">Local</div>
-        <div className="grid grid-cols-2 gap-3">
-          {inputField("cidade", "Cidade", "MACEIÓ")}
-          {inputField("estadio", "Estádio", "REI PELÉ")}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function makeSvgResponsive(svg: string) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svg, "image/svg+xml");
-  const svgEl = doc.documentElement;
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const element = document.documentElement;
+  element.removeAttribute("width");
+  element.removeAttribute("height");
+  element.setAttribute("width", "100%");
+  element.setAttribute("height", "100%");
+  element.style.width = "100%";
+  element.style.height = "auto";
+  element.style.display = "block";
+  return new XMLSerializer().serializeToString(document);
+}
 
-  svgEl.removeAttribute("width");
-  svgEl.removeAttribute("height");
+function clubShield(clubId: string): string {
+  return dataStore.clubsById.get(clubId)?.shield || FALLBACK_SHIELD;
+}
 
-  svgEl.setAttribute("width", "100%");
-  svgEl.setAttribute("height", "100%");
-  svgEl.style.width = "100%";
-  svgEl.style.height = "auto";
-  svgEl.style.maxWidth = "100%";
-  svgEl.style.maxHeight = "100%";
-  svgEl.style.display = "block";
+async function renderMatch(folder: string, match: Match): Promise<string> {
+  const configResponse = await fetch(`/templates/${folder}/config.json`);
+  if (!configResponse.ok) throw new Error("ConfiguraÃ§Ã£o do template nÃ£o encontrada.");
+  const config = (await configResponse.json()) as TemplateConfig;
+  const variant = config.variants.find(({ games }) => games === 1);
+  if (!variant) throw new Error("O template nÃ£o possui variante para um jogo.");
 
-  return new XMLSerializer().serializeToString(doc);
+  const svgResponse = await fetch(`/templates/${folder}/${variant.file}`);
+  if (!svgResponse.ok) throw new Error("Arquivo SVG do template nÃ£o encontrado.");
+  const document = new SvgDocument(await svgResponse.text());
+  const parsedDate = parseMatchDate(match.date);
+  const stadium = dataStore.stadiumsById.get(match.stadiumId)?.name ?? "";
+  const city = dataStore.citiesById.get(match.cityId)?.name ?? "";
+  const [homeShield, awayShield] = await Promise.all([
+    imageToDataUri(clubShield(match.homeClubId)),
+    imageToDataUri(clubShield(match.awayClubId)),
+  ]);
+
+  document.setText("txt_dia", parsedDate.day);
+  document.setText("txt_data", parsedDate.date);
+  document.setText("txt_mes", parsedDate.month ? `.${parsedDate.month}` : "");
+  document.setText("txt_hora", match.time);
+  document.setText("txt_cidade", city.toUpperCase());
+  document.setText("txt_estadio", stadium.toUpperCase());
+  document.setImage("img_escudo_mandante", homeShield);
+  document.setImage("img_escudo_visitante", awayShield);
+  document.setImage("img_mandante", homeShield);
+  document.setImage("img_mandante_2", homeShield);
+  document.setImage("img_visitante", awayShield);
+
+  return document.toString();
 }
 
 export function TemplateCollection() {
   const { folder } = useParams<{ folder: string }>();
-  const [count, setCount] = useState(1);
-  const [games, setGames] = useState<GameData[]>([{ ...EMPTY_GAME }]);
+  const [competitionId, setCompetitionId] = useState("");
+  const [round, setRound] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [svgResult, setSvgResult] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [rendering, setRendering] = useState(false);
 
-  // Tables data (loaded once, can be refreshed)
-  const [tableCompetitions, setTableCompetitions] = useState<any[]>([]);
-  const [tableMatches, setTableMatches] = useState<any[]>([]);
-  const [tableClubs, setTableClubs] = useState<Club[]>([]);
-
-  // selected competition / round for autofill
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>("");
-  const [selectedRound, setSelectedRound] = useState<string>("");
-
-  // ── Batch (importação) ──────────────────────────────────────────────────
-  const [batchQueue, setBatchQueue] = useState<GameData[][]>([]);
-  const [batchIndex, setBatchIndex] = useState(0);
-  const [batchExporting, setBatchExporting] = useState(false);
-  const [importWarnings, setImportWarnings] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const isBatch = batchQueue.length > 0;
+  const competitionMatches = useMemo(
+    () => dataStore.matches.filter((match) => match.competitionId === competitionId),
+    [competitionId],
+  );
+  const rounds = useMemo(
+    () => [...new Set(competitionMatches.map((match) => match.round))],
+    [competitionMatches],
+  );
+  const visibleMatches = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("pt-BR");
+    return competitionMatches.filter((match) => {
+      if (match.round !== round) return false;
+      if (!query) return true;
+      const values = [
+        dataStore.clubsById.get(match.homeClubId)?.shortName,
+        dataStore.clubsById.get(match.awayClubId)?.shortName,
+        dataStore.citiesById.get(match.cityId)?.name,
+        dataStore.stadiumsById.get(match.stadiumId)?.name,
+      ];
+      return values.some((value) => value?.toLocaleLowerCase("pt-BR").includes(query));
+    });
+  }, [competitionMatches, round, search]);
 
   useEffect(() => {
-    if (!isBatch) {
-      setGames((prev) => {
-        const next = [...prev];
-        while (next.length < count) next.push({ ...EMPTY_GAME });
-        return next.slice(0, count);
-      });
-    }
-  }, [count, isBatch]);
-
-  // Load tables data once
-  useEffect(() => {
-    loadAll().then(() => {
-      const comp = getTableCompetitions();
-      const mt = getTableMatches();
-      const cl = getTableClubs();
-      setTableCompetitions(comp || []);
-      setTableMatches(mt || []);
-      setTableClubs(cl || []);
-    }).catch(() => {});
-  }, []);
-
-  const updateGame = useCallback((idx: number, field: keyof GameData, value: string) => {
-    setGames((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
-  }, []);
-
-  const findClub = (id: string): Club | undefined => tableClubs.find((c) => c.id === id) || undefined;
-
-  // ── Importar planilha ───────────────────────────────────────────────────
-  const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await importSpreadsheet(file);
-      setImportWarnings(result.warnings);
-
-      if (result.games.length === 0) return;
-
-      // Carregar config pra saber quantos jogos por arte
-      const configRes = await fetch(`/templates/${folder}/config.json`);
-      const config = await configRes.json();
-      const maxGames = Math.max(...config.variants.map((v: { games: number }) => v.games));
-
-      // Dividir em lotes de `maxGames` jogos cada
-      const batches: GameData[][] = [];
-      for (let i = 0; i < result.games.length; i += maxGames) {
-        batches.push(result.games.slice(i, i + maxGames));
-      }
-
-      setBatchQueue(batches);
-      setBatchIndex(0);
-      setGames(batches[0]);
-      setCount(batches[0].length);
-      setSvgResult("");
-    } catch (err) {
-      setImportWarnings([`Erro ao ler planilha: ${err}`]);
-    }
-
-    // Limpa input pra permitir reimportar o mesmo arquivo
-    e.target.value = "";
-  }, [folder]);
-
-  const goToBatch = useCallback((idx: number) => {
-    if (idx < 0 || idx >= batchQueue.length) return;
-    setBatchIndex(idx);
-    setGames(batchQueue[idx]);
-    setCount(batchQueue[idx].length);
+    if (!selectedMatch || !folder) return;
+    let active = true;
+    setRendering(true);
     setSvgResult("");
-  }, [batchQueue]);
 
-  const clearBatch = useCallback(() => {
-    setBatchQueue([]);
-    setBatchIndex(0);
-    setImportWarnings([]);
-    setGames([{ ...EMPTY_GAME }]);
-    setCount(1);
-    setSvgResult("");
-  }, []);
+    renderMatch(folder, selectedMatch)
+      .then((svg) => active && setSvgResult(svg))
+      .catch((error: unknown) => {
+        if (active) toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel gerar o preview.");
+      })
+      .finally(() => active && setRendering(false));
 
-  // Fill a game slot from a match object from tables
-  function fillGameFromMatch(slotIndex: number, match: any) {
-    const parsed = parseDateToFields(match.date, match.time);
-    setGames((prev) => {
-      const next = [...prev];
-      while (next.length <= slotIndex) next.push({ ...EMPTY_GAME });
-      const g = { ...next[slotIndex] };
-      g.homeId = match.homeClubId ?? match.home ?? g.homeId;
-      g.awayId = match.awayClubId ?? match.away ?? g.awayId;
-      g.data = parsed.data || (match.date ?? g.data);
-      g.dia = parsed.dia || g.dia;
-      g.mes = parsed.mes || g.mes;
-      g.hora = match.time ?? g.hora ?? "";
-      g.cidade = (match.city ?? g.cidade ?? "").toUpperCase();
-      g.estadio = (match.stadium ?? g.estadio ?? "").toUpperCase();
-      next[slotIndex] = g;
-      return next;
-    });
+    return () => { active = false; };
+  }, [folder, selectedMatch]);
+
+  async function exportPng() {
+    if (!svgResult || !folder || !selectedMatch) return;
+    const svg = new DOMParser().parseFromString(svgResult, "image/svg+xml").querySelector("svg");
+    const width = Number.parseInt(svg?.getAttribute("width") ?? "1080", 10);
+    const height = Number.parseInt(svg?.getAttribute("height") ?? "1350", 10);
+    await exportToPng(svgResult, width, height, `${folder}-${selectedMatch.date}.png`);
+    toast.success("PNG exportado.");
   }
-
-  // ── Gerar arte (1 lote) ─────────────────────────────────────────────────
-  function parseDateToFields(dateStr?: string, timeStr?: string) {
-    const DAYS = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
-    const MONTHS = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
-    if (!dateStr) return { dia: "", data: "", mes: "" };
-
-    let day = "";
-    let month = "";
-    try {
-      let dt: Date | null = null;
-      const d1 = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      const d2 = dateStr.match(/^(\d{2})\/(\d{2})$/);
-      const d3 = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (d1) {
-      dt = new Date(Number(d1[3]), Number(d1[2]) - 1, Number(d1[1]));
-      } else if (d2) {
-      const now = new Date();
-      dt = new Date(now.getFullYear(), Number(d2[2]) - 1, Number(d2[1]));
-      } else if (d3) {
-      dt = new Date(Number(d3[1]), Number(d3[2]) - 1, Number(d3[3]));
-      }
-      if (dt) {
-      day = DAYS[dt.getDay()];
-      month = MONTHS[dt.getMonth()];
-      return { dia: day, data: String(dt.getDate()), mes: month };
-      }
-    } catch (e) {}
-
-    // fallback: try to extract numbers
-    const mm = dateStr.match(/(\d{1,2})\D+(\d{1,2})/);
-    if (mm) {
-      const d = Number(mm[1]);
-      const m = Number(mm[2]);
-      const now = new Date();
-      try {
-      const dt = new Date(now.getFullYear(), m - 1, d);
-      return { dia: DAYS[dt.getDay()], data: String(d), mes: MONTHS[m - 1] };
-      } catch (e){}
-    }
-
-    return { dia: "", data: dateStr, mes: "" };
-  }
-
-  const generate = useCallback(async (gamesToUse?: GameData[]) => {
-    const gamesForGen = gamesToUse ?? games;
-
-    // Validação: pelo menos mandante e visitante preenchidos em cada jogo
-    const incomplete = gamesForGen.findIndex((g) => !g.homeId || !g.awayId);
-    if (incomplete >= 0) {
-      toast.warning(`Jogo ${incomplete + 1}: selecione mandante e visitante.`);
-      return "";
-    }
-
-    setLoading(true);
-    try {
-      const configRes = await fetch(`/templates/${folder}/config.json`);
-      const config = await configRes.json();
-
-      const effectiveCount = Math.min(gamesForGen.length, 4);
-      const variant = config.variants.find(
-      (v: { games: number }) => v.games === effectiveCount
-      );
-      if (!variant) { toast.error("Variante não encontrada para esse número de jogos."); return ""; }
-
-      const svgRes = await fetch(`/templates/${folder}/${variant.file}`);
-      const svgText = await svgRes.text();
-      const doc = new SvgDocument(svgText);
-
-      for (let i = 0; i < effectiveCount; i++) {
-      const s = suffix(i);
-      const g = gamesForGen[i];
-      if (!g) continue;
-
-      doc.setText(`txt_dia${s}`, g.dia);
-      doc.setText(`txt_data${s}`, g.data);
-      doc.setText(`txt_mes${s}`, `.${g.mes}`);
-      doc.setText(`txt_hora${s}`, g.hora);
-      doc.setText(`txt_cidade${s}`, g.cidade.toUpperCase());
-      doc.setText(`txt_estadio${s}`, g.estadio.toUpperCase());
-
-      const home = findClub(g.homeId);
-      const away = findClub(g.awayId);
-
-      if (home && home.shield) {
-        const uri = await imageToDataUri(home.shield);
-        doc.setImage(`img_escudo_mandante${s}`, uri);
-        doc.setImage(`img_mandante${s}`, uri);
-        doc.setImage(`img_mandante_2${s}`, uri);
-      }
-      if (away && away.shield) {
-        const uri = await imageToDataUri(away.shield);
-        doc.setImage(`img_escudo_visitante${s}`, uri);
-        doc.setImage(`img_visitante${s}`, uri);
-      }
-      }
-
-      const result = doc.toString();
-      setSvgResult(result);
-      toast.success("Arte gerada com sucesso!");
-      return result;
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao gerar arte. Verifique os campos e tente novamente.");
-      return "";
-    } finally {
-      setLoading(false);
-    }
-  }, [folder, games]);
-
-  // ── Exportar PNG ────────────────────────────────────────────────────────
-  const download = useCallback(async (svg?: string) => {
-    const svgToExport = svg || svgResult;
-    if (!svgToExport) return;
-    try {
-      // Detectar dimensões do SVG
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svgToExport, "image/svg+xml");
-      const svgEl = svgDoc.querySelector("svg");
-      const w = parseInt(svgEl?.getAttribute("width") ?? "1080", 10);
-      const h = parseInt(svgEl?.getAttribute("height") ?? "1350", 10);
-
-      await exportToPng(svgToExport, w, h, `${folder}-${Date.now()}.png`);
-      toast.success("PNG exportado!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao exportar PNG. Tente gerar a arte novamente.");
-    }
-  }, [svgResult, folder]);
-
-  // ── Exportar tudo (batch) ───────────────────────────────────────────────
-  const exportAll = useCallback(async () => {
-    if (batchQueue.length === 0) return;
-    setBatchExporting(true);
-
-    try {
-      for (let i = 0; i < batchQueue.length; i++) {
-        setBatchIndex(i);
-        setGames(batchQueue[i]);
-        setCount(batchQueue[i].length);
-
-        const svg = await generate(batchQueue[i]);
-        if (svg) {
-          // Pequeno delay entre downloads pra browser não bloquear
-          await new Promise((r) => setTimeout(r, 400));
-          const parser = new DOMParser();
-          const svgDoc = parser.parseFromString(svg, "image/svg+xml");
-          const svgEl = svgDoc.querySelector("svg");
-          const w = parseInt(svgEl?.getAttribute("width") ?? "1080", 10);
-          const h = parseInt(svgEl?.getAttribute("height") ?? "1350", 10);
-          await exportToPng(svg, w, h, `${folder}-${i + 1}-${Date.now()}.png`);
-        }
-      }
-      toast.success(`${batchQueue.length} artes exportadas com sucesso!`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro no export em lote. Algumas artes podem não ter sido exportadas.");
-    } finally {
-      setBatchExporting(false);
-    }
-  }, [batchQueue, folder, generate]);
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-slate-100 p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Cabeçalho */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-slate-900">Gerador de Arte</h1>
-            <p className="mt-2 text-sm text-slate-600">Crie artes rapidamente preenchendo as informações dos jogos.</p>
-          </div>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header>
+          <h1 className="text-3xl font-bold text-slate-900">Gerador de Arte</h1>
+          <p className="mt-2 text-sm text-slate-600">Selecione um jogo do calendÃ¡rio para gerar a arte automaticamente.</p>
+        </header>
 
-          <div className="grid grid-cols-12 gap-5">
-            {/* Formulário - 4 colunas */}
-            <div className="col-span-12 lg:col-span-4 space-y-5">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+        <Dashboard dataStore={dataStore} />
 
-                {/* Importar planilha */}
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={handleImport}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center gap-2 w-full h-11 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 text-sm font-medium hover:border-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-all"
-                  >
-                    <FileSpreadsheet size={16} />
-                    <span>Importar Planilha (.csv / .xlsx)</span>
-                  </button>
-                </div>
-
-                {/* Warnings da importação */}
-                {importWarnings.length > 0 && (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-1">
-                    {importWarnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-700">{w}</p>
-                    ))}
-                  </div>
-                )}
-
-                {/* Seleção por competição / rodada (autopreenchimento) */}
-                <div className="space-y-3">
-                 <div>
-                   <label className="text-sm font-semibold text-slate-700">Competição</label>
-                   <select value={selectedCompetitionId} onChange={(e) => { setSelectedCompetitionId(e.target.value); setSelectedRound(""); }}
-                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                     <option value="">— Selecione —</option>
-                     {tableCompetitions.map((c: any) => (
-                       <option key={c.id} value={c.id}>{c.name}</option>
-                     ))}
-                   </select>
-                 </div>
-
-                 <div>
-                   <label className="text-sm font-semibold text-slate-700">Rodada</label>
-                   <select value={selectedRound} onChange={(e) => setSelectedRound(e.target.value)}
-                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                     <option value="">— Todas —</option>
-                     {Array.from(new Set(tableMatches.filter((m: any) => !selectedCompetitionId || m.competitionId === selectedCompetitionId).map((m: any) => m.round))).map((r: any) => (
-                       <option key={r} value={r}>{r}</option>
-                     ))}
-                   </select>
-                 </div>
-
-                 <div>
-                   <label className="text-sm font-semibold text-slate-700">Jogos (clique para preencher)</label>
-                   <div className="max-h-40 overflow-auto rounded-md border border-slate-100 bg-white p-2 space-y-1">
-                     {tableMatches.filter((m: any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound)).slice(0,200).map((m: any, mi: number) => (
-                       <button key={mi} onClick={() => {
-                         // Preenche o primeiro jogo aberto (ou substitui o jogo 0)
-                         fillGameFromMatch(0, m);
-                       }} className="w-full text-left p-2 hover:bg-slate-50 rounded">{(m.home || m.homeClubId || 'Mandante')} x {(m.away || m.awayClubId || 'Visitante')} — {m.date || ''} {m.time || ''}</button>
-                     ))}
-                     {tableMatches.filter((m: any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound)).length === 0 && (
-                       <div className="text-sm text-slate-400 p-2">Nenhum jogo encontrado para a seleção.</div>
-                     )}
-                   </div>
-                 </div>
-                </div>
-
-                {/* Batch navigation */}
-                {isBatch && (
-                 <div className="flex items-center justify-between rounded-xl bg-violet-50 border border-violet-200 p-3">
-                    <button
-                      onClick={() => goToBatch(batchIndex - 1)}
-                      disabled={batchIndex === 0}
-                      className="p-1 rounded-lg hover:bg-violet-100 disabled:opacity-30"
-                    >
-                      <ChevronLeft size={18} className="text-violet-700" />
-                    </button>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold text-violet-800">
-                        Arte {batchIndex + 1} de {batchQueue.length}
-                      </p>
-                      <p className="text-xs text-violet-600">
-                        {batchQueue.reduce((sum, b) => sum + b.length, 0)} jogos importados
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => goToBatch(batchIndex + 1)}
-                      disabled={batchIndex >= batchQueue.length - 1}
-                      className="p-1 rounded-lg hover:bg-violet-100 disabled:opacity-30"
-                    >
-                      <ChevronRight size={18} className="text-violet-700" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Quantos jogos (manual) */}
-                {!isBatch && (
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700">Quantos jogos?</label>
-                    <div className="mt-2">
-                      <select
-                        value={count}
-                        onChange={(e) => setCount(Number(e.target.value))}
-                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      >
-                        {[1, 2, 3, 4].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  {games.map((g, i) => (
-                    <div key={i}>
-                      <GameForm index={i} game={g} onChange={(field, value) => updateGame(i, field, value)} clubs={tableClubs} disabled={true} />
-                      <div className="mt-2 flex gap-2">
-                        <button onClick={() => { /* fill this slot with first matching game if selection active */ if (selectedCompetitionId || selectedRound) {
-                          const candidates = tableMatches.filter((m:any) => (!selectedCompetitionId || m.competitionId === selectedCompetitionId) && (!selectedRound || m.round === selectedRound));
-                          if (candidates.length) fillGameFromMatch(i, candidates[0]);
-                        }}}
-                          className="px-3 py-2 rounded bg-slate-100 text-sm">Preencher com primeiro jogo da seleção</button>
-                        <button onClick={() => {/* open selector handled above: user can click in list */}} className="px-3 py-2 rounded bg-slate-50 text-sm">Escolher jogo (use lista acima)</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => generate()}
-                    disabled={loading}
-                    className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-60"
-                  >
-                    <Image size={16} />
-                    <span>{loading ? 'Gerando...' : 'Gerar Arte'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => download()}
-                    disabled={!svgResult}
-                    className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-white text-slate-700 border border-slate-200 font-semibold hover:shadow disabled:opacity-40"
-                  >
-                    <Download size={16} />
-                    <span>Exportar PNG</span>
-                  </button>
-                </div>
-
-                {/* Botões de lote */}
-                {isBatch && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={exportAll}
-                      disabled={batchExporting}
-                      className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      {batchExporting ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Upload size={16} />
-                      )}
-                      <span>
-                        {batchExporting
-                          ? `Exportando...`
-                          : `Exportar Tudo (${batchQueue.length})`}
-                      </span>
-                    </button>
-                    <button
-                      onClick={clearBatch}
-                      className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-white text-slate-500 border border-slate-200 font-semibold hover:text-red-600 hover:border-red-300"
-                    >
-                      <span>Limpar Lote</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-12 gap-5">
+          <section className="col-span-12 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-700" htmlFor="competition">CompetiÃ§Ã£o</label>
+              <select id="competition" value={competitionId} onChange={(event) => { setCompetitionId(event.target.value); setRound(""); setSelectedMatch(null); }} className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                <option value="">Selecione uma competiÃ§Ã£o</option>
+                {dataStore.competitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}
+              </select>
             </div>
 
-            {/* Preview - 8 colunas */}
-            <div className="col-span-12 lg:col-span-8">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 min-h-[600px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Preview</h2>
-                    <p className="text-sm text-slate-500">Visualize a arte gerada antes de exportar.</p>
-                  </div>
-                </div>
-
-                <div className="flex-1 min-h-0">
-                  {svgResult ? (
-                    <div className="w-full h-full overflow-auto rounded-xl bg-slate-100 p-6 flex items-center justify-center">
-                      <div
-                        className="w-full max-w-6xl"
-                        dangerouslySetInnerHTML={{
-                          __html: makeSvgResponsive(svgResult),
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center text-slate-400 space-y-3">
-                      <div className="w-40 h-32 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
-                        <Image size={36} className="text-slate-300" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-700">Sem preview disponível</p>
-                        <p className="text-sm">Preencha os campos e clique em "Gerar Arte" para visualizar.</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center justify-end space-x-3">
-                  <button
-                    onClick={() => download()}
-                    disabled={!svgResult}
-                    className="flex items-center gap-2 h-12 px-4 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60"
-                  >
-                    <Download size={16} />
-                    <span>Exportar PNG</span>
-                  </button>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-semibold text-slate-700" htmlFor="round">Rodada</label>
+              <select id="round" value={round} disabled={!competitionId} onChange={(event) => { setRound(event.target.value); setSelectedMatch(null); }} className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-50">
+                <option value="">Selecione uma rodada</option>
+                {rounds.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
             </div>
 
-          </div>
+            <div>
+              <label className="text-sm font-semibold text-slate-700" htmlFor="search">Pesquisar jogos</label>
+              <div className="relative mt-2"><Search className="absolute left-3 top-3 text-slate-400" size={16} /><input id="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Clube, cidade ou estÃ¡dio" className="h-11 w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm" /></div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-700">Jogos</p>
+              {!round && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Selecione uma rodada para listar os jogos.</p>}
+              {round && visibleMatches.map((match, index) => {
+                const home = dataStore.clubsById.get(match.homeClubId);
+                const away = dataStore.clubsById.get(match.awayClubId);
+                const isSelected = selectedMatch === match;
+                return <button type="button" key={`${match.competitionId}-${match.round}-${index}`} onClick={() => setSelectedMatch(match)} className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-violet-500 bg-violet-50" : "border-slate-200 hover:border-violet-300 hover:bg-slate-50"}`}>
+                  <div className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-800"><span className="flex min-w-0 items-center gap-2"><img className="h-7 w-7 shrink-0 object-contain" src={clubShield(match.homeClubId)} alt="" />{home?.shortName ?? match.homeClubId}</span><span className="text-slate-400">Ã—</span><span className="flex min-w-0 items-center gap-2"><img className="h-7 w-7 shrink-0 object-contain" src={clubShield(match.awayClubId)} alt="" />{away?.shortName ?? match.awayClubId}</span></div>
+                  <p className="mt-2 text-xs text-slate-500">{match.date || "Data a definir"}{match.time ? ` Â· ${match.time}` : ""}</p>
+                </button>;
+              })}
+              {round && visibleMatches.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum jogo encontrado.</p>}
+            </div>
+          </section>
+
+          <section className="col-span-12 flex min-h-[620px] flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-8">
+            <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-slate-900">Preview</h2><p className="text-sm text-slate-500">O preview Ã© atualizado ao selecionar um jogo.</p></div><button onClick={() => void exportPng()} disabled={!svgResult || rendering} className="flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"><Download size={16} />Exportar PNG</button></div>
+            <div className="flex flex-1 items-center justify-center overflow-auto rounded-xl bg-slate-100 p-6">
+              {rendering && <p className="text-sm text-slate-500">Gerando previewâ€¦</p>}
+              {!rendering && svgResult && <div className="w-full max-w-3xl" dangerouslySetInnerHTML={{ __html: makeSvgResponsive(svgResult) }} />}
+              {!rendering && !svgResult && <div className="text-center text-slate-400"><Image className="mx-auto mb-3" size={36} /><p className="text-sm font-medium text-slate-700">Sem preview disponÃ­vel</p><p className="text-sm">Escolha uma competiÃ§Ã£o, rodada e jogo.</p></div>}
+            </div>
+          </section>
         </div>
       </div>
     </MainLayout>

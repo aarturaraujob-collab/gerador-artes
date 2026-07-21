@@ -25,6 +25,8 @@ export async function exportToPng(
   svg.setAttribute("width", String(width));
   svg.setAttribute("height", String(height));
 
+  await document.fonts.ready;
+
   const png = await svgAsPngUri(svg, {
     scale: 1,
     encoderOptions: 1,

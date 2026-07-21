@@ -74,13 +74,13 @@ O app aceita `.csv` e `.xlsx` com as seguintes colunas (nomes flexíveis):
 | cidade | city, local |
 | estadio | stadium, praca |
 
-Nomes de clubes são resolvidos automaticamente contra `src/data/clubs.ts` (por id, shortName ou name).
+Nomes de clubes são normalizados pelo importador para as tabelas geradas em `tables/`.
 
 Um modelo de exemplo está disponível em `public/data/modelo-importacao.csv`.
 
 ## Clubes
 
-Os 54 clubes registrados ficam em `src/data/clubs.ts`, cada um com: id, nome, sigla, caminho do escudo (`.png` em `public/assets/escudos/`), e cores primária/secundária.
+Clubes, cidades, estádios, competições e partidas ficam exclusivamente nas tabelas geradas em `tables/`.
 
 ## Deploy
 

@@ -1,83 +1,107 @@
-// dataStore: loads tables/*.ts once and caches them in memory.
-// Provides refresh() to re-import modules with cache-busting query string.
+import { cities as cityRows } from "../../tables/cities";
+import { clubs as clubRows } from "../../tables/clubs";
+import { competitions as competitionRows } from "../../tables/competitions";
+import { matches as matchRows } from "../../tables/matches";
+import { stadiums as stadiumRows } from "../../tables/stadiums";
 
-export type Competition = { id: string; name: string; logo?: string };
-export type Club = { id: string; shortName: string; fullName?: string; shield?: string };
-export type Stadium = { id: string; name: string; cityId?: string };
-export type Match = any; // Keep generic to remain compatible with generator/normalizer output
-
-let competitions: Competition[] = [];
-let clubs: Club[] = [];
-let stadiums: Stadium[] = [];
-let matches: Match[] = [];
-
-async function importModule<T = any>(path: string): Promise<T> {
-  // Cache bust to allow refresh after files change
-  const url = `${path}?t=${Date.now()}`;
-  const mod = await import(/* @vite-ignore */ url);
-  // modules export const X = ... as const
-  const key = Object.keys(mod)[0];
-  return mod[key] as T;
+export interface Competition {
+  id: string;
+  name: string;
+  logo: string;
 }
 
-export async function loadAll() {
-  if (competitions.length || clubs.length || matches.length || stadiums.length) {
-    // already loaded
-    return {
-      competitions,
-      clubs,
-      stadiums,
-      matches,
-    };
-  }
-
-  try {
-    competitions = (await importModule<Competition[]>("/tables/competitions.ts")) || [];
-  } catch (e) {
-    competitions = [];
-  }
-
-  try {
-    clubs = (await importModule<Club[]>("/tables/clubs.ts")) || [];
-  } catch (e) {
-    clubs = [];
-  }
-
-  try {
-    stadiums = (await importModule<Stadium[]>("/tables/stadiums.ts")) || [];
-  } catch (e) {
-    stadiums = [];
-  }
-
-  try {
-    matches = (await importModule<Match[]>("/tables/matches.ts")) || [];
-  } catch (e) {
-    matches = [];
-  }
-
-  return { competitions, clubs, stadiums, matches };
+export interface Club {
+  id: string;
+  shortName: string;
+  fullName: string;
+  shield: string;
 }
 
-export async function refreshAll() {
-  competitions = [];
-  clubs = [];
-  stadiums = [];
-  matches = [];
-  return loadAll();
+export interface City {
+  id: string;
+  name: string;
 }
 
-export function getCompetitions() {
-  return competitions;
+export interface Stadium {
+  id: string;
+  name: string;
+  cityId: string;
 }
 
-export function getMatches() {
-  return matches;
+export interface Match {
+  competitionId: string;
+  round: string;
+  date: string;
+  time: string;
+  homeClubId: string;
+  awayClubId: string;
+  stadiumId: string;
+  cityId: string;
+  homeGoals: number | null;
+  awayGoals: number | null;
+  tv: string | null;
 }
 
-export function getClubs() {
-  return clubs;
+export interface DataStore {
+  competitions: readonly Competition[];
+  clubs: readonly Club[];
+  cities: readonly City[];
+  stadiums: readonly Stadium[];
+  matches: readonly Match[];
+  clubsById: ReadonlyMap<string, Club>;
+  citiesById: ReadonlyMap<string, City>;
+  stadiumsById: ReadonlyMap<string, Stadium>;
+  lastUpdated: string;
 }
 
-export function getStadiums() {
-  return stadiums;
+function latestTableDate(matches: readonly Match[]): string {
+  const dates = matches
+    .map((match) => match.date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/))
+    .filter((parts): parts is RegExpMatchArray => parts !== null)
+    .map(([, day, month, year]) => `${year}-${month}-${day}`)
+    .sort();
+  return dates[dates.length - 1] ?? "—";
+}
+
+function createDataStore(): DataStore {
+  const competitions = competitionRows as readonly Competition[];
+  const clubs = clubRows as readonly Club[];
+  const cities = cityRows as readonly City[];
+  const stadiums = stadiumRows as readonly Stadium[];
+  const matches = matchRows as readonly Match[];
+
+  return {
+    competitions,
+    clubs,
+    cities,
+    stadiums,
+    matches,
+    clubsById: new Map(clubs.map((club) => [club.id, club])),
+    citiesById: new Map(cities.map((city) => [city.id, city])),
+    stadiumsById: new Map(stadiums.map((stadium) => [stadium.id, stadium])),
+    lastUpdated: latestTableDate(matches),
+  };
+}
+
+// The table modules are bundled once. This immutable store is the sole in-memory cache.
+export const dataStore = createDataStore();
+
+export function getCompetitions(): readonly Competition[] {
+  return dataStore.competitions;
+}
+
+export function getMatches(): readonly Match[] {
+  return dataStore.matches;
+}
+
+export function getClubs(): readonly Club[] {
+  return dataStore.clubs;
+}
+
+export function getCities(): readonly City[] {
+  return dataStore.cities;
+}
+
+export function getStadiums(): readonly Stadium[] {
+  return dataStore.stadiums;
 }
