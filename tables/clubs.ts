@@ -6,7 +6,7 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "independente-atalaia",
+    "id": "ind-atalaia",
     "shortName": "Independente Atalaia",
     "fullName": "Independente Atalaia",
     "shield": ""
@@ -24,7 +24,7 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "guarani-de-paripueira",
+    "id": "guarani-paripueira",
     "shortName": "Guarani de Paripueira",
     "fullName": "Guarani de Paripueira",
     "shield": ""
@@ -36,13 +36,13 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "desportivo-alianca",
+    "id": "alianca",
     "shortName": "Desportivo Aliança",
     "fullName": "Desportivo Aliança",
     "shield": ""
   },
   {
-    "id": "murici-sc",
+    "id": "murici",
     "shortName": "Murici SC",
     "fullName": "Murici SC",
     "shield": ""
@@ -66,13 +66,13 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "aa-coruripe",
-    "shortName": "AA Coruripe",
+    "id": "coruripe",
+    "shortName": "Coruripe",
     "fullName": "AA Coruripe",
     "shield": ""
   },
   {
-    "id": "m10-rio-largo",
+    "id": "m10",
     "shortName": "M10 Rio Largo",
     "fullName": "M10 Rio Largo",
     "shield": ""
@@ -192,9 +192,9 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "cruzeiro",
-    "shortName": "Cruzeiro",
-    "fullName": "Cruzeiro",
+    "id": "cruzeiro-al-al",
+    "shortName": "cruzeiro-al",
+    "fullName": "cruzeiro-al",
     "shield": ""
   },
   {
@@ -216,7 +216,7 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "sporting-fc",
+    "id": "sporting",
     "shortName": "Sporting FC",
     "fullName": "Sporting FC",
     "shield": ""

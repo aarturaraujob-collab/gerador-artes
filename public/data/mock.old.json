@@ -39,7 +39,7 @@
       "home": {
         "name": "Ponte Preta",
         "shortName": "Ponte",
-        "shield": "/assets/escudos/ponte_preta.png"
+        "shield": "/assets/escudos/ponte-preta.png"
       },
       "away": {
         "name": "Botafogo-SP",
