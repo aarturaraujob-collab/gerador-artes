@@ -1,6 +1,6 @@
 export const matches = [
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "18/07/2026",
     "time": "15:00",
@@ -13,7 +13,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "18/07/2026",
     "time": "15:00",
@@ -26,7 +26,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "18/07/2026",
     "time": "15:00",
@@ -39,7 +39,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "18/07/2026",
     "time": "15:00",
@@ -52,7 +52,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "18/07/2026",
     "time": "15:00",
@@ -65,7 +65,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "1ª",
     "date": "22/07/2026",
     "time": "15:00",
@@ -78,7 +78,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -91,7 +91,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -104,7 +104,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -117,7 +117,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -130,7 +130,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "26/07/2026",
     "time": "15:00",
@@ -143,7 +143,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "26/07/2026",
     "time": "15:00",
@@ -156,7 +156,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "26/07/2026",
     "time": "15:00",
@@ -169,7 +169,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "2ª",
     "date": "28/07/2026",
     "time": "15:00",
@@ -182,7 +182,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "31/07/2026",
     "time": "15:00",
@@ -195,7 +195,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "31/07/2026",
     "time": "15:00",
@@ -208,7 +208,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -221,7 +221,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -234,7 +234,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -247,7 +247,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -260,7 +260,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -273,7 +273,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "3ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -286,7 +286,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "05/08/2026",
     "time": "15:00",
@@ -299,7 +299,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -312,7 +312,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -325,7 +325,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -338,7 +338,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -351,7 +351,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -364,7 +364,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -377,7 +377,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -390,7 +390,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -403,7 +403,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "12/08/2026",
     "time": "15:00",
@@ -416,7 +416,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -429,7 +429,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -442,7 +442,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -455,7 +455,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -468,7 +468,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -481,7 +481,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -494,7 +494,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -507,7 +507,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "5ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -520,7 +520,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -533,7 +533,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -546,7 +546,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -559,7 +559,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -572,7 +572,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -585,7 +585,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -598,7 +598,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -611,7 +611,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "6ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -624,7 +624,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -637,7 +637,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -650,7 +650,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -663,7 +663,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -676,7 +676,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -689,7 +689,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -702,7 +702,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -715,7 +715,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "7ª",
     "date": "29/08/2026",
     "time": "15:00",
@@ -728,7 +728,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -741,7 +741,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -754,7 +754,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -767,7 +767,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -780,7 +780,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -793,7 +793,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -806,7 +806,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -819,7 +819,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -832,7 +832,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -845,7 +845,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -858,7 +858,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -871,7 +871,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -884,7 +884,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Ida",
     "date": "",
     "time": "",
@@ -897,7 +897,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a1",
+    "competitionId": "ALAGOANO20A1",
     "round": "Volta",
     "date": "",
     "time": "",
@@ -910,7 +910,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "1ª",
     "date": "24/07/2026",
     "time": "15:00",
@@ -923,7 +923,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "1ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -936,7 +936,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "1ª",
     "date": "25/07/2026",
     "time": "15:00",
@@ -949,7 +949,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "1ª",
     "date": "26/07/2026",
     "time": "15:00",
@@ -962,7 +962,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "1ª",
     "date": "26/07/2026",
     "time": "15:00",
@@ -975,7 +975,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -988,7 +988,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -1001,7 +1001,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "01/08/2026",
     "time": "15:00",
@@ -1014,7 +1014,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -1027,7 +1027,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -1040,7 +1040,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "2ª",
     "date": "02/08/2026",
     "time": "15:00",
@@ -1053,7 +1053,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "3ª",
     "date": "04/08/2026",
     "time": "15:00",
@@ -1066,7 +1066,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "3ª",
     "date": "05/08/2026",
     "time": "15:00",
@@ -1079,7 +1079,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "3ª",
     "date": "05/08/2026",
     "time": "17:00",
@@ -1092,7 +1092,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "3ª",
     "date": "06/08/2026",
     "time": "15:00",
@@ -1105,7 +1105,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "3ª",
     "date": "06/08/2026",
     "time": "15:00",
@@ -1118,7 +1118,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "07/08/2026",
     "time": "15:00",
@@ -1131,7 +1131,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -1144,7 +1144,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "08/08/2026",
     "time": "15:00",
@@ -1157,7 +1157,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -1170,7 +1170,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -1183,7 +1183,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "4ª",
     "date": "09/08/2026",
     "time": "15:00",
@@ -1196,7 +1196,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "5ª",
     "date": "12/08/2026",
     "time": "15:00",
@@ -1209,7 +1209,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "5ª",
     "date": "12/08/2026",
     "time": "15:00",
@@ -1222,7 +1222,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "5ª",
     "date": "12/08/2026",
     "time": "15:00",
@@ -1235,7 +1235,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "5ª",
     "date": "13/08/2026",
     "time": "15:00",
@@ -1248,7 +1248,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "5ª",
     "date": "13/08/2026",
     "time": "17:00",
@@ -1261,7 +1261,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -1274,7 +1274,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -1287,7 +1287,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "15/08/2026",
     "time": "15:00",
@@ -1300,7 +1300,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -1313,7 +1313,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -1326,7 +1326,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "6ª",
     "date": "16/08/2026",
     "time": "15:00",
@@ -1339,7 +1339,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "21/08/2026",
     "time": "15:00",
@@ -1352,7 +1352,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -1365,7 +1365,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -1378,7 +1378,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "22/08/2026",
     "time": "15:00",
@@ -1391,7 +1391,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "23/08/2026",
     "time": "15:00",
@@ -1404,7 +1404,7 @@ export const matches = [
     "tv": null
   },
   {
-    "competitionId": "alagoano20a2",
+    "competitionId": "ALAGOANO20A2",
     "round": "7ª",
     "date": "23/08/2026",
     "time": "15:00",

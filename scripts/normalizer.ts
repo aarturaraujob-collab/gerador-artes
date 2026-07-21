@@ -53,7 +53,6 @@ export function normalize(
     db.competitions.push({
       id: competitionId,
       name: competitionName,
-      logo: "",
     });
   }
 

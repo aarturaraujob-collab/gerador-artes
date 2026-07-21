@@ -1,64 +1,14 @@
 {
-  "id":"jogos-do-dia",
-  "name":"Jogos do Dia",
-
-  "variants":[
-    {
-      "games":1,
-      "file":"agenda_1jogo_feed.svg"
-    },
-    {
-      "games":2,
-      "file":"agenda_2jogos_feed.svg"
-    },
-    {
-      "games":3,
-      "file":"agenda_3jogos_feed.svg"
-    },
-    {
-      "games":4,
-      "file":"agenda_4jogos_feed.svg"
-    }
+  "id": "jogos-do-dia",
+  "name": "Jogos do Dia",
+  "variants": [
+    { "games": 1, "file": "agenda_1jogo_feed.svg" },
+    { "games": 2, "file": "agenda_2jogos_feed.svg" },
+    { "games": 3, "file": "agenda_3jogos_feed.svg" },
+    { "games": 4, "file": "agenda_4jogos_feed.svg" }
   ],
-
-  "fields":[
-
-    {
-      "id":"homeTeam",
-      "label":"Mandante",
-      "type":"club"
-    },
-
-    {
-      "id":"awayTeam",
-      "label":"Visitante",
-      "type":"club"
-    },
-
-    {
-      "id":"day",
-      "label":"Dia",
-      "type":"weekday"
-    },
-
-    {
-      "id":"date",
-      "label":"Data",
-      "type":"date"
-    },
-
-    {
-      "id":"time",
-      "label":"Horário",
-      "type":"time"
-    },
-
-    {
-      "id":"stadium",
-      "label":"Local",
-      "type":"text"
-    }
-
-  ]
-
+  "fields": {
+    "txt_cidade": { "maxWidth": 225 },
+    "txt_estadio": { "maxWidth": 225 }
+  }
 }

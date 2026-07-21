@@ -2,41 +2,6 @@
   "id": "thumb-faftv",
   "name": "Thumbnail FAFTV",
   "variants": [
-    {
-      "games": 1,
-      "file": "THUMB_FAFTV.svg"
-    }
-  ],
-  "fields": [
-    {
-      "id": "homeTeam",
-      "label": "Mandante",
-      "type": "club"
-    },
-    {
-      "id": "awayTeam",
-      "label": "Visitante",
-      "type": "club"
-    },
-    {
-      "id": "day",
-      "label": "Dia",
-      "type": "weekday"
-    },
-    {
-      "id": "date",
-      "label": "Data",
-      "type": "date"
-    },
-    {
-      "id": "time",
-      "label": "Horário",
-      "type": "time"
-    },
-    {
-      "id": "rodada",
-      "label": "Rodada",
-      "type": "text"
-    }
+    { "games": 1, "file": "THUMB_FAFTV.svg" }
   ]
 }

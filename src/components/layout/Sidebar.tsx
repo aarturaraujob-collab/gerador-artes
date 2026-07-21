@@ -3,6 +3,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { navigation } from "@/constants/navigation";
 
 import { Logo } from "./Logo";
+import { NavigationGroup } from "./NavigationGroup";
 import { NavigationItem } from "./NavigationItem";
 
 interface SidebarProps {
@@ -53,13 +54,25 @@ export function Sidebar({
         </div>
 
         <nav className="space-y-1 px-3">
-          {navigation.map((item) => (
-            <NavigationItem
-              key={item.label}
-              {...item}
-              collapsed={collapsed}
-            />
-          ))}
+          {navigation.map((item) =>
+            item.children ? (
+              <NavigationGroup
+                key={item.label}
+                label={item.label}
+                icon={item.icon}
+                children={item.children}
+                collapsed={collapsed}
+              />
+            ) : (
+              <NavigationItem
+                key={item.label}
+                label={item.label}
+                href={item.href!}
+                icon={item.icon}
+                collapsed={collapsed}
+              />
+            ),
+          )}
         </nav>
       </div>
 

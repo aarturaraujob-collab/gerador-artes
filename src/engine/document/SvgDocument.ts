@@ -188,6 +188,21 @@ export class SvgDocument {
     this.updateImageElement(image, href);
   }
 
+  /**
+   * True when `element` sits inside a `<mask>` definition somewhere between
+   * itself and `boundary` (exclusive). Rects used only to shape a mask carry
+   * no visible content — replacing their image would make the mask depend on
+   * the injected picture instead of the shape the template author drew.
+   */
+  private isInsideMask(element: Element, boundary: Element): boolean {
+    let current = element.parentElement;
+    while (current && current !== boundary) {
+      if (current.tagName.toLowerCase() === "mask") return true;
+      current = current.parentElement;
+    }
+    return false;
+  }
+
   setImage(id: string, href: string) {
     const node = this.getNode(id);
     if (!node) return;
@@ -211,8 +226,9 @@ export class SvgDocument {
       return;
     }
 
-    const rects =
-      node.element.querySelectorAll("rect");
+    const rects = Array.from(
+      node.element.querySelectorAll("rect")
+    ).filter((rect) => !this.isInsideMask(rect, node.element));
 
     rects.forEach((rect) => {
       this.updatePatternRect(rect, href);

@@ -97,8 +97,8 @@ export const clubs = [
   },
   {
     "id": "u-cse",
-    "shortName": "U CSE",
-    "fullName": "U CSE",
+    "shortName": "cse",
+    "fullName": "cse",
     "shield": ""
   },
   {
@@ -192,10 +192,10 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "cruzeiro-al-al",
-    "shortName": "cruzeiro-al",
-    "fullName": "cruzeiro-al",
-    "shield": ""
+    "id": "cruzeiro-al",
+    "shortName": "Cruzeiro",
+    "fullName": "Cruzeiro Alagoano",
+    "shield": "cruzeiro_alagoano.png"
   },
   {
     "id": "unec",

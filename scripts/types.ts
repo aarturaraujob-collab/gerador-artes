@@ -43,7 +43,6 @@ export interface City {
 export interface Competition {
   id: string;
   name: string;
-  logo: string;
 }
 
 export interface ParsedData {
