@@ -6,6 +6,8 @@
  * (a few hundred KB to a few MB each), unlike localStorage's ~5-10MB cap.
  */
 
+import { getStore, promisify } from "./db";
+
 export interface BackgroundAssets {
   thumb: string;
   story: string;
@@ -14,6 +16,14 @@ export interface BackgroundAssets {
 
 export interface CompetitionRecord {
   id: string;
+  /**
+   * Groups seasons of the same recurring competition (e.g. every year of
+   * "Alagoano Série A" shares one seriesId) so they can be listed together
+   * instead of as unrelated one-off entries. Optional and backfilled at read
+   * time (see resolveSeriesId in competitionSeries.ts) — older records saved
+   * before this field existed simply don't have it stored yet.
+   */
+  seriesId?: string;
   name: string;
   season: number;
   category: string;
@@ -22,9 +32,17 @@ export interface CompetitionRecord {
   /** Filename under public/assets/logos/, or a data: URI from an upload. */
   logo: string;
   background: BackgroundAssets;
-  /** Template folder ids (see src/components/templates/templates.ts) enabled for this competition. */
+  /** Template folder ids (see src/templates/templates.ts) enabled for this competition. */
   templates: string[];
   active: boolean;
+  /**
+   * Explicit status override. Optional — when unset, the status is
+   * suggested automatically from match dates (see competitionStatus.ts).
+   * Setting it here always wins over the automatic suggestion.
+   */
+  status?: "A acontecer" | "Em andamento" | "Finalizada" | "Arquivada";
+  /** Soft-delete marker (ms epoch) — set by "Excluir" (moves to trash), cleared by "Restaurar". Never removed from IndexedDB until purged. */
+  deletedAt?: number | null;
 }
 
 export function emptyBackground(): BackgroundAssets {
@@ -71,51 +89,14 @@ for (const competition of OFFICIAL_COMPETITIONS_2026) {
   if (thumb) competition.background = { ...emptyBackground(), thumb };
 }
 
-const DB_NAME = "faf-mkt-ops";
-const DB_VERSION = 1;
-const STORE_NAME = "competitions";
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 /**
  * Persists competition records in IndexedDB. This is the only place that
  * knows about the storage mechanism — everything else works with plain
  * CompetitionRecord objects.
  */
 export class CompetitionRepository {
-  private dbPromise: Promise<IDBDatabase> | null = null;
-
-  private db(): Promise<IDBDatabase> {
-    if (!this.dbPromise) this.dbPromise = openDb();
-    return this.dbPromise;
-  }
-
-  private async store(mode: IDBTransactionMode): Promise<IDBObjectStore> {
-    const db = await this.db();
-    return db.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
-  }
-
   async list(): Promise<CompetitionRecord[]> {
-    const store = await this.store("readonly");
+    const store = await getStore("competitions", "readonly");
     return promisify(store.getAll());
   }
 
@@ -124,18 +105,18 @@ export class CompetitionRepository {
     const existing = await this.list();
     if (existing.length > 0) return existing;
 
-    const store = await this.store("readwrite");
+    const store = await getStore("competitions", "readwrite");
     for (const record of OFFICIAL_COMPETITIONS_2026) store.put(record);
     return OFFICIAL_COMPETITIONS_2026;
   }
 
   async upsert(record: CompetitionRecord): Promise<void> {
-    const store = await this.store("readwrite");
+    const store = await getStore("competitions", "readwrite");
     store.put(record);
   }
 
   async remove(id: string): Promise<void> {
-    const store = await this.store("readwrite");
+    const store = await getStore("competitions", "readwrite");
     store.delete(id);
   }
 }

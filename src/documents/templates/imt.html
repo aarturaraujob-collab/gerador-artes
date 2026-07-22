@@ -1,0 +1,90 @@
+<!--
+  MODELO PROVISÓRIO — este layout NÃO foi validado contra o documento
+  oficial da FAF. Foi construído sem uma referência visual real (ver
+  observação da Sprint 03: "não reproduzir o layout de memória"). Quando o
+  PDF oficial da IMT for fornecido, substituir o conteúdo deste arquivo e de
+  document.css — nenhum outro módulo (renderer, pdf, repository, types,
+  UI) precisa mudar.
+
+  Fragmento puro — sem <html>/<head>/<body>, sem lógica (sem condicionais,
+  sem loops). Só marcação estática + placeholders {{chave}}, substituídos
+  por renderIMT.ts via replace de texto simples.
+-->
+<div class="imt-document">
+  <div class="imt-provisional-notice">
+    Modelo provisório — pendente de validação com o documento oficial da FAF
+  </div>
+
+  <header class="imt-header">
+    <div class="imt-header-title">
+      <p class="imt-federation">Federação Alagoana de Futebol</p>
+      <h1>Informação de Modificação de Tabela</h1>
+    </div>
+    <div class="imt-header-number">{{imtNumber}}</div>
+  </header>
+
+  <section class="imt-meta">
+    <div class="imt-meta-item">
+      <span class="imt-label">Competição</span>
+      <span class="imt-value">{{competition}}</span>
+    </div>
+    <div class="imt-meta-item">
+      <span class="imt-label">Temporada</span>
+      <span class="imt-value">{{season}}</span>
+    </div>
+  </section>
+
+  <section class="imt-match">
+    <span class="imt-label">Partida</span>
+    <p class="imt-match-teams">{{home}} <span class="imt-versus">×</span> {{away}}</p>
+  </section>
+
+  <section class="imt-comparison">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Dados anteriores</th>
+          <th>Dados novos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="imt-label">Data</td>
+          <td>{{oldDate}}</td>
+          <td>{{newDate}}</td>
+        </tr>
+        <tr>
+          <td class="imt-label">Horário</td>
+          <td>{{oldTime}}</td>
+          <td>{{newTime}}</td>
+        </tr>
+        <tr>
+          <td class="imt-label">Estádio</td>
+          <td>{{oldStadium}}</td>
+          <td>{{newStadium}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="imt-reason">
+    <span class="imt-label">Motivo da alteração</span>
+    <p>{{reason}}</p>
+  </section>
+
+  <section class="imt-signatures">
+    <div class="imt-signature">
+      <span class="imt-label">Solicitante</span>
+      <p>{{requester}}</p>
+    </div>
+    <div class="imt-signature">
+      <span class="imt-label">Responsável</span>
+      <p>{{responsible}}</p>
+    </div>
+  </section>
+
+  <footer class="imt-footer">
+    <p>Documento gerado automaticamente pelo Urano FAF em {{createdAt}}.</p>
+  </footer>
+</div>

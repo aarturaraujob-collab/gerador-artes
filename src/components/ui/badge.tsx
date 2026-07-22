@@ -5,7 +5,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 const badgeVariants = cva(
   // @replit
   // Whitespace-nowrap: Badges should never wrap.
-  'whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2' +
+  'whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background' +
     ' hover-elevate ',
   {
     variants: {
@@ -21,6 +21,9 @@ const badgeVariants = cva(
           'border-transparent bg-destructive text-destructive-foreground shadow-xs',
         // @replit shadow-xs" - use badge outline variable
         outline: 'text-foreground border [border-color:var(--badge-outline)]',
+        success: 'border-transparent bg-success-solid text-success-foreground shadow-xs',
+        warning: 'border-transparent bg-warning-solid text-warning-foreground shadow-xs',
+        info: 'border-transparent bg-info-solid text-info-foreground shadow-xs',
       },
     },
     defaultVariants: {

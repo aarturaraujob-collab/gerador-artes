@@ -5,56 +5,91 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-divider: var(--divider);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-card-border: hsl(var(--card-border));
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+  --color-surface: var(--card);
+  --color-surface-foreground: var(--card-foreground);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-hover: var(--surface-hover);
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-popover-border: hsl(var(--popover-border));
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover-border: var(--popover-border);
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-primary-border: var(--primary-border);
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary-border: var(--secondary-border);
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-muted-border: var(--muted-border);
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-border: var(--accent-border);
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-border: var(--destructive-border);
 
-  --color-chart-1: hsl(var(--chart-1));
-  --color-chart-2: hsl(var(--chart-2));
-  --color-chart-3: hsl(var(--chart-3));
-  --color-chart-4: hsl(var(--chart-4));
-  --color-chart-5: hsl(var(--chart-5));
+  /* Semantic status tokens (Design System v1) — "tint" is the bright brand hex
+     for icons/borders/text-on-light; "solid" is the AA-adjusted shade used
+     wherever the color is a solid fill behind white text. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-border: var(--brand-border);
 
-  --color-sidebar: hsl(var(--sidebar));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-border: var(--danger-border);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-solid: var(--success-solid);
+  --color-success-border: var(--success-border);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-border: var(--warning-border);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-solid: var(--info-solid);
+  --color-info-border: var(--info-border);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary-border: var(--sidebar-primary-border);
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent-border: var(--sidebar-accent-border);
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
@@ -66,193 +101,276 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* ============================================================
+   LIGHT MODE — Urano FAF Design System v1
+   Cores oficiais: vermelho #ED1B23 · verde #00A650 · azul #005BAB
+   Cor de marca (brand) fica reservada a logo/acentos/erro — a
+   cor de ação primária é um neutro escuro (referência Linear/Vercel).
+   ============================================================ */
 :root {
   --button-outline: rgba(0, 0, 0, 0.1);
   --badge-outline: rgba(0, 0, 0, 0.05);
 
-  /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
+  /* Ajuste automático de contraste da borda ao redor de botões/badges sólidos */
+  --opaque-button-border-intensity: -8; /* pontos percentuais de lightness */
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  /* Camadas aplicadas sobre outros backgrounds em hover/active */
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 222 20% 8%;
-  --foreground: 210 20% 95%;
-  --border: 222 15% 18%;
-  --card: 222 20% 11%;
-  --card-foreground: 210 20% 95%;
-  --card-border: 222 15% 18%;
-  --sidebar: 222 20% 9%;
-  --sidebar-foreground: 210 20% 90%;
-  --sidebar-border: 222 15% 16%;
-  --sidebar-primary: 24 95% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 20% 14%;
-  --sidebar-accent-foreground: 210 20% 90%;
-  --sidebar-ring: 24 95% 55%;
-  --popover: 222 20% 11%;
-  --popover-foreground: 210 20% 95%;
-  --popover-border: 222 15% 18%;
-  --primary: 24 95% 55%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 20% 16%;
-  --secondary-foreground: 210 20% 88%;
-  --muted: 222 20% 14%;
-  --muted-foreground: 215 14% 55%;
-  --accent: 222 20% 16%;
-  --accent-foreground: 210 20% 95%;
-  --destructive: 0 75% 55%;
-  --destructive-foreground: 0 0% 100%;
-  --input: 222 15% 22%;
-  --ring: 24 95% 55%;
-  --chart-1: 24 95% 55%;
-  --chart-2: 200 80% 50%;
-  --chart-3: 142 70% 45%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --background: #F7F8F9;
+  --foreground: #221E1F;
+  --foreground-secondary: #55575B;
+  /* #8A8D93 (o cinza "óbvio" aqui) só dá 3.1:1 sobre --background — abaixo do
+     mínimo AA (4.5:1) para texto normal. #63666C é o mesmo cinza, mais escuro
+     o suficiente para passar (~5.3:1), mantendo a hierarquia abaixo de foreground-secondary. */
+  --foreground-muted: #63666C;
+
+  --border: #E4E6EA;
+  --divider: #ECEDEF;
+
+  --card: #FFFFFF;
+  --card-foreground: #221E1F;
+  --card-border: #E4E6EA;
+
+  --surface-secondary: #F1F2F4;
+  --surface-hover: #ECEDEF;
+
+  --sidebar: var(--surface-secondary);
+  --sidebar-foreground: #221E1F;
+  --sidebar-border: #E4E6EA;
+  --sidebar-primary: #ED1B23;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: #221E1F;
+  --sidebar-ring: #005BAB;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #221E1F;
+  --popover-border: #E4E6EA;
+
+  /* Ação principal: neutro escuro (não a cor de marca) */
+  --primary: #1C1D21;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #F1F2F4;
+  --secondary-foreground: #221E1F;
+
+  --muted: #F1F2F4;
+  --muted-foreground: #55575B;
+
+  --accent: #ECEDEF;
+  --accent-foreground: #221E1F;
+
+  /* "destructive" (semântica shadcn já existente) = tom sólido seguro p/ AA */
+  --destructive: #DE1922;
+  --destructive-foreground: #FFFFFF;
+
+  --input: #E4E6EA;
+  --ring: #005BAB;
+
+  /* Marca FAF — logo, acentos pontuais, indicador ativo */
+  --brand: #ED1B23;
+  --brand-foreground: #FFFFFF;
+  /* Mesmo tom AA-safe do danger (mesmo hex de base) — usar quando a marca
+     aparece como TEXTO (não ícone) sobre fundo claro; texto branco #ED1B23
+     puro contra branco dá só 4.39:1, abaixo do AA de 4.5:1. */
+  --brand-solid: hsl(from #ED1B23 h s calc(l - 6));
+
+  /* Perigo / erro — tint usa o hex oficial; solid usa o tom AA-safe */
+  --danger: #ED1B23;
+  --danger-foreground: #FFFFFF;
+  --danger-solid: hsl(from #ED1B23 h s calc(l - 6));
+  --danger-border: hsl(from #ED1B23 h s calc(l - 8));
+
+  /* Sucesso — tint usa o hex oficial; solid usa o tom AA-safe */
+  --success: #00A650;
+  --success-foreground: #FFFFFF;
+  --success-solid: hsl(from #00A650 h s calc(l - 12));
+  --success-border: hsl(from #00A650 h s calc(l - 8));
+
+  /* Atenção — não especificado no briefing; assumindo âmbar acessível */
+  --warning: #B45309;
+  --warning-foreground: #FFFFFF;
+  --warning-solid: hsl(from #B45309 h s calc(l - 6));
+  --warning-border: hsl(from #B45309 h s calc(l - 8));
+
+  /* Informação / links / seleção / gráficos */
+  --info: #005BAB;
+  --info-foreground: #FFFFFF;
+  --info-solid: var(--info);
+  --info-border: hsl(from #005BAB h s calc(l - 8));
+
+  --chart-1: #005BAB;
+  --chart-2: #00A650;
+  --chart-3: #ED1B23;
+  --chart-4: #B45309;
+  --chart-5: #6E56CF;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: 0.5rem; /* 8px */
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
+  --radius: 0.625rem; /* 10px */
+
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.06);
   --shadow-sm:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 1px 2px -1px rgb(0 0 0 / 0.06),
+    0 1px 3px 0 rgb(0 0 0 / 0.08);
   --shadow:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 2px 4px -2px rgb(0 0 0 / 0.06),
+    0 4px 8px -2px rgb(0 0 0 / 0.08);
   --shadow-md:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 4px 6px -2px rgb(0 0 0 / 0.05),
+    0 8px 16px -4px rgb(0 0 0 / 0.10);
   --shadow-lg:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 8px 12px -4px rgb(0 0 0 / 0.08),
+    0 16px 32px -8px rgb(0 0 0 / 0.12);
   --shadow-xl:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 12px 24px -6px rgb(0 0 0 / 0.10),
+    0 24px 48px -12px rgb(0 0 0 / 0.16);
+  --shadow-2xl: 0 24px 48px -12px rgb(0 0 0 / 0.20);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
-
-  /* Fallback for older browsers */
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(
-    from hsl(var(--sidebar-primary)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
-
-  /* Fallback for older browsers */
-  --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(
-    from hsl(var(--sidebar-accent)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
-
-  /* Fallback for older browsers */
-  --primary-border: hsl(var(--primary));
-  --primary-border: hsl(
-    from hsl(var(--primary)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
-
-  /* Fallback for older browsers */
-  --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(
-    from hsl(var(--secondary)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
-
-  /* Fallback for older browsers */
-  --muted-border: hsl(var(--muted));
-  --muted-border: hsl(
-    from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) /
-      alpha
-  );
-
-  /* Fallback for older browsers */
-  --accent-border: hsl(var(--accent));
-  --accent-border: hsl(
-    from hsl(var(--accent)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
-
-  /* Fallback for older browsers */
-  --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(
-    from hsl(var(--destructive)) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
+  /* Bordas computadas automaticamente a partir de cada superfície sólida */
+  --primary-border: hsl(from var(--primary) h s calc(l + var(--opaque-button-border-intensity)));
+  --secondary-border: hsl(from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)));
+  --muted-border: hsl(from var(--muted) h s calc(l + var(--opaque-button-border-intensity)));
+  --accent-border: hsl(from var(--accent) h s calc(l + var(--opaque-button-border-intensity)));
+  --destructive-border: hsl(from var(--destructive) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-primary-border: hsl(from var(--sidebar-primary) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-accent-border: hsl(from var(--sidebar-accent) h s calc(l + var(--opaque-button-border-intensity)));
+  --brand-border: hsl(from var(--brand) h s calc(l + var(--opaque-button-border-intensity)));
 }
 
+/* ============================================================
+   DARK MODE
+   Neutros invertidos (quase-preto → quase-branco). As cores
+   semânticas (brand/success/danger/warning/info) mantêm o mesmo
+   matiz — só os neutros de fundo/superfície mudam.
+   ============================================================ */
 .dark {
   --button-outline: rgba(255, 255, 255, 0.1);
   --badge-outline: rgba(255, 255, 255, 0.05);
 
-  --opaque-button-border-intensity: 9; /* In terms of percentages */
+  --opaque-button-border-intensity: 9;
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
   --elevate-1: rgba(255, 255, 255, 0.04);
   --elevate-2: rgba(255, 255, 255, 0.09);
 
-  --background: 222 20% 8%;
-  --foreground: 210 20% 95%;
-  --border: 222 15% 18%;
-  --card: 222 20% 11%;
-  --card-foreground: 210 20% 95%;
-  --card-border: 222 15% 18%;
-  --sidebar: 222 20% 9%;
-  --sidebar-foreground: 210 20% 90%;
-  --sidebar-border: 222 15% 16%;
-  --sidebar-primary: 24 95% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 20% 14%;
-  --sidebar-accent-foreground: 210 20% 90%;
-  --sidebar-ring: 24 95% 55%;
-  --popover: 222 20% 11%;
-  --popover-foreground: 210 20% 95%;
-  --popover-border: 222 15% 18%;
-  --primary: 24 95% 55%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 20% 16%;
-  --secondary-foreground: 210 20% 88%;
-  --muted: 222 20% 14%;
-  --muted-foreground: 215 14% 55%;
-  --accent: 222 20% 16%;
-  --accent-foreground: 210 20% 95%;
-  --destructive: 0 75% 55%;
-  --destructive-foreground: 0 0% 100%;
-  --input: 222 15% 22%;
-  --ring: 24 95% 55%;
-  --chart-1: 24 95% 55%;
-  --chart-2: 200 80% 50%;
-  --chart-3: 142 70% 45%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --background: #0B0C0E;
+  --foreground: #F4F4F5;
+  --foreground-secondary: #A6A8AD;
+  /* #6E7076 dava só 4.11:1 sobre --background — abaixo do AA. #797B81 é
+     o mesmo cinza, um pouco mais claro, o suficiente para passar (~4.6:1). */
+  --foreground-muted: #797B81;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --border: #2A2C31;
+  --divider: #232529;
+
+  --card: #131417;
+  --card-foreground: #F4F4F5;
+  --card-border: #2A2C31;
+
+  --surface-secondary: #1A1B1F;
+  --surface-hover: #202226;
+
+  --sidebar: var(--surface-secondary);
+  --sidebar-foreground: #F4F4F5;
+  --sidebar-border: #2A2C31;
+  --sidebar-primary: #ED1B23;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: #F4F4F5;
+  --sidebar-ring: #4C9FE0;
+
+  --popover: #131417;
+  --popover-foreground: #F4F4F5;
+  --popover-border: #2A2C31;
+
+  /* Ação principal no escuro: quase-branco (padrão Linear/Vercel — o botão
+     "acende" contra o fundo escuro em vez de usar uma cor saturada) */
+  --primary: #F2F2F3;
+  --primary-foreground: #1C1D21;
+
+  --secondary: #1A1B1F;
+  --secondary-foreground: #F4F4F5;
+
+  --muted: #1A1B1F;
+  --muted-foreground: #A6A8AD;
+
+  --accent: #202226;
+  --accent-foreground: #F4F4F5;
+
+  --destructive: #E9414A;
+  --destructive-foreground: #FFFFFF;
+
+  --input: #2A2C31;
+  --ring: #4C9FE0;
+
+  --brand: #ED1B23;
+  --brand-foreground: #FFFFFF;
+  --brand-solid: hsl(from #ED1B23 h s calc(l - 6));
+
+  /* Vermelho já é escuro/saturado o bastante para texto branco em cima —
+     um pequeno ajuste (-6) garante AA também no escuro. */
+  --danger: #ED1B23;
+  --danger-foreground: #FFFFFF;
+  --danger-solid: hsl(from #ED1B23 h s calc(l - 6));
+  --danger-border: hsl(from #ED1B23 h s calc(l + var(--opaque-button-border-intensity)));
+
+  /* Verde/âmbar no escuro já são CLAROS o bastante para usar texto quase-preto
+     em cima (--success-foreground/--warning-foreground) — diferente do claro,
+     aqui "-solid" não deve escurecer a cor, ou o contraste com o texto escuro piora. */
+  --success: #17C879;
+  --success-foreground: #051B10;
+  --success-solid: var(--success);
+  --success-border: hsl(from #17C879 h s calc(l + var(--opaque-button-border-intensity)));
+
+  --warning: #F0A63A;
+  --warning-foreground: #241300;
+  --warning-solid: var(--warning);
+  --warning-border: hsl(from #F0A63A h s calc(l + var(--opaque-button-border-intensity)));
+
+  --info: #4C9FE0;
+  --info-foreground: #051221;
+  --info-solid: var(--info);
+  --info-border: hsl(from #4C9FE0 h s calc(l + var(--opaque-button-border-intensity)));
+
+  --chart-1: #4C9FE0;
+  --chart-2: #17C879;
+  --chart-3: #ED1B23;
+  --chart-4: #F0A63A;
+  --chart-5: #9B87F0;
+
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.20);
+  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.28);
   --shadow-sm:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 1px 2px -1px rgb(0 0 0 / 0.30),
+    0 1px 3px 0 rgb(0 0 0 / 0.36);
   --shadow:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 2px 4px -2px rgb(0 0 0 / 0.32),
+    0 4px 8px -2px rgb(0 0 0 / 0.40);
   --shadow-md:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 4px 6px -2px rgb(0 0 0 / 0.34),
+    0 8px 16px -4px rgb(0 0 0 / 0.42);
   --shadow-lg:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 8px 12px -4px rgb(0 0 0 / 0.36),
+    0 16px 32px -8px rgb(0 0 0 / 0.46);
   --shadow-xl:
-    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
-    0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+    0 12px 24px -6px rgb(0 0 0 / 0.40),
+    0 24px 48px -12px rgb(0 0 0 / 0.50);
+  --shadow-2xl: 0 24px 48px -12px rgb(0 0 0 / 0.60);
+
+  --primary-border: hsl(from var(--primary) h s calc(l + var(--opaque-button-border-intensity)));
+  --secondary-border: hsl(from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)));
+  --muted-border: hsl(from var(--muted) h s calc(l + var(--opaque-button-border-intensity)));
+  --accent-border: hsl(from var(--accent) h s calc(l + var(--opaque-button-border-intensity)));
+  --destructive-border: hsl(from var(--destructive) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-primary-border: hsl(from var(--sidebar-primary) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-accent-border: hsl(from var(--sidebar-accent) h s calc(l + var(--opaque-button-border-intensity)));
+  --brand-border: hsl(from var(--brand) h s calc(l + var(--opaque-button-border-intensity)));
 }
 
 @layer base {
@@ -294,7 +412,7 @@
   /* Placeholder styling for contentEditable div */
   [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     pointer-events: none;
   }
 

@@ -1,0 +1,16 @@
+{
+  "name": "Urano FAF",
+  "short_name": "Urano FAF",
+  "description": "Centro de operações de marketing e comunicação da Federação Alagoana de Futebol.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F8F9",
+  "theme_color": "#F7F8F9",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

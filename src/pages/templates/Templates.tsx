@@ -1,32 +1,14 @@
-import { MainLayout } from "@/components/layout/MainLayout";
-import { TemplateGallery } from "@/components/templates/TemplateGallery";
+import { AppShell } from "@/components/ui/AppShell";
+import { PageHeader } from "@/components/ui/page-header";
+import { TemplateGallery } from "@/templates/TemplateGallery";
 
-export function Templates(){
-
-return(
-
-<MainLayout>
-
-<div className="space-y-8">
-
-<div>
-
-<h1 className="text-3xl font-bold">
-Templates
-</h1>
-
-<p className="text-muted-foreground">
-Escolha um template para editar.
-</p>
-
-</div>
-
-<TemplateGallery/>
-
-</div>
-
-</MainLayout>
-
-);
-
+export function Templates() {
+  return (
+    <AppShell>
+      <div className="space-y-8">
+        <PageHeader title="Templates" description="Escolha um template para editar." />
+        <TemplateGallery />
+      </div>
+    </AppShell>
+  );
 }

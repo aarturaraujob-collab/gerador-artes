@@ -1,0 +1,203 @@
+/*
+ * MODELO PROVISÓRIO — ver aviso em imt.html. Estes valores (fonte,
+ * espaçamento, cores) não foram validados contra o documento oficial da
+ * FAF; ajustar aqui quando o PDF de referência chegar.
+ *
+ * Deliberadamente independente dos tokens do Design System (src/index.css)
+ * — um documento oficial tem cores/tipografia fixas, que não devem mudar
+ * com o tema claro/escuro do app nem com uma futura mudança de marca da UI.
+ */
+
+.imt-document {
+  --imt-ink: #1a1a1a;
+  --imt-muted: #555555;
+  --imt-border: #cccccc;
+  --imt-accent: #ED1B23;
+  --imt-page-width: 210mm;
+  --imt-page-height: 297mm;
+  --imt-margin: 20mm;
+
+  box-sizing: border-box;
+  width: var(--imt-page-width);
+  min-height: var(--imt-page-height);
+  margin: 0 auto;
+  padding: var(--imt-margin);
+  background: #ffffff;
+  color: var(--imt-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+.imt-document * {
+  box-sizing: border-box;
+}
+
+.imt-provisional-notice {
+  margin-bottom: 6mm;
+  padding: 3mm 4mm;
+  border: 1px dashed var(--imt-accent);
+  color: var(--imt-accent);
+  font-family: Arial, sans-serif;
+  font-size: 9pt;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.imt-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6mm;
+  padding-bottom: 4mm;
+  border-bottom: 2px solid var(--imt-ink);
+  margin-bottom: 6mm;
+}
+
+.imt-federation {
+  margin: 0 0 1mm;
+  font-family: Arial, sans-serif;
+  font-size: 9pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--imt-muted);
+}
+
+.imt-header-title h1 {
+  margin: 0;
+  font-size: 16pt;
+  font-weight: bold;
+}
+
+.imt-header-number {
+  flex-shrink: 0;
+  padding: 2mm 4mm;
+  border: 1px solid var(--imt-ink);
+  font-family: Arial, sans-serif;
+  font-size: 12pt;
+  font-weight: bold;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.imt-label {
+  display: block;
+  font-family: Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--imt-muted);
+  margin-bottom: 1mm;
+}
+
+.imt-meta {
+  display: flex;
+  gap: 12mm;
+  margin-bottom: 5mm;
+}
+
+.imt-value {
+  font-size: 12pt;
+}
+
+.imt-match {
+  margin-bottom: 6mm;
+}
+
+.imt-match-teams {
+  margin: 0;
+  font-size: 14pt;
+  font-weight: bold;
+}
+
+.imt-versus {
+  color: var(--imt-muted);
+  font-weight: normal;
+  margin: 0 2mm;
+}
+
+.imt-comparison {
+  margin-bottom: 6mm;
+}
+
+.imt-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.imt-comparison th,
+.imt-comparison td {
+  border: 1px solid var(--imt-border);
+  padding: 3mm 4mm;
+  text-align: left;
+  vertical-align: top;
+}
+
+.imt-comparison thead th {
+  font-family: Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--imt-muted);
+  background: #f5f5f5;
+}
+
+.imt-comparison td.imt-label {
+  margin-bottom: 0;
+  background: #f5f5f5;
+  width: 30mm;
+}
+
+.imt-reason {
+  margin-bottom: 8mm;
+}
+
+.imt-reason p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.imt-signatures {
+  display: flex;
+  gap: 12mm;
+  margin-bottom: 10mm;
+}
+
+.imt-signature {
+  flex: 1;
+  padding-top: 3mm;
+  border-top: 1px solid var(--imt-ink);
+}
+
+.imt-signature p {
+  margin: 0;
+  font-size: 12pt;
+}
+
+.imt-footer {
+  padding-top: 4mm;
+  border-top: 1px solid var(--imt-border);
+  font-family: Arial, sans-serif;
+  font-size: 8pt;
+  color: var(--imt-muted);
+}
+
+.imt-footer p {
+  margin: 0;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .imt-document {
+    margin: 0;
+    box-shadow: none;
+  }
+}

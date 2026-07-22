@@ -3,17 +3,44 @@ import { useLocation, useParams } from "wouter";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 
-import { MainLayout } from "@/components/layout/MainLayout";
-import { templates as templateRegistry } from "@/components/templates/templates";
+import { AppShell } from "@/components/ui/AppShell";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import { Combobox } from "@/components/ui/combobox";
+import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { templates as templateRegistry } from "@/templates/templates";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type BackgroundAssets, type CompetitionRecord, type ExtractedRow } from "@/modules/dataStore";
 import { spreadsheetImporter } from "@/engine";
 import { emptyBackground } from "@/modules/competitionRepository";
+import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
 
 const STEP_LABELS = ["Dados", "Assets", "Importação", "Templates", "Resumo"];
 
+const CATEGORY_OPTIONS = ["Profissional", "Base", "Amador", "Universitário"];
+const AGE_GROUP_OPTIONS = ["Livre", "Sub-13", "Sub-15", "Sub-17", "Sub-20", "Máster"];
+
+function seasonYearOptions(currentSeason: number): number[] {
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentSeason, currentYear]);
+  for (let year = currentYear - 1; year <= currentYear + 4; year += 1) years.add(year);
+  return [...years].sort((a, b) => a - b);
+}
+
 interface FormState {
   id: string;
+  seriesId: string;
   name: string;
   season: number;
   category: string;
@@ -27,6 +54,7 @@ interface FormState {
 function emptyForm(): FormState {
   return {
     id: "",
+    seriesId: "",
     name: "",
     season: new Date().getFullYear(),
     category: "",
@@ -45,10 +73,6 @@ function fileToDataUri(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
-}
-
-function inputClass(disabled?: boolean) {
-  return `mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm ${disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : ""}`;
 }
 
 export function CompetitionWizard() {
@@ -73,6 +97,7 @@ export function CompetitionWizard() {
     if (existing) {
       setForm({
         id: existing.id,
+        seriesId: existing.seriesId ?? "",
         name: existing.name,
         season: existing.season,
         category: existing.category,
@@ -89,6 +114,11 @@ export function CompetitionWizard() {
   }, [isEditing, editingId]);
 
   const existingMatchCount = form.id ? store.matches.filter((match) => match.competitionId === form.id).length : 0;
+  const seriesOptions = groupCompetitionsBySeries(store.competitions).map((group) => ({
+    value: group.seriesId,
+    label: group.name,
+  }));
+  const templateOptions = templateRegistry.map((template) => ({ value: template.id, label: template.name }));
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -142,20 +172,12 @@ export function CompetitionWizard() {
     }
   }
 
-  function toggleTemplate(templateId: string) {
-    setForm((current) => ({
-      ...current,
-      templates: current.templates.includes(templateId)
-        ? current.templates.filter((id) => id !== templateId)
-        : [...current.templates, templateId],
-    }));
-  }
-
   async function finish() {
     setSaving(true);
     try {
       const record: CompetitionRecord = {
         id: form.id.trim().toUpperCase(),
+        seriesId: form.seriesId.trim() || undefined,
         name: form.name.trim(),
         season: form.season,
         category: form.category,
@@ -193,21 +215,21 @@ export function CompetitionWizard() {
 
   if (isEditing && !loaded) {
     return (
-      <MainLayout>
+      <AppShell>
         <div className="mx-auto max-w-3xl">
-          <p className="text-sm text-slate-500">Competição não encontrada.</p>
+          <p className="text-sm text-foreground-muted">Competição não encontrada.</p>
         </div>
-      </MainLayout>
+      </AppShell>
     );
   }
 
   return (
-    <MainLayout>
+    <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
-        <header>
-          <h1 className="text-3xl font-bold text-slate-900">{isEditing ? "Editar Competição" : "Nova Competição"}</h1>
-          <p className="mt-2 text-sm text-slate-600">Cadastro guiado em 5 etapas — nada precisa ser editado por fora daqui.</p>
-        </header>
+        <PageHeader
+          title={isEditing ? "Editar Competição" : "Nova Competição"}
+          description="Cadastro guiado em 5 etapas — nada precisa ser editado por fora daqui."
+        />
 
         <ol className="flex flex-wrap items-center gap-2 text-sm">
           {STEP_LABELS.map((label, index) => {
@@ -217,86 +239,119 @@ export function CompetitionWizard() {
             return (
               <li key={label} className="flex items-center gap-2">
                 <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
                     isActive
-                      ? "bg-violet-600 text-white"
+                      ? "bg-primary text-primary-foreground"
                       : isDone
-                        ? "bg-violet-100 text-violet-700"
-                        : "bg-slate-100 text-slate-400"
-                  }`}
+                        ? "bg-success/10 text-success-solid"
+                        : "bg-muted text-foreground-muted",
+                  )}
                 >
                   {isDone ? <Check size={14} /> : stepNumber}
                 </span>
-                <span className={isActive ? "font-semibold text-slate-800" : "text-slate-500"}>{label}</span>
-                {stepNumber < STEP_LABELS.length && <span className="mx-1 text-slate-300">—</span>}
+                <span className={isActive ? "font-semibold text-foreground" : "text-foreground-muted"}>{label}</span>
+                {stepNumber < STEP_LABELS.length && <span className="mx-1 text-foreground-muted">—</span>}
               </li>
             );
           })}
         </ol>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <Card className="p-6">
           {step === 1 && (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Nome</label>
-                  <input
+                  <label className="text-sm font-semibold text-foreground-secondary">Nome</label>
+                  <Input
                     value={form.name}
                     onChange={(event) => update("name", event.target.value)}
                     placeholder="Alagoano Sub-20 Série A1"
-                    className={inputClass()}
+                    className="mt-2 h-11"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">ID</label>
-                  <input
+                  <label className="text-sm font-semibold text-foreground-secondary">ID</label>
+                  <Input
                     value={form.id}
                     disabled={isEditing}
                     onChange={(event) => update("id", event.target.value.toUpperCase())}
                     placeholder="ALAGOANO20A1"
-                    className={inputClass(isEditing)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Temporada</label>
-                  <input
-                    type="number"
-                    value={form.season}
-                    onChange={(event) => update("season", Number(event.target.value))}
-                    className={inputClass()}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Categoria</label>
-                  <input
-                    value={form.category}
-                    onChange={(event) => update("category", event.target.value)}
-                    placeholder="Base, Profissional…"
-                    className={inputClass()}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Faixa etária</label>
-                  <input
-                    value={form.ageGroup}
-                    onChange={(event) => update("ageGroup", event.target.value)}
-                    placeholder="Sub-20"
-                    className={inputClass()}
+                    className="mt-2 h-11"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">Sexo</label>
-                <select value={form.gender} onChange={(event) => update("gender", event.target.value)} className={inputClass()}>
-                  <option value="">Selecione</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
-                  <option value="Misto">Misto</option>
-                </select>
+                <label className="text-sm font-semibold text-foreground-secondary">Série</label>
+                <Combobox
+                  className="mt-2 h-11"
+                  options={seriesOptions}
+                  value={form.seriesId || undefined}
+                  onValueChange={(value) => update("seriesId", value)}
+                  placeholder="Nova série (a partir do nome)"
+                  searchPlaceholder="Buscar série existente..."
+                  emptyText="Nenhuma série encontrada — deixe em branco para criar uma nova a partir do nome."
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground-secondary">Temporada</label>
+                  <Select
+                    value={String(form.season)}
+                    onValueChange={(value) => update("season", Number(value))}
+                  >
+                    <SelectTrigger className="mt-2 h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {seasonYearOptions(form.season).map((year) => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground-secondary">Categoria</label>
+                  <Select value={form.category || undefined} onValueChange={(value) => update("category", value)}>
+                    <SelectTrigger className="mt-2 h-11">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground-secondary">Faixa etária</label>
+                  <Select value={form.ageGroup || undefined} onValueChange={(value) => update("ageGroup", value)}>
+                    <SelectTrigger className="mt-2 h-11">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AGE_GROUP_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-foreground-secondary">Sexo</label>
+                <Select value={form.gender || undefined} onValueChange={(value) => update("gender", value)}>
+                  <SelectTrigger className="mt-2 h-11">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                    <SelectItem value="Misto">Misto</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -319,10 +374,10 @@ export function CompetitionWizard() {
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-semibold text-slate-700">Assets futuros</p>
+                <p className="mb-2 text-sm font-semibold text-foreground-secondary">Assets futuros</p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {["Story", "Feed", "Marca d'água"].map((label) => (
-                    <div key={label} className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-400">
+                    <div key={label} className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-foreground-muted">
                       {label}
                       <p className="mt-1 text-xs">Em breve</p>
                     </div>
@@ -335,7 +390,7 @@ export function CompetitionWizard() {
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-semibold text-slate-700">Planilha (CSV ou XLSX)</label>
+                <label className="text-sm font-semibold text-foreground-secondary">Planilha (CSV ou XLSX)</label>
                 <input
                   type="file"
                   accept=".csv,.xlsx"
@@ -343,42 +398,43 @@ export function CompetitionWizard() {
                     const file = event.target.files?.[0];
                     if (file) void handleImportFile(file);
                   }}
-                  className="mt-2 block w-full text-sm text-slate-600"
+                  className="mt-2 block w-full text-sm text-foreground-secondary"
                 />
-                {importFileName && <p className="mt-1 text-xs text-slate-500">Arquivo: {importFileName}</p>}
+                {importFileName && <p className="mt-1 text-xs text-foreground-muted">Arquivo: {importFileName}</p>}
               </div>
 
               {importPreview && (
-                <div className="space-y-3 rounded-xl bg-slate-50 p-4 text-sm">
+                <div className="space-y-3 rounded-xl bg-muted p-4 text-sm">
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-slate-900">{importPreview.valid}</p>
-                      <p className="text-xs text-slate-500">jogos válidos</p>
+                      <p className="text-2xl font-bold text-foreground">{importPreview.valid}</p>
+                      <p className="text-xs text-foreground-muted">jogos válidos</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-amber-600">{importPreview.invalid}</p>
-                      <p className="text-xs text-slate-500">erros encontrados</p>
+                      <p className="text-2xl font-bold text-warning-solid">{importPreview.invalid}</p>
+                      <p className="text-xs text-foreground-muted">erros encontrados</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-red-600">{existingMatchCount}</p>
-                      <p className="text-xs text-slate-500">jogo(s) existentes que serão substituídos</p>
+                      <p className="text-2xl font-bold text-danger-solid">{existingMatchCount}</p>
+                      <p className="text-xs text-foreground-muted">jogo(s) existentes que serão substituídos</p>
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void confirmImport()}
                     disabled={importing || importConfirmed || !form.id}
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-violet-600 text-sm font-semibold text-white disabled:opacity-50"
+                    className="w-full"
                   >
+                    {importing && <Spinner />}
                     {importConfirmed ? "Importação confirmada" : importing ? "Importando…" : "Confirmar importação"}
-                  </button>
-                  {!form.id && <p className="text-center text-xs text-red-500">Defina o ID da competição na Etapa 1 antes de importar.</p>}
+                  </Button>
+                  {!form.id && <p className="text-center text-xs text-danger-solid">Defina o ID da competição na Etapa 1 antes de importar.</p>}
                 </div>
               )}
 
               {!importPreview && (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-foreground-secondary">
                   {existingMatchCount > 0
                     ? `Esta competição já possui ${existingMatchCount} jogo(s) cadastrados. Envie uma planilha apenas se quiser substituí-los.`
                     : "Envie uma planilha para importar jogos, rodadas e clubes automaticamente."}
@@ -389,21 +445,14 @@ export function CompetitionWizard() {
 
           {step === 4 && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Marque os templates disponíveis para esta competição.</p>
-              {templateRegistry.map((template) => (
-                <label
-                  key={template.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.templates.includes(template.id)}
-                    onChange={() => toggleTemplate(template.id)}
-                    className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                  />
-                  {template.name}
-                </label>
-              ))}
+              <p className="text-sm text-foreground-secondary">Escolha os templates disponíveis para esta competição.</p>
+              <MultiSelect
+                options={templateOptions}
+                value={form.templates}
+                onValueChange={(value) => update("templates", value)}
+                placeholder="Selecione um ou mais templates"
+                searchPlaceholder="Buscar template..."
+              />
             </div>
           )}
 
@@ -414,63 +463,56 @@ export function CompetitionWizard() {
                 <SummaryPreview label="Background" src={form.background.thumb} />
               </div>
 
-              <div className="grid grid-cols-3 gap-3 rounded-xl bg-slate-50 p-4 text-center text-sm">
+              <div className="grid grid-cols-3 gap-3 rounded-xl bg-muted p-4 text-center text-sm">
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{summaryMatches.length}</p>
-                  <p className="text-xs text-slate-500">jogos</p>
+                  <p className="text-2xl font-bold text-foreground">{summaryMatches.length}</p>
+                  <p className="text-xs text-foreground-muted">jogos</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{summaryClubs.size}</p>
-                  <p className="text-xs text-slate-500">clubes</p>
+                  <p className="text-2xl font-bold text-foreground">{summaryClubs.size}</p>
+                  <p className="text-xs text-foreground-muted">clubes</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{summaryRounds.size}</p>
-                  <p className="text-xs text-slate-500">rodadas</p>
+                  <p className="text-2xl font-bold text-foreground">{summaryRounds.size}</p>
+                  <p className="text-xs text-foreground-muted">rodadas</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700">Templates habilitados</p>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="text-sm font-semibold text-foreground-secondary">Templates habilitados</p>
+                <p className="mt-1 text-sm text-foreground-secondary">
                   {form.templates.length > 0
                     ? form.templates.map((id) => templateRegistry.find((t) => t.id === id)?.name ?? id).join(", ")
                     : "Nenhum selecionado"}
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant="success"
                 onClick={() => void finish()}
                 disabled={saving}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white disabled:opacity-50"
+                className="w-full"
               >
+                {saving && <Spinner />}
                 {saving ? "Salvando…" : "Finalizar Cadastro"}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </Card>
 
         <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={step === 1}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
-          >
+          <Button type="button" variant="outline" onClick={goBack} disabled={step === 1}>
             Voltar
-          </button>
+          </Button>
           {step < 5 && (
-            <button
-              type="button"
-              onClick={goNext}
-              className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-            >
+            <Button type="button" onClick={goNext}>
               Avançar
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }
 
@@ -487,10 +529,10 @@ function AssetUploadField({
 }) {
   return (
     <div>
-      <label className="text-sm font-semibold text-slate-700">{label}</label>
-      <p className="text-xs text-slate-400">{hint}</p>
+      <label className="text-sm font-semibold text-foreground-secondary">{label}</label>
+      <p className="text-xs text-foreground-muted">{hint}</p>
       <div className="mt-2 flex items-center gap-3">
-        {value && <img src={value} alt="" className="h-14 w-14 rounded-lg border border-slate-200 object-cover" />}
+        {value && <img src={value} alt="" className="h-14 w-14 rounded-lg border border-border object-cover" />}
         <input
           type="file"
           accept="image/*"
@@ -498,7 +540,7 @@ function AssetUploadField({
             const file = event.target.files?.[0];
             if (file) onFile(file);
           }}
-          className="block w-full text-sm text-slate-600"
+          className="block w-full text-sm text-foreground-secondary"
         />
       </div>
     </div>
@@ -508,9 +550,9 @@ function AssetUploadField({
 function SummaryPreview({ label, src }: { label: string; src: string }) {
   return (
     <div>
-      <p className="text-sm font-semibold text-slate-700">{label}</p>
-      <div className="mt-2 flex h-32 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-        {src ? <img src={src} alt={label} className="h-full w-full object-cover" /> : <span className="text-xs text-slate-400">Sem imagem</span>}
+      <p className="text-sm font-semibold text-foreground-secondary">{label}</p>
+      <div className="mt-2 flex h-32 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
+        {src ? <img src={src} alt={label} className="h-full w-full object-cover" /> : <span className="text-xs text-foreground-muted">Sem imagem</span>}
       </div>
     </div>
   );
