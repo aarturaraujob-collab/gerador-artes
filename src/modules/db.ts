@@ -7,8 +7,16 @@
  */
 
 const DB_NAME = "faf-mkt-ops";
-const DB_VERSION = 2;
-const STORE_NAMES = ["competitions", "clubs", "stadiums"] as const;
+const DB_VERSION = 3;
+const STORE_NAMES = [
+  "competitions",
+  "clubs",
+  "stadiums",
+  "operationalStaff",
+  "matchFaftv",
+  "matchOperacao",
+  "matchOperationsHistory",
+] as const;
 
 export type StoreName = (typeof STORE_NAMES)[number];
 

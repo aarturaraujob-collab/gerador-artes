@@ -14,6 +14,10 @@ export type ActivityAction =
   | "stadium.updated"
   | "stadium.deleted"
   | "stadium.restored"
+  | "staff.created"
+  | "staff.updated"
+  | "staff.deleted"
+  | "staff.restored"
   | "import.matches"
   | "export.png"
   | "imt.generated";

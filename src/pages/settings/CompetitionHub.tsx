@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   ArrowDown,
   ArrowUp,
+  ClipboardList,
   Download,
   FileText,
   Pencil,
@@ -47,12 +48,9 @@ import { toggleFavoriteTemplate } from "@/modules/templateFavorites";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
 import type { Match } from "@/modules/dataStore";
+import { buildGameRef, encodeGameRefParam } from "@/modules/gameRef";
 
 const ALL = "__all__";
-
-function buildGameRef(match: Match): string {
-  return [match.competitionId, match.round, match.date, match.time, match.homeClubId, match.awayClubId].join("|");
-}
 
 function formatPeriod(dates: Date[]): string {
   if (dates.length === 0) return "—";
@@ -391,6 +389,16 @@ export function CompetitionHub() {
                         <FileText size={14} />
                         Gerar IMT
                       </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => navigate(`/cadastros/competicoes/${id}/jogos/${encodeGameRefParam(buildGameRef(match))}`)}
+                      >
+                        <ClipboardList size={14} />
+                        Operação
+                      </Button>
                     </div>
                   );
                 })}
@@ -494,6 +502,16 @@ export function CompetitionHub() {
                         <span className="text-xs text-foreground-muted">
                           {match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
                         </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => navigate(`/cadastros/competicoes/${id}/jogos/${encodeGameRefParam(buildGameRef(match))}`)}
+                        >
+                          <ClipboardList size={14} />
+                          Operação
+                        </Button>
                       </div>
                     );
                   })}

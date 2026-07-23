@@ -13,10 +13,31 @@ import {
 import { ClubRepository, type Club } from "./clubRepository";
 import { StadiumRepository, type Stadium } from "./stadiumRepository";
 import { logActivity } from "./activityLog";
+import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
+import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
+import { MatchOperacaoRepository, type MatchOperacaoRecord } from "./matchOperacaoRepository";
+import {
+  MatchOperationsHistoryRepository,
+  type MatchHistoryEntry,
+  type MatchOperationsModule,
+} from "./matchOperationsHistoryRepository";
+import {
+  FAFTV_CHECKLIST_ITEMS,
+  OPERACAO_CHECKLIST_ITEMS,
+  computeFaftvStatus,
+  computeOperacaoStatus,
+  type FaftvStatus,
+  type OperacaoStatus,
+} from "./matchOperationsChecklists";
+import { getOperatorName } from "./operatorName";
 
 export type { BackgroundAssets, CompetitionRecord };
 export type { Club } from "./clubRepository";
 export type { Stadium } from "./stadiumRepository";
+export type { OperationalStaff, StaffArea } from "./operationalStaffRepository";
+export type { MatchFaftvRecord } from "./matchFaftvRepository";
+export type { MatchOperacaoRecord } from "./matchOperacaoRepository";
+export type { MatchHistoryEntry } from "./matchOperationsHistoryRepository";
 /** Alias kept for callers that only need the competition shape, not the repository. */
 export type Competition = CompetitionRecord;
 
@@ -59,6 +80,13 @@ export interface ExtractedRow {
   ref?: string | null;
 }
 
+/** All operational data (FAFTV + Operação + Histórico) tracked for one match, keyed by its gameRef. */
+export interface MatchOperationsEntry {
+  faftv: MatchFaftvRecord;
+  operacao: MatchOperacaoRecord;
+  history: MatchHistoryEntry[];
+}
+
 /** Immutable read model shared by the UI and the engine. */
 export interface DataStore {
   competitions: readonly Competition[];
@@ -66,9 +94,12 @@ export interface DataStore {
   cities: readonly City[];
   stadiums: readonly Stadium[];
   matches: readonly Match[];
+  staff: readonly OperationalStaff[];
   clubsById: ReadonlyMap<string, Club>;
   citiesById: ReadonlyMap<string, City>;
   stadiumsById: ReadonlyMap<string, Stadium>;
+  staffById: ReadonlyMap<string, OperationalStaff>;
+  matchOps: ReadonlyMap<string, MatchOperationsEntry>;
   lastUpdated: string;
 }
 
@@ -78,10 +109,28 @@ interface Snapshot {
   cities: City[];
   stadiums: Stadium[];
   matches: Match[];
+  staff: OperationalStaff[];
   clubsById: Map<string, Club>;
   citiesById: Map<string, City>;
   stadiumsById: Map<string, Stadium>;
+  staffById: Map<string, OperationalStaff>;
+  matchOps: ReadonlyMap<string, MatchOperationsEntry>;
   lastUpdated: string;
+}
+
+function faftvStatusLabel(status: FaftvStatus): string {
+  switch (status) {
+    case "planejamento":
+      return "Planejamento";
+    case "em_preparacao":
+      return "Em preparação";
+    case "pronto":
+      return "Pronto";
+  }
+}
+
+function operacaoStatusLabel(status: OperacaoStatus): string {
+  return status === "pronto" ? "Pronto" : "Em preparação";
 }
 
 function slug(value: string): string {
@@ -103,6 +152,8 @@ function buildSnapshot(
   cities: City[],
   stadiums: Stadium[],
   matches: Match[],
+  staff: OperationalStaff[],
+  matchOps: ReadonlyMap<string, MatchOperationsEntry>,
 ): Snapshot {
   return {
     competitions,
@@ -110,9 +161,12 @@ function buildSnapshot(
     cities,
     stadiums,
     matches,
+    staff,
     clubsById: new Map(clubs.map((club) => [club.id, club])),
     citiesById: new Map(cities.map((city) => [city.id, city])),
     stadiumsById: new Map(stadiums.map((stadium) => [stadium.id, stadium])),
+    staffById: new Map(staff.map((person) => [person.id, person])),
+    matchOps,
     lastUpdated: latestTableDate(matches),
   };
 }
@@ -129,6 +183,10 @@ class DataStoreController implements DataStore {
   private readonly competitionRepo = new CompetitionRepository();
   private readonly clubRepo = new ClubRepository();
   private readonly stadiumRepo = new StadiumRepository();
+  private readonly staffRepo = new OperationalStaffRepository();
+  private readonly faftvRepo = new MatchFaftvRepository();
+  private readonly operacaoRepo = new MatchOperacaoRepository();
+  private readonly historyRepo = new MatchOperationsHistoryRepository();
 
   constructor() {
     // Clubs/stadiums render synchronously from the bundled seed on first
@@ -142,6 +200,8 @@ class DataStoreController implements DataStore {
       cityRows as unknown as City[],
       stadiumRows as unknown as Stadium[],
       matchRows as unknown as Match[],
+      [],
+      new Map(),
     );
 
     void this.competitionRepo.seedIfEmpty().then((competitions) => {
@@ -152,6 +212,9 @@ class DataStoreController implements DataStore {
     });
     void this.stadiumRepo.seedIfEmpty(stadiumRows as unknown as Stadium[]).then((stadiums) => {
       this.replaceStadiums(stadiums);
+    });
+    void this.staffRepo.list().then((staff) => {
+      this.replaceStaff(staff);
     });
   }
 
@@ -179,6 +242,15 @@ class DataStoreController implements DataStore {
   get stadiumsById() {
     return this.snapshot.stadiumsById;
   }
+  get staff() {
+    return this.snapshot.staff;
+  }
+  get staffById() {
+    return this.snapshot.staffById;
+  }
+  get matchOps() {
+    return this.snapshot.matchOps;
+  }
   get lastUpdated() {
     return this.snapshot.lastUpdated;
   }
@@ -201,6 +273,8 @@ class DataStoreController implements DataStore {
       this.snapshot.cities,
       this.snapshot.stadiums,
       this.snapshot.matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -212,6 +286,8 @@ class DataStoreController implements DataStore {
       this.snapshot.cities,
       this.snapshot.stadiums,
       this.snapshot.matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -223,6 +299,34 @@ class DataStoreController implements DataStore {
       this.snapshot.cities,
       stadiums.filter((item) => !item.deletedAt),
       this.snapshot.matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+    );
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private replaceStaff(staff: OperationalStaff[]): void {
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      this.snapshot.matches,
+      staff.filter((item) => !item.deletedAt),
+      this.snapshot.matchOps,
+    );
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private replaceMatchOps(matchOps: ReadonlyMap<string, MatchOperationsEntry>): void {
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      this.snapshot.matches,
+      this.snapshot.staff,
+      matchOps,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -317,6 +421,52 @@ class DataStoreController implements DataStore {
   /** Permanent delete — only reachable from the Lixeira screen. */
   async purgeStadium(id: string): Promise<void> {
     await this.stadiumRepo.remove(id);
+  }
+
+  // ─── Operational staff management (backs the FAFTV/Oficiais DCO screens) ──
+
+  async createStaff(record: OperationalStaff): Promise<void> {
+    await this.staffRepo.upsert(record);
+    this.replaceStaff([...this.snapshot.staff, record]);
+    logActivity("staff.created", `${record.area === "FAFTV" ? "FAFTV" : "Oficial DCO"} "${record.name}" cadastrado.`);
+  }
+
+  async updateStaff(id: string, patch: Partial<OperationalStaff>): Promise<void> {
+    const current = this.snapshot.staff.find((item) => item.id === id);
+    if (!current) throw new Error(`Pessoa "${id}" não encontrada.`);
+    const updated = { ...current, ...patch, id };
+    await this.staffRepo.upsert(updated);
+    this.replaceStaff(this.snapshot.staff.map((item) => (item.id === id ? updated : item)));
+    logActivity("staff.updated", `${updated.area === "FAFTV" ? "FAFTV" : "Oficial DCO"} "${updated.name}" atualizado.`);
+  }
+
+  /** Moves the person to the trash — they stay in IndexedDB until restored or purged. */
+  async deleteStaff(id: string): Promise<void> {
+    const current = this.snapshot.staff.find((item) => item.id === id);
+    if (!current) throw new Error(`Pessoa "${id}" não encontrada.`);
+    await this.staffRepo.upsert({ ...current, deletedAt: Date.now() });
+    this.replaceStaff(this.snapshot.staff.filter((item) => item.id !== id));
+    logActivity("staff.deleted", `"${current.name}" movido para a lixeira.`);
+  }
+
+  async restoreStaff(id: string): Promise<void> {
+    const all = await this.staffRepo.list();
+    const record = all.find((item) => item.id === id);
+    if (!record) throw new Error(`Pessoa "${id}" não encontrada na lixeira.`);
+    const restored = { ...record, deletedAt: null };
+    await this.staffRepo.upsert(restored);
+    this.replaceStaff([...this.snapshot.staff, restored]);
+    logActivity("staff.restored", `"${restored.name}" restaurado da lixeira.`);
+  }
+
+  async listTrashedStaff(): Promise<OperationalStaff[]> {
+    const all = await this.staffRepo.list();
+    return all.filter((item) => item.deletedAt);
+  }
+
+  /** Permanent delete — only reachable from the Lixeira screen. */
+  async purgeStaff(id: string): Promise<void> {
+    await this.staffRepo.remove(id);
   }
 
   // ─── Competition management (backs the Competições screen) ───────────────
@@ -418,6 +568,8 @@ class DataStoreController implements DataStore {
         this.snapshot.cities,
         this.snapshot.stadiums,
         this.snapshot.matches,
+        this.snapshot.staff,
+        this.snapshot.matchOps,
       );
       void this.competitionRepo.upsert(record);
     }
@@ -484,13 +636,220 @@ class DataStoreController implements DataStore {
       ...importedMatches,
     ];
 
-    this.snapshot = buildSnapshot(this.snapshot.competitions, clubs, cities, stadiums, matches);
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      clubs,
+      cities,
+      stadiums,
+      matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+    );
     this.listeners.forEach((listener) => listener());
 
     const competitionName = this.snapshot.competitions.find((item) => item.id === competitionId)?.name ?? competitionId;
     logActivity("import.matches", `${importedMatches.length} jogo(s) importado(s) para "${competitionName}".`);
 
     return { count: importedMatches.length };
+  }
+
+  // ─── Match-scoped FAFTV/Operação (backs the match page's "Central Operacional") ───
+  // Distinct from logActivity()/activityLog.ts above — this is a separate,
+  // uncapped, per-match trail (CP6), not the global 50-entry cadastro log.
+
+  private async recordHistory(
+    gameRef: string,
+    module: MatchOperationsModule,
+    description: string,
+    priorHistory: MatchHistoryEntry[],
+  ): Promise<MatchHistoryEntry[]> {
+    const entry: MatchHistoryEntry = {
+      id: crypto.randomUUID(),
+      gameRef,
+      module,
+      operator: getOperatorName() || "Usuário",
+      description,
+      timestamp: Date.now(),
+    };
+    await this.historyRepo.append(entry);
+    return [entry, ...priorHistory];
+  }
+
+  /** Get-or-create: loads (or initializes) this match's FAFTV/Operação/Histórico into the reactive snapshot. */
+  async ensureMatchOperationsLoaded(gameRef: string): Promise<void> {
+    if (this.snapshot.matchOps.has(gameRef)) return;
+
+    const [faftv, operacao, history] = await Promise.all([
+      this.faftvRepo.get(gameRef),
+      this.operacaoRepo.get(gameRef),
+      this.historyRepo.listByGameRef(gameRef),
+    ]);
+
+    const resolvedFaftv: MatchFaftvRecord = faftv ?? {
+      id: gameRef,
+      gameRef,
+      coordinatorStaffId: null,
+      commentatorStaffId: null,
+      broadcastLink: "",
+      checklist: {},
+      status: "planejamento",
+      updatedAt: Date.now(),
+    };
+    const resolvedOperacao: MatchOperacaoRecord = operacao ?? {
+      id: gameRef,
+      gameRef,
+      delegadoStaffId: null,
+      supervisorStaffId: null,
+      fiscalStaffId: null,
+      controleAcessoStaffId: null,
+      checklist: {},
+      status: "em_preparacao",
+      updatedAt: Date.now(),
+    };
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { faftv: resolvedFaftv, operacao: resolvedOperacao, history });
+    this.replaceMatchOps(matchOps);
+  }
+
+  private requireMatchOps(gameRef: string): MatchOperationsEntry {
+    const entry = this.snapshot.matchOps.get(gameRef);
+    if (!entry) throw new Error(`Operações da partida não carregadas — chame ensureMatchOperationsLoaded primeiro.`);
+    return entry;
+  }
+
+  async updateFaftvTeam(
+    gameRef: string,
+    patch: { coordinatorStaffId?: string | null; commentatorStaffId?: string | null },
+  ): Promise<void> {
+    const entry = this.requireMatchOps(gameRef);
+    const updated: MatchFaftvRecord = { ...entry.faftv, ...patch, updatedAt: Date.now() };
+    updated.status = computeFaftvStatus(updated);
+    await this.faftvRepo.upsert(updated);
+
+    let history = entry.history;
+    if (patch.coordinatorStaffId !== undefined) {
+      const name = patch.coordinatorStaffId
+        ? (this.snapshot.staffById.get(patch.coordinatorStaffId)?.name ?? patch.coordinatorStaffId)
+        : "não definido";
+      history = await this.recordHistory(gameRef, "faftv", `Coordenador FAFTV: ${name}`, history);
+    }
+    if (patch.commentatorStaffId !== undefined) {
+      const name = patch.commentatorStaffId
+        ? (this.snapshot.staffById.get(patch.commentatorStaffId)?.name ?? patch.commentatorStaffId)
+        : "não definido";
+      history = await this.recordHistory(gameRef, "faftv", `Comentarista FAFTV: ${name}`, history);
+    }
+    if (updated.status !== entry.faftv.status) {
+      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+    }
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { ...entry, faftv: updated, history });
+    this.replaceMatchOps(matchOps);
+  }
+
+  async updateFaftvLink(gameRef: string, link: string): Promise<void> {
+    const entry = this.requireMatchOps(gameRef);
+    const updated: MatchFaftvRecord = { ...entry.faftv, broadcastLink: link, updatedAt: Date.now() };
+    updated.status = computeFaftvStatus(updated);
+    await this.faftvRepo.upsert(updated);
+
+    let history = await this.recordHistory(gameRef, "faftv", "Link de transmissão atualizado", entry.history);
+    if (updated.status !== entry.faftv.status) {
+      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+    }
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { ...entry, faftv: updated, history });
+    this.replaceMatchOps(matchOps);
+  }
+
+  async toggleFaftvChecklistItem(gameRef: string, itemId: string): Promise<void> {
+    const entry = this.requireMatchOps(gameRef);
+    const checked = !entry.faftv.checklist[itemId];
+    const updated: MatchFaftvRecord = {
+      ...entry.faftv,
+      checklist: { ...entry.faftv.checklist, [itemId]: checked },
+      updatedAt: Date.now(),
+    };
+    updated.status = computeFaftvStatus(updated);
+    await this.faftvRepo.upsert(updated);
+
+    const label = FAFTV_CHECKLIST_ITEMS.find((item) => item.id === itemId)?.label ?? itemId;
+    let history = await this.recordHistory(gameRef, "faftv", `Item "${label}" ${checked ? "concluído" : "reaberto"}`, entry.history);
+    if (updated.status !== entry.faftv.status) {
+      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+    }
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { ...entry, faftv: updated, history });
+    this.replaceMatchOps(matchOps);
+  }
+
+  async updateOperacaoTeam(
+    gameRef: string,
+    patch: Partial<
+      Pick<MatchOperacaoRecord, "delegadoStaffId" | "supervisorStaffId" | "fiscalStaffId" | "controleAcessoStaffId">
+    >,
+  ): Promise<void> {
+    const entry = this.requireMatchOps(gameRef);
+    const updated: MatchOperacaoRecord = { ...entry.operacao, ...patch, updatedAt: Date.now() };
+    updated.status = computeOperacaoStatus(updated);
+    await this.operacaoRepo.upsert(updated);
+
+    const roleLabels: Record<string, string> = {
+      delegadoStaffId: "Delegado",
+      supervisorStaffId: "Supervisor",
+      fiscalStaffId: "Fiscal",
+      controleAcessoStaffId: "Controle de Acesso",
+    };
+
+    let history = entry.history;
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) continue;
+      const name = value ? (this.snapshot.staffById.get(value)?.name ?? value) : "não definido";
+      history = await this.recordHistory(gameRef, "operacao", `${roleLabels[key]}: ${name}`, history);
+    }
+    if (updated.status !== entry.operacao.status) {
+      history = await this.recordHistory(
+        gameRef,
+        "operacao",
+        `Status Operação alterado para "${operacaoStatusLabel(updated.status)}"`,
+        history,
+      );
+    }
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { ...entry, operacao: updated, history });
+    this.replaceMatchOps(matchOps);
+  }
+
+  async toggleOperacaoChecklistItem(gameRef: string, itemId: string): Promise<void> {
+    const entry = this.requireMatchOps(gameRef);
+    const checked = !entry.operacao.checklist[itemId];
+    const updated: MatchOperacaoRecord = {
+      ...entry.operacao,
+      checklist: { ...entry.operacao.checklist, [itemId]: checked },
+      updatedAt: Date.now(),
+    };
+    updated.status = computeOperacaoStatus(updated);
+    await this.operacaoRepo.upsert(updated);
+
+    const label = OPERACAO_CHECKLIST_ITEMS.find((item) => item.id === itemId)?.label ?? itemId;
+    let history = await this.recordHistory(gameRef, "operacao", `Item "${label}" ${checked ? "concluído" : "reaberto"}`, entry.history);
+    if (updated.status !== entry.operacao.status) {
+      history = await this.recordHistory(
+        gameRef,
+        "operacao",
+        `Status Operação alterado para "${operacaoStatusLabel(updated.status)}"`,
+        history,
+      );
+    }
+
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.set(gameRef, { ...entry, operacao: updated, history });
+    this.replaceMatchOps(matchOps);
   }
 }
 

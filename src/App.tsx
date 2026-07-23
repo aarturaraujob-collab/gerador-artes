@@ -12,6 +12,9 @@ import { ClubsPage } from "@/pages/settings/ClubsPage";
 import { ClubForm } from "@/pages/settings/ClubForm";
 import { StadiumsPage } from "@/pages/settings/StadiumsPage";
 import { StadiumForm } from "@/pages/settings/StadiumForm";
+import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
+import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
+import { MatchPage } from "@/pages/matches/MatchPage";
 import { AssetsPage } from "@/pages/settings/AssetsPage";
 import { ConfiguracoesPage } from "@/pages/settings/ConfiguracoesPage";
 import { TrashPage } from "@/pages/settings/TrashPage";
@@ -52,6 +55,11 @@ export default function App() {
 
       <Route path="/cadastros/competicoes/:id" component={CompetitionHub} />
 
+      <Route
+        path="/cadastros/competicoes/:competitionId/jogos/:matchParam"
+        component={MatchPage}
+      />
+
       <Route path="/cadastros/clubes" component={ClubsPage} />
       <Route path="/cadastros/clubes/novo" component={ClubForm} />
       <Route path="/cadastros/clubes/:id/editar" component={ClubForm} />
@@ -59,6 +67,14 @@ export default function App() {
       <Route path="/cadastros/estadios" component={StadiumsPage} />
       <Route path="/cadastros/estadios/novo" component={StadiumForm} />
       <Route path="/cadastros/estadios/:id/editar" component={StadiumForm} />
+
+      <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
+      <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
+      <Route path="/cadastros/faftv/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
+
+      <Route path="/cadastros/oficiais-dco" component={() => <OperationalStaffPage area="DCO" />} />
+      <Route path="/cadastros/oficiais-dco/novo" component={() => <OperationalStaffForm area="DCO" />} />
+      <Route path="/cadastros/oficiais-dco/:id/editar" component={() => <OperationalStaffForm area="DCO" />} />
 
       <Route path="/assets" component={AssetsPage} />
       <Route path="/configuracoes" component={ConfiguracoesPage} />

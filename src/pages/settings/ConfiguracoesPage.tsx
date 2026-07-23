@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { Keyboard, Languages, Monitor, Moon, Sliders, Sun, User } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Section } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -14,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getOperatorName, setOperatorName } from "@/modules/operatorName";
 
 const SHORTCUTS = [
   { keys: "Ctrl + K", description: "Abrir a busca / paleta de comando" },
@@ -28,6 +32,12 @@ const THEME_OPTIONS = [
 
 export function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme();
+  const [operatorName, setOperatorNameDraft] = useState(getOperatorName());
+
+  function handleSaveOperatorName() {
+    setOperatorName(operatorName.trim());
+    toast.success("Nome salvo.");
+  }
 
   return (
     <AppShell>
@@ -103,6 +113,23 @@ export function ConfiguracoesPage() {
                 <p className="text-sm text-foreground-secondary">{shortcut.description}</p>
               </div>
             ))}
+          </Card>
+        </Section>
+
+        <Section title="Identificação para o histórico">
+          <Card className="flex flex-wrap items-end gap-3 p-4">
+            <div className="flex-1">
+              <label className="text-sm font-semibold text-foreground-secondary">Seu nome</label>
+              <Input
+                value={operatorName}
+                onChange={(event) => setOperatorNameDraft(event.target.value)}
+                placeholder="Como você quer aparecer no Histórico das partidas"
+                className="mt-2 h-11"
+              />
+            </div>
+            <Button type="button" onClick={handleSaveOperatorName}>
+              Salvar
+            </Button>
           </Card>
         </Section>
 
