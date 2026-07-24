@@ -52,10 +52,29 @@ export interface ParsedData {
   competitions: Competition[];
 }
 
+export interface MatchRecord {
+  competitionId: string;
+
+  round: string;
+  date: string;
+  time: string;
+
+  homeClubId: string;
+  awayClubId: string;
+
+  stadiumId: string;
+  cityId: string;
+
+  homeGoals?: number | null;
+  awayGoals?: number | null;
+
+  tv?: string | null;
+}
+
 export interface Database {
   clubs: Club[];
   cities: City[];
   stadiums: Stadium[];
   competitions: Competition[];
-  matches: any[];
+  matches: MatchRecord[];
 }

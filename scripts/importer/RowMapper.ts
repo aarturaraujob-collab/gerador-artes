@@ -110,7 +110,7 @@ export class RowMapper {
   }
 
   mapRow(row: RawRow): ExtractedRow {
-    const out: any = {};
+    const out: Record<string, string | number | null> = {};
 
     for (const [h, value] of Object.entries(row)) {
       const key = this.map[h];
@@ -118,7 +118,7 @@ export class RowMapper {
       const v = value == null || String(value).trim() === "" ? null : String(value).trim();
 
       if (key === "homeGoals" || key === "awayGoals") {
-        const n = v == null ? null : Number(String(v).replace(/[^0-9\-]/g, ""));
+        const n = v == null ? null : Number(String(v).replace(/[^0-9-]/g, ""));
         out[key] = Number.isFinite(n) ? n : null;
       } else {
         out[key] = v;
