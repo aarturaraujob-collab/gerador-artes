@@ -12,6 +12,8 @@ import {
 } from "./competitionRepository";
 import { ClubRepository, type Club } from "./clubRepository";
 import { StadiumRepository, type Stadium } from "./stadiumRepository";
+import { CityRepository, type City } from "./cityRepository";
+import { MatchRepository } from "./matchRepository";
 import { logActivity } from "./activityLog";
 import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
 import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
@@ -34,17 +36,13 @@ import { getOperatorName } from "./operatorName";
 export type { BackgroundAssets, CompetitionRecord };
 export type { Club } from "./clubRepository";
 export type { Stadium } from "./stadiumRepository";
+export type { City } from "./cityRepository";
 export type { OperationalStaff, StaffArea } from "./operationalStaffRepository";
 export type { MatchFaftvRecord } from "./matchFaftvRepository";
 export type { MatchOperacaoRecord } from "./matchOperacaoRepository";
 export type { MatchHistoryEntry } from "./matchOperationsHistoryRepository";
 /** Alias kept for callers that only need the competition shape, not the repository. */
 export type Competition = CompetitionRecord;
-
-export interface City {
-  id: string;
-  name: string;
-}
 
 export interface Match {
   competitionId: string;
@@ -133,7 +131,7 @@ function operacaoStatusLabel(status: OperacaoStatus): string {
   return status === "pronto" ? "Pronto" : "Em preparação";
 }
 
-function slug(value: string): string {
+export function slug(value: string): string {
   return slugify(value, { lower: true, strict: true, trim: true });
 }
 
@@ -183,6 +181,8 @@ class DataStoreController implements DataStore {
   private readonly competitionRepo = new CompetitionRepository();
   private readonly clubRepo = new ClubRepository();
   private readonly stadiumRepo = new StadiumRepository();
+  private readonly cityRepo = new CityRepository();
+  private readonly matchRepo = new MatchRepository();
   private readonly staffRepo = new OperationalStaffRepository();
   private readonly faftvRepo = new MatchFaftvRepository();
   private readonly operacaoRepo = new MatchOperacaoRepository();
@@ -212,6 +212,12 @@ class DataStoreController implements DataStore {
     });
     void this.stadiumRepo.seedIfEmpty(stadiumRows as unknown as Stadium[]).then((stadiums) => {
       this.replaceStadiums(stadiums);
+    });
+    void this.cityRepo.seedIfEmpty(cityRows as unknown as City[]).then((cities) => {
+      this.replaceCities(cities);
+    });
+    void this.matchRepo.seedIfEmpty(matchRows as unknown as Match[]).then((matches) => {
+      this.replaceMatches(matches);
     });
     void this.staffRepo.list().then((staff) => {
       this.replaceStaff(staff);
@@ -299,6 +305,32 @@ class DataStoreController implements DataStore {
       this.snapshot.cities,
       stadiums.filter((item) => !item.deletedAt),
       this.snapshot.matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+    );
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private replaceCities(cities: City[]): void {
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      cities.filter((item) => !item.deletedAt),
+      this.snapshot.stadiums,
+      this.snapshot.matches,
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+    );
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private replaceMatches(matches: Match[]): void {
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
     );
@@ -421,6 +453,52 @@ class DataStoreController implements DataStore {
   /** Permanent delete — only reachable from the Lixeira screen. */
   async purgeStadium(id: string): Promise<void> {
     await this.stadiumRepo.remove(id);
+  }
+
+  // ─── City management (backs the Cidades screen) ───────────────────────────
+
+  async createCity(record: City): Promise<void> {
+    await this.cityRepo.upsert(record);
+    this.replaceCities([...this.snapshot.cities, record]);
+    logActivity("city.created", `Cidade "${record.name}" cadastrada.`);
+  }
+
+  async updateCity(id: string, patch: Partial<City>): Promise<void> {
+    const current = this.snapshot.cities.find((item) => item.id === id);
+    if (!current) throw new Error(`Cidade "${id}" não encontrada.`);
+    const updated = { ...current, ...patch, id };
+    await this.cityRepo.upsert(updated);
+    this.replaceCities(this.snapshot.cities.map((item) => (item.id === id ? updated : item)));
+    logActivity("city.updated", `Cidade "${updated.name}" atualizada.`);
+  }
+
+  /** Moves the city to the trash — it stays in IndexedDB until restored or purged. */
+  async deleteCity(id: string): Promise<void> {
+    const current = this.snapshot.cities.find((item) => item.id === id);
+    if (!current) throw new Error(`Cidade "${id}" não encontrada.`);
+    await this.cityRepo.upsert({ ...current, deletedAt: Date.now() });
+    this.replaceCities(this.snapshot.cities.filter((item) => item.id !== id));
+    logActivity("city.deleted", `Cidade "${current.name}" movida para a lixeira.`);
+  }
+
+  async restoreCity(id: string): Promise<void> {
+    const all = await this.cityRepo.list();
+    const record = all.find((item) => item.id === id);
+    if (!record) throw new Error(`Cidade "${id}" não encontrada na lixeira.`);
+    const restored = { ...record, deletedAt: null };
+    await this.cityRepo.upsert(restored);
+    this.replaceCities([...this.snapshot.cities, restored]);
+    logActivity("city.restored", `Cidade "${restored.name}" restaurada da lixeira.`);
+  }
+
+  async listTrashedCities(): Promise<City[]> {
+    const all = await this.cityRepo.list();
+    return all.filter((item) => item.deletedAt);
+  }
+
+  /** Permanent delete — only reachable from the Lixeira screen. */
+  async purgeCity(id: string): Promise<void> {
+    await this.cityRepo.remove(id);
   }
 
   // ─── Operational staff management (backs the FAFTV/Oficiais DCO screens) ──
@@ -603,7 +681,9 @@ class DataStoreController implements DataStore {
       const cityName = row.city ?? "";
       const cityId = cityName ? slug(cityName) : "";
       if (cityName && !cities.some((city) => city.id === cityId)) {
-        cities.push({ id: cityId, name: cityName });
+        const city: City = { id: cityId, name: cityName };
+        cities.push(city);
+        void this.cityRepo.upsert(city);
       }
 
       const stadiumName = row.stadium ?? "";
@@ -635,6 +715,7 @@ class DataStoreController implements DataStore {
       ...this.snapshot.matches.filter((match) => match.competitionId !== competitionId),
       ...importedMatches,
     ];
+    void this.matchRepo.replaceForCompetition(competitionId, importedMatches);
 
     this.snapshot = buildSnapshot(
       this.snapshot.competitions,

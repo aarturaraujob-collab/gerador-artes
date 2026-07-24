@@ -1,0 +1,22 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,G_M,VISITANTE,G_V,ESTÁDIO,CIDADE
+Primeira Fase,1,1ª,11/04,Sáb,15:00,Jaciobá,0,Sporting FC,1,Édson Matias,Olho D'Água das Flores
+Primeira Fase,2,1ª,12/04,Dom,15:00,Zumbi,3,São Domingos,0,Orlandão,União dos Palmares
+Primeira Fase,3,1ª,12/04,Dom,15:00,Miguelense,2,Desportivo Aliança,1,Ivson Ferreira,São Brás
+Primeira Fase,4,2ª,19/04,Dom,15:00,São Domingos,0,Jaciobá,0,Gerson Amaral,Coruripe
+Primeira Fase,5,2ª,18/04,Sáb,15:00,Desportivo Aliança,1,Zumbi,1,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,6,2ª,19/04,Dom,15:00,Sporting FC,4,Miguelense,1,O Medalhão,Teotônio Vilela
+Primeira Fase,7,3ª,22/04,Qua,15:00,Zumbi,2,Jaciobá,0,Orlandão,União dos Palmares
+Primeira Fase,8,3ª,22/04,Qua,15:00,Desportivo Aliança,1,Sporting FC,6,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,9,3ª,22/04,Qua,15:00,Miguelense,4,São Domingos,0,Ivson Ferreira,São Brás
+Primeira Fase,10,4ª,25/04,Sáb,15:00,Jaciobá,0,Miguelense,1,Édson Matias,Olho D'Água das Flores
+Primeira Fase,11,4ª,26/04,Dom,15:00,São Domingos,2,Desportivo Aliança,6,Gerson Amaral,Coruripe
+Primeira Fase,12,4ª,26/04,Dom,15:00,Zumbi,1,Sporting FC,0,Orlandão,União dos Palmares
+Primeira Fase,13,5ª,02/05,Sáb,15:00,Miguelense,0,Zumbi,1,Ivson Ferreira,São Brás
+Primeira Fase,14,5ª,02/05,Sáb,15:00,Sporting FC,3,São Domingos,0,O Medalhão,Teotônio Vilela
+Primeira Fase,15,5ª,02/05,Sáb,15:00,Desportivo Aliança,9,Jaciobá,0,Gerson Amaral,Coruripe
+Semifinal,16,I,10/05,Dom,15:00,Desportivo Aliança,0,Zumbi,0,Gerson Amaral,Coruripe
+Semifinal,17,I,10/05,Dom,15:00,Miguelense,0,Sporting FC,3,Ivson Ferreira,São Brás
+Semifinal,18,V,17/05,Dom,15:00,Zumbi,1,Desportivo Aliança,0,Orlandão,União dos Palmares
+Semifinal,19,V,17/05,Dom,15:00,Sporting FC,2,Miguelense,0,O Medalhão,Teotônio Vilela
+Final,20,I,24/05,Dom,15:00,Zumbi,0,Sporting FC,2,Orlandão,União dos Palmares
+Final,21,V,31/05,Dom,14:30,Sporting FC,2,Zumbi,2,O Medalhão,Teotônio Vilela

@@ -4,16 +4,18 @@ import html2canvas from "html2canvas";
 import documentCss from "../styles/document.css?raw";
 
 /**
- * Converts a ready-made HTML fragment (as produced by renderIMT) into a PDF
- * Blob. Deliberately knows nothing about the database, competitions or
- * matches — it only ever sees the HTML string it's handed.
+ * Converts a ready-made HTML fragment (as produced by any renderer under
+ * src/documents/renderer) into a PDF Blob. Deliberately knows nothing about
+ * the database, competitions or matches — it only ever sees the HTML string
+ * it's handed, so it's shared by every document type (IMT, Tabela
+ * Detalhada, ...).
  *
  * Renders the fragment off-screen (with the same document.css the preview
  * uses) and rasterizes it via html2canvas before embedding it in an A4
  * jsPDF page — this is what guarantees the PDF matches the preview
  * pixel-for-pixel: it's a snapshot of the exact same rendered DOM+CSS.
  */
-export async function exportIMTToPdf(html: string): Promise<Blob> {
+export async function exportHtmlToPdf(html: string): Promise<Blob> {
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.top = "0";
@@ -32,7 +34,7 @@ export async function exportIMTToPdf(html: string): Promise<Blob> {
 
   try {
     const target = content.firstElementChild as HTMLElement | null;
-    if (!target) throw new Error("HTML da IMT está vazio — nada para exportar.");
+    if (!target) throw new Error("HTML do documento está vazio — nada para exportar.");
 
     const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff" });
 

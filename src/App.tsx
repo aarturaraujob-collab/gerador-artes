@@ -12,6 +12,8 @@ import { ClubsPage } from "@/pages/settings/ClubsPage";
 import { ClubForm } from "@/pages/settings/ClubForm";
 import { StadiumsPage } from "@/pages/settings/StadiumsPage";
 import { StadiumForm } from "@/pages/settings/StadiumForm";
+import { CitiesPage } from "@/pages/settings/CitiesPage";
+import { CityForm } from "@/pages/settings/CityForm";
 import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
 import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
 import { MatchPage } from "@/pages/matches/MatchPage";
@@ -67,6 +69,10 @@ export default function App() {
       <Route path="/cadastros/estadios" component={StadiumsPage} />
       <Route path="/cadastros/estadios/novo" component={StadiumForm} />
       <Route path="/cadastros/estadios/:id/editar" component={StadiumForm} />
+
+      <Route path="/cadastros/cidades" component={CitiesPage} />
+      <Route path="/cadastros/cidades/novo" component={CityForm} />
+      <Route path="/cadastros/cidades/:id/editar" component={CityForm} />
 
       <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
       <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Download, Eye, FileText, FolderOpen } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileText, FolderOpen, Table2 } from "lucide-react";
 
 import {
   Dialog,
@@ -19,10 +19,18 @@ import { Spinner } from "@/components/ui/spinner";
 import { logActivity } from "@/modules/activityLog";
 
 import { renderIMT } from "../renderer/renderIMT";
-import { exportIMTToPdf } from "../pdf/exportIMT";
+import { renderDetailedTable } from "../renderer/renderDetailedTable";
+import { exportHtmlToPdf } from "../pdf/exportDocument";
 import { imtRepository } from "../repository/imtRepository";
+import { detailedTableRepository } from "../repository/detailedTableRepository";
 import { triggerBlobDownload } from "../utils/downloadBlob";
 import { formatIMTNumber, toPlaceholders, type IMT } from "../types/imt";
+import {
+  formatDetailedTableVersion,
+  type DetailedTable,
+  type DetailedTableRound,
+  type DetailedTableStandingRow,
+} from "../types/detailedTable";
 import { DocumentPreview } from "./DocumentPreview";
 
 export interface StadiumOption {
@@ -46,8 +54,14 @@ export interface GenerateIMTDialogProps {
   currentStadiumName: string;
   currentCityName: string;
   stadiumOptions: StadiumOption[];
+  /** Snapshot of the competition's current standings, for "Atualizar Tabela". */
+  standingsSnapshot: DetailedTableStandingRow[];
+  /** Snapshot of the competition's rounds/schedule, for "Atualizar Tabela". */
+  roundsSnapshot: DetailedTableRound[];
   /** Called after the IMT is generated and saved, so the caller can refresh whatever it needs to. */
   onGenerated?: (imt: IMT) => void;
+  /** Called after a new Tabela Detalhada version is saved (and the previous one archived). */
+  onDetailedTableUpdated?: (table: DetailedTable) => void;
   /** "Ir para Documentos" — the caller owns tab navigation, this component only asks for it. */
   onNavigateToDocuments?: () => void;
 }
@@ -90,7 +104,10 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
     currentStadiumName,
     currentCityName,
     stadiumOptions,
+    standingsSnapshot,
+    roundsSnapshot,
     onGenerated,
+    onDetailedTableUpdated,
     onNavigateToDocuments,
   } = props;
 
@@ -102,6 +119,8 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
   const [savedIMT, setSavedIMT] = useState<IMT | null>(null);
   const [savedBlob, setSavedBlob] = useState<Blob | null>(null);
   const [showSuccessPreview, setShowSuccessPreview] = useState(false);
+  const [updatingTable, setUpdatingTable] = useState(false);
+  const [updatedTable, setUpdatedTable] = useState<DetailedTable | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -115,6 +134,8 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
     setSavedIMT(null);
     setSavedBlob(null);
     setShowSuccessPreview(false);
+    setUpdatingTable(false);
+    setUpdatedTable(null);
     onOpenChange(false);
   }
 
@@ -160,7 +181,7 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
     if (previewNumber === null || previewCreatedAt === null) return;
     setGenerating(true);
     try {
-      const pdfBlob = await exportIMTToPdf(html);
+      const pdfBlob = await exportHtmlToPdf(html);
 
       const imt: IMT = {
         id: crypto.randomUUID(),
@@ -203,6 +224,56 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
   function handleDownload() {
     if (!savedIMT || !savedBlob) return;
     triggerBlobDownload(savedBlob, `${formatIMTNumber(savedIMT.number, savedIMT.season).replace(/\s+/g, "-")}.pdf`);
+  }
+
+  /**
+   * Generates a new Tabela Detalhada version from the current
+   * standings/rounds snapshot, archives whatever version was CURRENT for
+   * this competition, and marks the new one CURRENT — all in one atomic
+   * repository call (detailedTableRepository.saveNewVersion).
+   */
+  async function handleUpdateDetailedTable() {
+    setUpdatingTable(true);
+    try {
+      const version = await detailedTableRepository.nextVersion(competitionId);
+      const generatedAt = new Date();
+      const html = renderDetailedTable({
+        competitionName,
+        season,
+        version,
+        generatedAt,
+        standings: standingsSnapshot,
+        rounds: roundsSnapshot,
+      });
+
+      const table: DetailedTable = {
+        id: crypto.randomUUID(),
+        competitionId,
+        competitionName,
+        season,
+        version,
+        status: "CURRENT",
+        createdAt: generatedAt,
+        standings: standingsSnapshot,
+        rounds: roundsSnapshot,
+        html,
+      };
+
+      await detailedTableRepository.saveNewVersion(table);
+
+      logActivity(
+        "detailedTable.updated",
+        `${formatDetailedTableVersion(table.version, table.season)} gerada para ${competitionName}.`,
+      );
+
+      setUpdatedTable(table);
+      toast.success(`${formatDetailedTableVersion(table.version, table.season)} gerada e marcada como atual.`);
+      onDetailedTableUpdated?.(table);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar a Tabela Detalhada.");
+    } finally {
+      setUpdatingTable(false);
+    }
   }
 
   function handleGoToDocuments() {
@@ -354,6 +425,15 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
               <Button type="button" variant="outline" onClick={handleDownload}>
                 <Download size={16} />
                 Download
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleUpdateDetailedTable()}
+                disabled={updatingTable}
+              >
+                {updatingTable ? <Spinner /> : updatedTable ? <CheckCircle2 size={16} /> : <Table2 size={16} />}
+                {updatingTable ? "Atualizando…" : updatedTable ? "Tabela atualizada" : "Atualizar Tabela"}
               </Button>
               <Button type="button" variant="outline" onClick={handleGoToDocuments}>
                 <FolderOpen size={16} />

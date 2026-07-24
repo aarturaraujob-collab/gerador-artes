@@ -1,50 +1,12 @@
 import type { IMT } from "../types/imt";
 import { formatIMTNumber } from "../types/imt";
 import { triggerBlobDownload } from "../utils/downloadBlob";
+import { getStore as getStoreForTable, promisify } from "./documentsDb";
 
-/**
- * Dedicated IndexedDB database for the documents module — deliberately
- * separate from src/modules/db.ts (the app's shared database) so this
- * module stays fully self-contained, per the sprint's "independent module"
- * requirement. No existing file needs to change to add this store.
- */
-const DB_NAME = "urano-faf-documents";
-const DB_VERSION = 1;
 const STORE_NAME = "imts";
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        store.createIndex("season", "season", { unique: false });
-        store.createIndex("gameRef", "gameRef", { unique: false });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-function getDb(): Promise<IDBDatabase> {
-  if (!dbPromise) dbPromise = openDb();
-  return dbPromise;
-}
-
-async function getStore(mode: IDBTransactionMode): Promise<IDBObjectStore> {
-  const db = await getDb();
-  return db.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
+function getStore(mode: IDBTransactionMode): Promise<IDBObjectStore> {
+  return getStoreForTable(STORE_NAME, mode);
 }
 
 /** Persists and queries IMT documents. This is the only place that knows about the storage mechanism. */
@@ -108,8 +70,8 @@ export class IMTRepository {
   async download(id: string): Promise<void> {
     const imt = await this.get(id);
     if (!imt) throw new Error(`IMT "${id}" não encontrada.`);
-    const { exportIMTToPdf } = await import("../pdf/exportIMT");
-    const blob = await exportIMTToPdf(imt.html);
+    const { exportHtmlToPdf } = await import("../pdf/exportDocument");
+    const blob = await exportHtmlToPdf(imt.html);
     triggerBlobDownload(blob, `${formatIMTNumber(imt.number, imt.season).replace(/\s+/g, "-")}.pdf`);
   }
 }

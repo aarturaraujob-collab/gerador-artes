@@ -47,8 +47,10 @@ import { useFavoriteTemplates } from "@/hooks/useFavoriteTemplates";
 import { toggleFavoriteTemplate } from "@/modules/templateFavorites";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
-import type { Match } from "@/modules/dataStore";
+import type { Match, ExtractedRow } from "@/modules/dataStore";
 import { buildGameRef, encodeGameRefParam } from "@/modules/gameRef";
+import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
+import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 
 const ALL = "__all__";
 
@@ -68,6 +70,7 @@ export function CompetitionHub() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [imtMatch, setImtMatch] = useState<Match | null>(null);
+  const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
 
@@ -91,6 +94,38 @@ export function CompetitionHub() {
   const rounds = useMemo(() => groupMatchesByRound(matches), [matches]);
   const standings = useMemo(() => calculateStandings(matches), [matches]);
   const stats = useMemo(() => calculateStats(matches), [matches]);
+
+  const detailedTableStandings = useMemo(
+    () =>
+      standings.map((row) => ({
+        clubName: store.clubsById.get(row.clubId)?.shortName ?? row.clubId,
+        played: row.played,
+        wins: row.wins,
+        draws: row.draws,
+        losses: row.losses,
+        goalsFor: row.goalsFor,
+        goalsAgainst: row.goalsAgainst,
+        goalDifference: row.goalDifference,
+        points: row.points,
+      })),
+    [standings, store.clubsById],
+  );
+  const detailedTableRounds = useMemo(
+    () =>
+      rounds.map((round) => ({
+        round: round.round,
+        matches: round.matches.map((match) => ({
+          homeClubName: store.clubsById.get(match.homeClubId)?.shortName ?? match.homeClubId,
+          awayClubName: store.clubsById.get(match.awayClubId)?.shortName ?? match.awayClubId,
+          date: match.date,
+          time: match.time,
+          stadiumName: store.stadiumsById.get(match.stadiumId)?.name ?? "—",
+          homeGoals: match.homeGoals,
+          awayGoals: match.awayGoals,
+        })),
+      })),
+    [rounds, store.clubsById, store.stadiumsById],
+  );
   const favoriteTemplateIds = useFavoriteTemplates();
   const finishedMatches = matches.filter((match) => match.homeGoals !== null && match.awayGoals !== null);
   const pendingMatches = matches.length - finishedMatches.length;
@@ -123,7 +158,24 @@ export function CompetitionHub() {
     setImporting(true);
     try {
       const parsed = await spreadsheetImporter.parse(file);
-      const { count } = dataStore.importMatchesForCompetition(competition.id, parsed.rows);
+      const entities = detectUnmatchedEntities(store, parsed.rows);
+      if (hasUnmatchedEntities(entities)) {
+        setPendingUnmatched({ rows: parsed.rows, entities });
+        return;
+      }
+      await runImport(parsed.rows);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao importar a planilha.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function runImport(rows: ExtractedRow[]) {
+    if (!competition) return;
+    setImporting(true);
+    try {
+      const { count } = dataStore.importMatchesForCompetition(competition.id, rows);
       toast.success(`${count} jogo(s) importado(s).`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao importar a planilha.");
@@ -754,10 +806,24 @@ export function CompetitionHub() {
           currentStadiumName={store.stadiumsById.get(imtMatch.stadiumId)?.name ?? "—"}
           currentCityName={store.citiesById.get(imtMatch.cityId)?.name ?? "—"}
           stadiumOptions={stadiumOptions}
+          standingsSnapshot={detailedTableStandings}
+          roundsSnapshot={detailedTableRounds}
           onGenerated={() => setDocumentsRefreshToken((token) => token + 1)}
+          onDetailedTableUpdated={() => setDocumentsRefreshToken((token) => token + 1)}
           onNavigateToDocuments={() => setActiveTab("documentos")}
         />
       )}
+
+      <UnmatchedEntitiesDialog
+        open={pendingUnmatched !== null}
+        entities={pendingUnmatched?.entities ?? null}
+        onCancel={() => setPendingUnmatched(null)}
+        onConfirm={() => {
+          const rows = pendingUnmatched?.rows;
+          setPendingUnmatched(null);
+          if (rows) void runImport(rows);
+        }}
+      />
     </AppShell>
   );
 }

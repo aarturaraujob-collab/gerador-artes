@@ -1,4 +1,4 @@
-import { Download, FileText, History, Plus, RotateCcw, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { Download, FileText, History, Plus, RotateCcw, Table2, Trash2, Upload, type LucideIcon } from "lucide-react";
 
 import type { ActivityAction } from "@/modules/activityLog";
 
@@ -15,6 +15,10 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "stadium.updated": { icon: History, tone: "text-info" },
   "stadium.deleted": { icon: Trash2, tone: "text-danger" },
   "stadium.restored": { icon: RotateCcw, tone: "text-success" },
+  "city.created": { icon: Plus, tone: "text-success" },
+  "city.updated": { icon: History, tone: "text-info" },
+  "city.deleted": { icon: Trash2, tone: "text-danger" },
+  "city.restored": { icon: RotateCcw, tone: "text-success" },
   "staff.created": { icon: Plus, tone: "text-success" },
   "staff.updated": { icon: History, tone: "text-info" },
   "staff.deleted": { icon: Trash2, tone: "text-danger" },
@@ -22,4 +26,5 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "import.matches": { icon: Upload, tone: "text-info" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },
+  "detailedTable.updated": { icon: Table2, tone: "text-info" },
 };

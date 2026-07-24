@@ -2,10 +2,14 @@
   "id": "jogos-do-dia",
   "name": "Jogos do Dia",
   "variants": [
-    { "games": 1, "file": "agenda_1jogo_feed.svg" },
-    { "games": 2, "file": "agenda_2jogos_feed.svg" },
-    { "games": 3, "file": "agenda_3jogos_feed.svg" },
-    { "games": 4, "file": "agenda_4jogos_feed.svg" }
+    { "games": 1, "file": "agenda_1jogo_feed.svg", "format": "feed" },
+    { "games": 2, "file": "agenda_2jogos_feed.svg", "format": "feed" },
+    { "games": 3, "file": "agenda_3jogos_feed.svg", "format": "feed" },
+    { "games": 4, "file": "agenda_4jogos_feed.svg", "format": "feed" },
+    { "games": 1, "file": "agenda_1jogo_story.svg", "format": "story" },
+    { "games": 2, "file": "agenda_2jogos_story.svg", "format": "story" },
+    { "games": 3, "file": "agenda_3jogos_story.svg", "format": "story" },
+    { "games": 4, "file": "agenda_4jogos_story.svg", "format": "story" }
   ],
   "fields": {
     "txt_cidade": { "maxWidth": 225 },

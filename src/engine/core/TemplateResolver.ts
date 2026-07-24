@@ -1,8 +1,10 @@
-import type { TemplateConfig } from "./TemplateConfig";
+import { TemplateLoader } from "@/engine/template-intelligence";
+import type { TemplateConfig, TemplateFormat } from "./TemplateConfig";
 
 export class TemplateResolver {
   private readonly configCache = new Map<string, Promise<TemplateConfig>>();
   private readonly svgCache = new Map<string, Promise<string>>();
+  private readonly diagnosed = new Set<string>();
 
   load(folder: string): Promise<TemplateConfig> {
     const cached = this.configCache.get(folder);
@@ -15,8 +17,10 @@ export class TemplateResolver {
     return config;
   }
 
-  resolve(config: TemplateConfig, games: number): string {
-    const variant = config.variants.find((item) => item.games === games);
+  /** `format` scopes the search to that format's variants; omitted falls back to the first matching variant regardless of format (today's behavior). */
+  resolve(config: TemplateConfig, games: number, format?: TemplateFormat): string {
+    const candidates = format ? config.variants.filter((item) => item.format === format) : config.variants;
+    const variant = candidates.find((item) => item.games === games);
     if (!variant) throw new Error("Nenhuma variante encontrada para esta quantidade de jogos.");
     return `/templates/${config.id}/${variant.file}`;
   }
@@ -30,5 +34,21 @@ export class TemplateResolver {
     });
     this.svgCache.set(path, svg);
     return svg;
+  }
+
+  /**
+   * Dev-only structural diagnostics (CP5/CP8 safety net) — runs template-intelligence's
+   * read-only validator once per resolved (svg, config) pair and logs anything wrong
+   * (a typo'd baseId in `fields`, an `align` hint on a non-text field, etc.). Never runs
+   * in production, never mutates anything, never affects what gets rendered.
+   */
+  diagnose(path: string, svg: string, config: TemplateConfig): void {
+    if (!import.meta.env.DEV || this.diagnosed.has(path)) return;
+    this.diagnosed.add(path);
+
+    const { validation } = TemplateLoader.load(svg, { config });
+    for (const issue of [...validation.errors, ...validation.warnings]) {
+      console.warn(`[template:${config.id}] ${path}: ${issue.message}`);
+    }
   }
 }

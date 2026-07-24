@@ -1,0 +1,29 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,G_M,VISITANTE,G_V,ESTÁDIO,CIDADE
+Primeira Fase,003,1ª,28/01,Qua,16:30,Murici SC,,ASA,,José Gomes da Costa,Murici
+Primeira Fase,001,1ª,28/01,Qua,20:00,Cruzeiro,,CRB,,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,006,1ª,29/01,Qui,19:00,CSE,,Penedense,,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,007,2ª,04/02,Qua,15:00,Dimensão Saúde,,AA Coruripe,,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,010,2ª,04/02,Qua,16:00,CSA,,Cruzeiro,,Gerson Amaral,Coruripe
+Primeira Fase,011,2ª,04/02,Qua,16:00,CSE,,Miguelense,,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,012,2ª,04/02,Qua,19:00,Penedense,,Murici SC,,Alfredo Leahy,Penedo
+Primeira Fase,009,2ª,04/02,Qua,20:00,ASA,,Zumbi,,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,014,3ª,11/02,Qua,15:00,Dimensão Saúde,,CRB,,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,015,3ª,11/02,Qua,15:00,Zumbi,,CSE,,Orlandão,União dos Palmares
+Primeira Fase,016,3ª,12/02,Qui,19:00,AA Coruripe,,CSA,,Gerson Amaral,Coruripe
+Primeira Fase,018,3ª,01/03,Dom,16:00,Murici SC,,Miguelense,,José Gomes da Costa,Murici
+Primeira Fase,017,3ª,02/03,Seg,19:00,Penedense,,ASA,,Alfredo Leahy,Penedo
+Primeira Fase,022,4ª,21/02,Sáb,15:00,Miguelense,,Penedense,,Ivson Ferreira,São Brás
+Primeira Fase,004,1ª,05/03,Qui,15:00,CSA,,Dimensão Saúde,,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,005,1ª,08/03,Dom,15:00,Miguelense,,Zumbi,,Ivson Ferreira,São Brás
+Primeira Fase,023,4ª,10/03,Ter,15:00,Cruzeiro,,Dimensão Saúde,,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,024,4ª,14/03,Sáb,15:00,CRB,,AA Coruripe,,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,020,4ª,14/03,Sáb,15:00,Zumbi,,Murici SC,,Orlandão,União dos Palmares
+Primeira Fase,021,4ª,14/03,Sáb,17:00,ASA,,CSE,,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,026,5ª,18/03,Qua,15:00,CRB,,CSA,,Manoel de Amorim,São Miguel dos Campos
+Primeira Fase,027,5ª,18/03,Qua,15:00,AA Coruripe,,Cruzeiro,,Gerson Amaral,Coruripe
+Primeira Fase,028,5ª,18/03,Qua,15:00,Penedense,,Zumbi,,Alfredo Leahy,Penedo
+Primeira Fase,029,5ª,18/03,Qua,15:00,ASA,,Miguelense,,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,030,5ª,18/03,Qua,15:00,CSE,,Murici SC,,Juca Sampaio,Palmeira dos Índios
+Semifinal,031,Ú,21/03,Sáb,15:00,CSA,,CSE,,Manoel de Amorim,São Miguel dos Campos
+Semifinal,032,Ú,21/03,Sáb,17:00,ASA,,CRB,,Coaracy da Mata Fonseca,Arapiraca
+Final,033,Ú,01/04,Qua,20:00,ASA,,CSA,,Coaracy da Mata Fonseca,Arapiraca

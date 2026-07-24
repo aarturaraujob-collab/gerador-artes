@@ -14,13 +14,18 @@ export type ActivityAction =
   | "stadium.updated"
   | "stadium.deleted"
   | "stadium.restored"
+  | "city.created"
+  | "city.updated"
+  | "city.deleted"
+  | "city.restored"
   | "staff.created"
   | "staff.updated"
   | "staff.deleted"
   | "staff.restored"
   | "import.matches"
   | "export.png"
-  | "imt.generated";
+  | "imt.generated"
+  | "detailedTable.updated";
 
 export interface ActivityEntry {
   id: string;

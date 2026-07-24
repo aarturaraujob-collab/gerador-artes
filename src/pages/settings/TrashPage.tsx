@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { dataStore, type CompetitionRecord, type Club, type Stadium } from "@/modules/dataStore";
+import { dataStore, type CompetitionRecord, type Club, type Stadium, type City } from "@/modules/dataStore";
 
-type TrashKind = "competitions" | "clubs" | "stadiums";
+type TrashKind = "competitions" | "clubs" | "stadiums" | "cities";
 
 interface PendingPurge {
   kind: TrashKind;
@@ -34,17 +34,20 @@ export function TrashPage() {
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [pendingPurge, setPendingPurge] = useState<PendingPurge | null>(null);
 
   async function refresh() {
-    const [trashedCompetitions, trashedClubs, trashedStadiums] = await Promise.all([
+    const [trashedCompetitions, trashedClubs, trashedStadiums, trashedCities] = await Promise.all([
       dataStore.listTrashedCompetitions(),
       dataStore.listTrashedClubs(),
       dataStore.listTrashedStadiums(),
+      dataStore.listTrashedCities(),
     ]);
     setCompetitions(trashedCompetitions);
     setClubs(trashedClubs);
     setStadiums(trashedStadiums);
+    setCities(trashedCities);
   }
 
   useEffect(() => {
@@ -55,7 +58,8 @@ export function TrashPage() {
     try {
       if (kind === "competitions") await dataStore.restoreCompetition(id);
       else if (kind === "clubs") await dataStore.restoreClub(id);
-      else await dataStore.restoreStadium(id);
+      else if (kind === "stadiums") await dataStore.restoreStadium(id);
+      else await dataStore.restoreCity(id);
       toast.success("Restaurado.");
       await refresh();
     } catch (error) {
@@ -68,7 +72,8 @@ export function TrashPage() {
     try {
       if (pendingPurge.kind === "competitions") await dataStore.purgeCompetition(pendingPurge.id);
       else if (pendingPurge.kind === "clubs") await dataStore.purgeClub(pendingPurge.id);
-      else await dataStore.purgeStadium(pendingPurge.id);
+      else if (pendingPurge.kind === "stadiums") await dataStore.purgeStadium(pendingPurge.id);
+      else await dataStore.purgeCity(pendingPurge.id);
       toast.success("Excluído definitivamente.");
       await refresh();
     } catch (error) {
@@ -82,6 +87,7 @@ export function TrashPage() {
     { kind: "competitions", label: "Competições", items: competitions.map((c) => ({ id: c.id, label: c.name })) },
     { kind: "clubs", label: "Clubes", items: clubs.map((c) => ({ id: c.id, label: c.fullName })) },
     { kind: "stadiums", label: "Estádios", items: stadiums.map((s) => ({ id: s.id, label: s.name })) },
+    { kind: "cities", label: "Cidades", items: cities.map((c) => ({ id: c.id, label: c.name })) },
   ];
 
   return (

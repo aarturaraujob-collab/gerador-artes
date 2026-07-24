@@ -1,5 +1,5 @@
 import { TemplateResolver } from "@/engine/core/TemplateResolver";
-import { variantSizes } from "@/engine/core/TemplateConfig";
+import { variantSizes, type TemplateFormat } from "@/engine/core/TemplateConfig";
 import { TemplateLayoutResolver } from "@/engine/layout/TemplateLayoutResolver";
 import { MatchTemplateRenderer } from "@/engine/render/MatchTemplateRenderer";
 import type { Match } from "@/modules/dataStore";
@@ -23,6 +23,8 @@ export interface RenderConfiguration {
 export interface RenderBatchInput {
   template: string;
   matches: readonly Match[];
+  /** Omitted falls back to the first matching variant regardless of format (today's behavior for single-format templates). */
+  format?: TemplateFormat;
   configuration?: RenderConfiguration;
 }
 
@@ -57,11 +59,11 @@ export class BatchRenderService {
     private readonly renderer: MatchTemplateRenderer,
   ) {}
 
-  async renderBatch({ template, matches }: RenderBatchInput): Promise<RenderResult[]> {
+  async renderBatch({ template, matches, format }: RenderBatchInput): Promise<RenderResult[]> {
     if (matches.length === 0) return [];
 
     const config = await this.templates.load(template);
-    const batches = TemplateLayoutResolver.resolve(variantSizes(config), matches.length);
+    const batches = TemplateLayoutResolver.resolve(variantSizes(config, format), matches.length);
 
     const results: RenderResult[] = [];
     let cursor = 0;
@@ -71,7 +73,7 @@ export class BatchRenderService {
       cursor += group.length;
       if (group.length === 0) break;
 
-      const svg = await this.renderer.render(template, group);
+      const svg = await this.renderer.render(template, group, format);
       results.push({
         index: results.length + 1,
         svg,

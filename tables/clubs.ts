@@ -5,6 +5,12 @@ export const clubs = [
     "fullName": "Jaciobá",
     "shield": ""
   },
+   {
+    "id": "CEO",
+    "shortName": "CEO",
+    "fullName": "Centro Esportivo Olhodaguense",
+    "shield": ""
+  },
   {
     "id": "ind-atalaia",
     "shortName": "Independente Atalaia",
@@ -210,6 +216,12 @@ export const clubs = [
     "shield": ""
   },
   {
+    "id": "chuts-fc",
+    "shortName": "Chuts FC",
+    "fullName": "Chuts FC",
+    "shield": ""
+  },
+  {
     "id": "chute-inicial",
     "shortName": "Chute Inicial",
     "fullName": "Chute Inicial",
@@ -225,6 +237,18 @@ export const clubs = [
     "id": "santa-cruz",
     "shortName": "Santa Cruz",
     "fullName": "Santa Cruz",
+    "shield": ""
+  },
+   {
+    "id": "liga-penedense",
+    "shortName": "Liga Penedense",
+    "fullName": "Liga Penedense",
+    "shield": ""
+  },
+  {
+    "id": "atletico-alagoano",
+    "shortName": "Atlético Alagoano",
+    "fullName": "Atlético Alagoano",
     "shield": ""
   },
   {

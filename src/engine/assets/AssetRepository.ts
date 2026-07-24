@@ -80,6 +80,11 @@ export class AssetRepository {
 
   // ─── Competition logos ────────────────────────────────────────────────────
 
+  /** Resolves a competition logo value to a displayable path — same convention as clubShieldPath, for <img src>. */
+  logoPath(logo: string): string {
+    return resolveAssetValue(logo, LOGOS_DIR);
+  }
+
   /**
    * Resolves a competition's logo, if one is registered. Same contract as
    * the background resolver: null (never a throw) when there's nothing to

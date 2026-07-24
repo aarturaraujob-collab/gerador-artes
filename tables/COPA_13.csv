@@ -1,0 +1,16 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,G_M,VISITANTE,G_V,ESTÁDIO,CIDADE
+Primeira Fase,1,1ª,12/03,Qui,14:00,ASA,2,Cruzeiro,0,Universitário da UFAL,Maceió
+Primeira Fase,2,2ª,12/03,Qui,15:00,Cruzeiro,1,Ponte Preta,2,Universitário da UFAL,Maceió
+Primeira Fase,3,3ª,12/03,Qui,16:00,Ponte Preta,0,ASA,5,Universitário da UFAL,Maceió
+Primeira Fase,4,1ª,13/03,Sex,14:00,CRB,2,Agrimaq/Jequiaense,0,Universitário da UFAL,Maceió
+Primeira Fase,5,2ª,13/03,Sex,15:00,Agrimaq/Jequiaense,1,Atlético Alagoano,4,Universitário da UFAL,Maceió
+Primeira Fase,6,3ª,13/03,Sex,16:00,Atlético Alagoano,1,CRB,1,Universitário da UFAL,Maceió
+Primeira Fase,7,1ª,14/03,Sáb,14:00,CSA,5,Sport MDO,0,Universitário da UFAL,Maceió
+Primeira Fase,8,2ª,14/03,Sáb,15:00,Sport MDO,3,Guarani de Paripueira,0,Universitário da UFAL,Maceió
+Primeira Fase,9,3ª,14/03,Sáb,16:00,Guarani de Paripueira,0,CSA,3,Universitário da UFAL,Maceió
+Primeira Fase,10,1ª,15/03,Dom,14:00,Dimensão Saúde,1,Red Star,1,Universitário da UFAL,Maceió
+Primeira Fase,11,2ª,15/03,Dom,15:00,Red Star,1,Liga Penedense,2,Universitário da UFAL,Maceió
+Primeira Fase,12,3ª,15/03,Dom,16:00,Liga Penedense,0,Dimensão Saúde,0,Universitário da UFAL,Maceió
+Semifinal,13,Ú,21/03,Sáb,09:00,ASA,5,Atlético Alagoano,0,Universitário da UFAL,Maceió
+Semifinal,14,Ú,21/03,Sáb,10:00,CSA,5,Liga Penedense,0,Universitário da UFAL,Maceió
+Final,15,Ú,21/03,Sáb,15:00,ASA,0,CSA,0,Universitário da UFAL,Maceió

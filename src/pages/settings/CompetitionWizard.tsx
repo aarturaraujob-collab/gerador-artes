@@ -22,9 +22,12 @@ import { cn } from "@/lib/utils";
 import { templates as templateRegistry } from "@/templates/templates";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type BackgroundAssets, type CompetitionRecord, type ExtractedRow } from "@/modules/dataStore";
-import { spreadsheetImporter } from "@/engine";
+import { assetRepository, spreadsheetImporter } from "@/engine";
 import { emptyBackground } from "@/modules/competitionRepository";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
+import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
+import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
+import { backgroundRepository, type BackgroundAsset } from "@/modules/backgroundRepository";
 
 const STEP_LABELS = ["Dados", "Assets", "Importação", "Templates", "Resumo"];
 
@@ -90,6 +93,12 @@ export function CompetitionWizard() {
   const [importPreview, setImportPreview] = useState<{ rows: ExtractedRow[]; valid: number; invalid: number } | null>(null);
   const [importConfirmed, setImportConfirmed] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [pendingUnmatched, setPendingUnmatched] = useState<UnmatchedEntities | null>(null);
+  const [backgroundLibrary, setBackgroundLibrary] = useState<BackgroundAsset[]>([]);
+
+  useEffect(() => {
+    void backgroundRepository.seedIfEmpty().then(setBackgroundLibrary);
+  }, []);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -159,6 +168,16 @@ export function CompetitionWizard() {
   }
 
   async function confirmImport() {
+    if (!importPreview || !form.id) return;
+    const unmatched = detectUnmatchedEntities(store, importPreview.rows);
+    if (hasUnmatchedEntities(unmatched)) {
+      setPendingUnmatched(unmatched);
+      return;
+    }
+    await runImport();
+  }
+
+  async function runImport() {
     if (!importPreview || !form.id) return;
     setImporting(true);
     try {
@@ -365,12 +384,28 @@ export function CompetitionWizard() {
                   value={form.logo}
                   onFile={(file) => void handleAssetUpload(file, "logo")}
                 />
-                <AssetUploadField
-                  label="Background Thumb"
-                  hint="public/assets/backgrounds"
-                  value={form.background.thumb}
-                  onFile={(file) => void handleAssetUpload(file, "thumb")}
-                />
+                <div>
+                  <AssetUploadField
+                    label="Background Thumb"
+                    hint="public/assets/backgrounds"
+                    value={form.background.thumb}
+                    onFile={(file) => void handleAssetUpload(file, "thumb")}
+                  />
+                  <div className="mt-2">
+                    <Combobox
+                      className="h-10"
+                      options={backgroundLibrary.map((asset) => ({ value: asset.id, label: asset.name }))}
+                      value={undefined}
+                      onValueChange={(id) => {
+                        const asset = backgroundLibrary.find((item) => item.id === id);
+                        if (!asset) return;
+                        update("background", { ...form.background, thumb: assetRepository.backgroundPath(asset.dataUri) });
+                      }}
+                      placeholder="Ou escolher da biblioteca"
+                      searchPlaceholder="Buscar background..."
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -512,6 +547,16 @@ export function CompetitionWizard() {
           )}
         </div>
       </div>
+
+      <UnmatchedEntitiesDialog
+        open={pendingUnmatched !== null}
+        entities={pendingUnmatched}
+        onCancel={() => setPendingUnmatched(null)}
+        onConfirm={() => {
+          setPendingUnmatched(null);
+          void runImport();
+        }}
+      />
     </AppShell>
   );
 }

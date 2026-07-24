@@ -1,4 +1,4 @@
-import { House, Image, Trophy, Shield, MapPin, Folder, Settings, History, Trash2, Video, ShieldCheck } from "lucide-react";
+import { House, Image, Trophy, Shield, MapPin, Map, Folder, Settings, History, Trash2, Video, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavigationItem {
@@ -16,6 +16,7 @@ export const navigationItems: NavigationItem[] = [
   { label: "Competições", href: "/cadastros/competicoes", icon: Trophy, group: "Principal" },
   { label: "Clubes", href: "/cadastros/clubes", icon: Shield, group: "Cadastros" },
   { label: "Estádios", href: "/cadastros/estadios", icon: MapPin, group: "Cadastros" },
+  { label: "Cidades", href: "/cadastros/cidades", icon: Map, group: "Cadastros" },
   { label: "FAFTV", href: "/cadastros/faftv", icon: Video, group: "Cadastros" },
   { label: "Oficiais DCO", href: "/cadastros/oficiais-dco", icon: ShieldCheck, group: "Cadastros" },
   { label: "Assets", href: "/assets", icon: Folder, group: "Gestão" },

@@ -1,0 +1,18 @@
+{
+  "id": "resultados-do-dia",
+  "name": "Resultados do Dia",
+  "variants": [
+    { "games": 1, "file": "resultado_1jogo_feed.svg", "format": "feed" },
+    { "games": 2, "file": "resultado_2jogos_feed.svg", "format": "feed" },
+    { "games": 3, "file": "resultado_3jogos_feed.svg", "format": "feed" },
+    { "games": 4, "file": "resultado_4jogos_feed.svg", "format": "feed" },
+    { "games": 1, "file": "resultado_1jogo_story.svg", "format": "story" },
+    { "games": 2, "file": "resultado_2jogos_story.svg", "format": "story" },
+    { "games": 3, "file": "resultado_3jogos_story.svg", "format": "story" },
+    { "games": 4, "file": "resultado_4jogos_story.svg", "format": "story" }
+  ],
+  "fields": {
+    "txt_cidade": { "maxWidth": 225 },
+    "txt_estadio": { "maxWidth": 225 }
+  }
+}

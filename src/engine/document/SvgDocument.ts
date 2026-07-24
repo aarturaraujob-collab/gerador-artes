@@ -1,4 +1,6 @@
 // SvgDocument.ts
+import { readFontSize } from "@/engine/document/textMeasure";
+
 export type SvgNodeType =
   | "text"
   | "image"
@@ -9,6 +11,9 @@ export interface SvgNode {
   id: string;
   type: SvgNodeType;
   element: Element;
+  /** For text nodes: the placeholder content/font-size as authored, captured before any mutation — the anchor TextAlignmentEngine derives new positions from. */
+  originalText?: string;
+  originalFontSize?: number;
 }
 
 export class SvgDocument {
@@ -38,6 +43,13 @@ export class SvgDocument {
       if (id.startsWith("txt_")) type = "text";
       else if (id.startsWith("img_")) type = "image";
       else if (id.startsWith("grp_")) type = "group";
+
+      if (type === "text") {
+        const firstTspan = element.querySelector("tspan");
+        const originalText = (firstTspan ?? element).textContent ?? "";
+        this.nodes.set(id, { id, type, element, originalText, originalFontSize: readFontSize(element) });
+        return;
+      }
 
       this.nodes.set(id, { id, type, element });
     });

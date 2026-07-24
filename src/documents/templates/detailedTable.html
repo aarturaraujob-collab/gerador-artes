@@ -1,0 +1,65 @@
+<!--
+  MODELO PROVISÓRIO — mesmo aviso de imt.html: este layout não foi validado
+  contra um documento oficial de referência. Ajustar aqui e em document.css
+  quando houver um modelo oficial — nenhum outro módulo (renderer, pdf,
+  repository, types, UI) precisa mudar.
+
+  Fragmento puro — sem <html>/<head>/<body>, sem lógica própria. Marcação
+  estática + placeholders {{chave}} (escapados) e {{{chave}}} (blocos HTML
+  já prontos, injetados sem escapar) — ambos substituídos por
+  renderDetailedTable.ts via replace de texto simples.
+-->
+<div class="imt-document">
+  <div class="imt-provisional-notice">
+    Modelo provisório — pendente de validação com o documento oficial da FAF
+  </div>
+
+  <header class="imt-header">
+    <div class="imt-header-title">
+      <p class="imt-federation">Federação Alagoana de Futebol</p>
+      <h1>Tabela Detalhada</h1>
+    </div>
+    <div class="imt-header-number">v{{version}}</div>
+  </header>
+
+  <section class="imt-meta">
+    <div class="imt-meta-item">
+      <span class="imt-label">Competição</span>
+      <span class="imt-value">{{competition}}</span>
+    </div>
+    <div class="imt-meta-item">
+      <span class="imt-label">Temporada</span>
+      <span class="imt-value">{{season}}</span>
+    </div>
+  </section>
+
+  <section class="dt-standings">
+    <span class="imt-label">Classificação</span>
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Clube</th>
+          <th>P</th>
+          <th>V</th>
+          <th>E</th>
+          <th>D</th>
+          <th>GP</th>
+          <th>GC</th>
+          <th>SG</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>{{{standingsRows}}}</tbody>
+    </table>
+  </section>
+
+  <section class="dt-rounds">
+    <span class="imt-label">Rodadas</span>
+    {{{roundsSections}}}
+  </section>
+
+  <footer class="imt-footer">
+    <p>Documento gerado automaticamente pelo Urano FAF em {{generatedAt}}.</p>
+  </footer>
+</div>

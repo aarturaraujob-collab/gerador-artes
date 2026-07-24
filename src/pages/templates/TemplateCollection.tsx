@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "wouter";
-import { ChevronLeft, ChevronRight, Download, Image as ImageIcon, Search, Upload } from "lucide-react";
+import { useParams, useLocation, useSearchParams } from "wouter";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Download, Image as ImageIcon, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import {
@@ -19,13 +23,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { assetRepository, batchRenderService, spreadsheetImporter, type RenderResult } from "@/engine";
+import {
+  assetRepository,
+  availableFormats,
+  batchRenderService,
+  spreadsheetImporter,
+  templateResolver,
+  type RenderResult,
+  type TemplateFormat,
+} from "@/engine";
 import { exportToPng } from "@/engine/export/PngExporter";
 import { useDataStore } from "@/hooks/useDataStore";
 import type { Match } from "@/modules/dataStore";
 import { logActivity } from "@/modules/activityLog";
+import { loadArtesFilterPreferences, saveArtesFilterPreferences } from "@/modules/artesFilterPreferences";
+import {
+  DEFAULT_DATE_FILTER,
+  dateToIso,
+  matchesDateFilter,
+  toIsoDate,
+  todayIso,
+  type DateFilterState,
+} from "@/pages/templates/matchDateFilter";
+import { templates as templateRegistry } from "@/templates/templates";
 
 const ALL_ROUNDS = "__all__";
+
+const DATE_CHIPS: { mode: DateFilterState["mode"]; label: string }[] = [
+  { mode: "all", label: "Todas" },
+  { mode: "today", label: "Hoje" },
+  { mode: "tomorrow", label: "Amanhã" },
+  { mode: "week", label: "Esta Semana" },
+];
 
 function matchKey(match: Match): string {
   return [match.competitionId, match.round, match.date, match.time, match.homeClubId, match.awayClubId].join("|");
@@ -35,10 +64,24 @@ export function TemplateCollection() {
   const { folder } = useParams<{ folder: string }>();
   const store = useDataStore();
   const [searchParams] = useSearchParams();
+  const [, navigate] = useLocation();
 
-  // Supports deep-linking here with a competition pre-selected (e.g. the
-  // "Exportar" shortcut on a competition's hub page: /artes/:folder?competicao=ID).
-  const [competitionId, setCompetitionId] = useState(() => searchParams.get("competicao") ?? "");
+  // Hydrated once from sessionStorage (CP7) — the deep-link "competicao" query
+  // param (e.g. the "Exportar" shortcut on a competition's hub page) still wins
+  // over a remembered filter when both are present.
+  const initialPreferences = useMemo(() => loadArtesFilterPreferences(), []);
+
+  const [competitionIds, setCompetitionIds] = useState<string[]>(() => {
+    const deepLinked = searchParams.get("competicao");
+    if (deepLinked) return [deepLinked];
+    return initialPreferences.competitionIds ?? [];
+  });
+  const [dateFilter, setDateFilter] = useState<DateFilterState>(() =>
+    initialPreferences.dateMode
+      ? { mode: initialPreferences.dateMode, customIso: initialPreferences.customIso }
+      : DEFAULT_DATE_FILTER,
+  );
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [round, setRound] = useState("");
   const [search, setSearch] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
@@ -48,20 +91,50 @@ export function TemplateCollection() {
   const [rendering, setRendering] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [formats, setFormats] = useState<TemplateFormat[]>([]);
+  const [format, setFormat] = useState<TemplateFormat | undefined>(initialPreferences.format);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const competitionMatches = useMemo(
-    () => store.matches.filter((match) => match.competitionId === competitionId),
-    [store, competitionId],
+  // All matches passing the date filter alone, across every competition (CP2) —
+  // the base set CP8's auto-selection and the "competições" counter read from.
+  const dateFilteredMatches = useMemo(
+    () => store.matches.filter((match) => matchesDateFilter(match, dateFilter)),
+    [store, dateFilter],
   );
+
+  const dateFilteredCompetitionIds = useMemo(
+    () => [...new Set(dateFilteredMatches.map((match) => match.competitionId))],
+    [dateFilteredMatches],
+  );
+
+  // CP8 — when the date filter alone already narrows things down to one
+  // competition, select it automatically. Only acts while "Todas" (empty) is
+  // in effect, so it never overrides a deliberate manual choice.
+  useEffect(() => {
+    if (competitionIds.length > 0) return;
+    if (dateFilteredCompetitionIds.length === 1) setCompetitionIds(dateFilteredCompetitionIds);
+  }, [competitionIds, dateFilteredCompetitionIds]);
+
+  const competitionScopedMatches = useMemo(() => {
+    if (competitionIds.length === 0) return dateFilteredMatches;
+    const allowed = new Set(competitionIds);
+    return dateFilteredMatches.filter((match) => allowed.has(match.competitionId));
+  }, [dateFilteredMatches, competitionIds]);
+
   const rounds = useMemo(
-    () => [...new Set(competitionMatches.map((match) => match.round))],
-    [competitionMatches],
+    () => [...new Set(competitionScopedMatches.map((match) => match.round))],
+    [competitionScopedMatches],
   );
+
+  // Round labels don't carry meaning across different competitions — reset when the competition filter changes.
+  useEffect(() => {
+    setRound("");
+  }, [competitionIds]);
+
   const visibleMatches = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("pt-BR");
-    return competitionMatches.filter((match) => {
+    return competitionScopedMatches.filter((match) => {
       if (round && match.round !== round) return false;
       if (!query) return true;
       const values = [
@@ -72,7 +145,12 @@ export function TemplateCollection() {
       ];
       return values.some((value) => value?.toLocaleLowerCase("pt-BR").includes(query));
     });
-  }, [store, competitionMatches, round, search]);
+  }, [store, competitionScopedMatches, round, search]);
+
+  const visibleCompetitionCount = useMemo(
+    () => new Set(visibleMatches.map((match) => match.competitionId)).size,
+    [visibleMatches],
+  );
 
   // Selected matches, kept in the store's chronological order for stable batching.
   const selectedMatches = useMemo(
@@ -102,7 +180,50 @@ export function TemplateCollection() {
     });
   }
 
-  // Batch render whenever the selection or template changes.
+  function selectOnlyCurrentCompetition() {
+    if (competitionIds.length !== 1) return;
+    setSelectedKeys(new Set(visibleMatches.map(matchKey)));
+  }
+
+  function selectOnlyToday() {
+    const today = todayIso();
+    setSelectedKeys(new Set(visibleMatches.filter((match) => toIsoDate(match.date) === today).map(matchKey)));
+  }
+
+  // Discover which formats (Feed/Story) this template's config.json actually declares —
+  // never a hardcoded per-template flag. Templates with no format axis expose none, and
+  // the picker below simply doesn't render.
+  useEffect(() => {
+    if (!folder) {
+      setFormats([]);
+      setFormat(undefined);
+      return;
+    }
+
+    let active = true;
+    templateResolver.load(folder).then((config) => {
+      if (!active) return;
+      const found = availableFormats(config);
+      setFormats(found);
+      setFormat((current) => (current && found.includes(current) ? current : found[0]));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [folder]);
+
+  // CP7 — remember the last filters used, for this browser session only.
+  useEffect(() => {
+    saveArtesFilterPreferences({
+      format,
+      competitionIds,
+      dateMode: dateFilter.mode,
+      customIso: dateFilter.customIso,
+    });
+  }, [format, competitionIds, dateFilter]);
+
+  // Batch render whenever the selection, template or format changes.
   useEffect(() => {
     if (!folder || selectedMatches.length === 0) {
       setResults([]);
@@ -114,7 +235,7 @@ export function TemplateCollection() {
     setRendering(true);
 
     batchRenderService
-      .renderBatch({ template: folder, matches: selectedMatches })
+      .renderBatch({ template: folder, matches: selectedMatches, format })
       .then((rendered) => {
         if (!active) return;
         setResults(rendered);
@@ -130,7 +251,7 @@ export function TemplateCollection() {
     return () => {
       active = false;
     };
-  }, [folder, selectedMatches]);
+  }, [folder, selectedMatches, format]);
 
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -140,8 +261,7 @@ export function TemplateCollection() {
     setImporting(true);
     try {
       const summary = await spreadsheetImporter.import(file);
-      setCompetitionId(summary.competitionId);
-      setRound("");
+      setCompetitionIds([summary.competitionId]);
       setSelectedKeys(new Set());
       toast.success(`${summary.count} jogo(s) importado(s) de "${summary.competitionName}".`);
     } catch (error) {
@@ -173,8 +293,8 @@ export function TemplateCollection() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
-          title="Gerador de Arte"
-          description="Selecione um ou mais jogos do calendário para gerar as artes em lote."
+          title="Central de Geração"
+          description="Encontre jogos por data, competição e formato para gerar as artes em lote."
           actions={
             <>
               <Button
@@ -196,34 +316,118 @@ export function TemplateCollection() {
           }
         />
 
+        {/* CP1 — mini barra de filtros: Data, Competição, Tipo de Arte e Formato agem em conjunto. */}
+        <Card className="flex flex-wrap items-end gap-5 p-4">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground-secondary">Data</label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DATE_CHIPS.map((chip) => (
+                <Button
+                  key={chip.mode}
+                  type="button"
+                  size="sm"
+                  variant={dateFilter.mode === chip.mode ? "default" : "outline"}
+                  onClick={() => setDateFilter({ mode: chip.mode })}
+                >
+                  {chip.label}
+                </Button>
+              ))}
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" size="sm" variant={dateFilter.mode === "custom" ? "default" : "outline"}>
+                    <CalendarIcon size={14} />
+                    {dateFilter.mode === "custom" && dateFilter.customIso ? dateFilter.customIso.split("-").reverse().join("/") : "Escolher data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFilter.customIso ? new Date(`${dateFilter.customIso}T00:00:00`) : undefined}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      setDateFilter({ mode: "custom", customIso: dateToIso(date) });
+                      setDatePopoverOpen(false);
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="min-w-[240px] flex-1 space-y-2">
+            <label className="text-sm font-semibold text-foreground-secondary">Competição</label>
+            <MultiSelect
+              options={store.competitions.map((competition) => ({ value: competition.id, label: competition.name }))}
+              value={competitionIds}
+              onValueChange={setCompetitionIds}
+              placeholder="Todas as competições"
+            />
+          </div>
+
+          <div className="min-w-[200px] space-y-2">
+            <label className="text-sm font-semibold text-foreground-secondary" htmlFor="tipo-arte">Tipo de Arte</label>
+            <Select value={folder} onValueChange={(value) => navigate(`/artes/${value}`)}>
+              <SelectTrigger id="tipo-arte" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {templateRegistry.map((template) => (
+                  <SelectItem key={template.folder} value={template.folder}>{template.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formats.length > 1 && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground-secondary">Formato</label>
+              <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+                {formats.map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    size="sm"
+                    variant={format === option ? "default" : "ghost"}
+                    onClick={() => setFormat(option)}
+                  >
+                    {option === "feed" ? "Feed" : "Story"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
         <div className="grid grid-cols-12 items-start gap-5">
           <Card className="col-span-12 space-y-4 p-5 lg:col-span-4">
-            <div>
-              <label className="text-sm font-semibold text-foreground-secondary" htmlFor="competition">Competição</label>
-              <Select
-                value={competitionId || undefined}
-                onValueChange={(value) => {
-                  setCompetitionId(value);
-                  setRound("");
-                  setSelectedKeys(new Set());
-                }}
-              >
-                <SelectTrigger id="competition" className="mt-2 h-11">
-                  <SelectValue placeholder="Selecione uma competição" />
-                </SelectTrigger>
-                <SelectContent>
-                  {store.competitions.map((competition) => (
-                    <SelectItem key={competition.id} value={competition.id}>{competition.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* CP5 — contadores sempre visíveis sobre o resultado filtrado. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary">{visibleMatches.length} partida{visibleMatches.length === 1 ? "" : "s"}</Badge>
+              <Badge variant="secondary">{visibleCompetitionCount} competiç{visibleCompetitionCount === 1 ? "ão" : "ões"}</Badge>
+              <Badge variant={selectedKeys.size > 0 ? "info" : "outline"}>{selectedKeys.size} selecionada{selectedKeys.size === 1 ? "" : "s"}</Badge>
+            </div>
+
+            {/* CP6 — ações rápidas de seleção em lote. */}
+            <div className="flex flex-wrap gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={toggleAllVisible} disabled={visibleMatches.length === 0}>
+                {allVisibleSelected ? "Limpar seleção" : "Selecionar todas"}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedKeys(new Set())} disabled={selectedKeys.size === 0}>
+                Limpar seleção
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={selectOnlyCurrentCompetition} disabled={competitionIds.length !== 1}>
+                Apenas competição atual
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={selectOnlyToday}>
+                Apenas data atual
+              </Button>
             </div>
 
             <div>
               <label className="text-sm font-semibold text-foreground-secondary" htmlFor="round">Rodada</label>
               <Select
                 value={round || ALL_ROUNDS}
-                disabled={!competitionId}
+                disabled={rounds.length === 0}
                 onValueChange={(value) => setRound(value === ALL_ROUNDS ? "" : value)}
               >
                 <SelectTrigger id="round" className="mt-2 h-11">
@@ -251,23 +455,12 @@ export function TemplateCollection() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground-secondary">
-                  {selectedKeys.size > 0 ? `${selectedKeys.size} jogo(s) selecionado(s)` : "Jogos"}
-                </p>
-                {visibleMatches.length > 0 && (
-                  <Button type="button" variant="link" size="sm" onClick={toggleAllVisible} className="h-auto p-0 text-xs">
-                    {allVisibleSelected ? "Limpar" : "Selecionar todos"}
-                  </Button>
-                )}
-              </div>
-
               <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
-              {!competitionId && (
-                <p className="rounded-xl bg-muted p-4 text-sm text-foreground-muted">Selecione uma competição para listar os jogos.</p>
+              {visibleMatches.length === 0 && (
+                <p className="rounded-xl bg-muted p-4 text-sm text-foreground-muted">Nenhum jogo encontrado para os filtros atuais.</p>
               )}
 
-              {competitionId && visibleMatches.map((match) => {
+              {visibleMatches.map((match) => {
                 const home = store.clubsById.get(match.homeClubId);
                 const away = store.clubsById.get(match.awayClubId);
                 const isSelected = selectedKeys.has(matchKey(match));
@@ -300,10 +493,6 @@ export function TemplateCollection() {
                   </button>
                 );
               })}
-
-              {competitionId && visibleMatches.length === 0 && (
-                <p className="rounded-xl bg-muted p-4 text-sm text-foreground-muted">Nenhum jogo encontrado.</p>
-              )}
               </div>
             </div>
           </Card>
@@ -367,7 +556,7 @@ export function TemplateCollection() {
                       <ImageIcon />
                     </EmptyMedia>
                     <EmptyTitle>Sem preview disponível</EmptyTitle>
-                    <EmptyDescription>Selecione uma competição e um ou mais jogos.</EmptyDescription>
+                    <EmptyDescription>Ajuste os filtros e selecione um ou mais jogos.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               )}

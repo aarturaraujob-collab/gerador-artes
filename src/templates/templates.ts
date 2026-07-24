@@ -31,6 +31,14 @@ export const templates: TemplateItem[] = [
     tags: ["jogos", "rodada", "calendário"],
   },
   {
+    id: "resultados-do-dia",
+    name: "Resultados do Dia",
+    folder: "resultados-do-dia",
+    preview: "/templates/resultados-do-dia/cover.png",
+    category: "Resultado",
+    tags: ["resultado", "placar", "jogos"],
+  },
+  {
     id: "thumb-faftv",
     name: "Thumbnail FAFTV",
     folder: "thumb-faftv",

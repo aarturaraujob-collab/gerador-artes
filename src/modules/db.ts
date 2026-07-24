@@ -7,7 +7,7 @@
  */
 
 const DB_NAME = "faf-mkt-ops";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAMES = [
   "competitions",
   "clubs",
@@ -16,6 +16,9 @@ const STORE_NAMES = [
   "matchFaftv",
   "matchOperacao",
   "matchOperationsHistory",
+  "matches",
+  "cities",
+  "backgrounds",
 ] as const;
 
 export type StoreName = (typeof STORE_NAMES)[number];
@@ -45,7 +48,7 @@ export function promisify<T>(request: IDBRequest<T>): Promise<T> {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function getDb(): Promise<IDBDatabase> {
+export function getDb(): Promise<IDBDatabase> {
   if (!dbPromise) dbPromise = openDb();
   return dbPromise;
 }

@@ -1,0 +1,35 @@
+FASE,REF,RODADA (ROD),DATA,DIA,HORA,MANDANTE,G_M,VISITANTE,G_V,ESTÁDIO,CIDADE
+Primeira Fase,1,1ª,10/01,Sáb,16:00,CRB,1,CSE,0,Rei Pelé,Maceió
+Primeira Fase,2,1ª,10/01,Sáb,16:00,Penedense,1,Cruzeiro,0,Alfredo Leahy,Penedo
+Primeira Fase,3,1ª,10/01,Sáb,17:00,ASA,0,Murici SC,0,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,4,1ª,11/01,Dom,17:00,CSA,3,AA Coruripe,0,Rei Pelé,Maceió
+Primeira Fase,5,2ª,14/01,Qua,19:00,AA Coruripe,1,CSE,1,Gerson Amaral,Coruripe
+Primeira Fase,6,2ª,14/01,Qua,20:00,CSA,2,Penedense,0,Rei Pelé,Maceió
+Primeira Fase,7,2ª,14/01,Qua,20:00,Cruzeiro,2,ASA,4,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,8,2ª,15/01,Qui,20:00,CRB,3,Murici SC,2,Rei Pelé,Maceió
+Primeira Fase,9,3ª,17/01,Sáb,16:00,ASA,0,CSA,0,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,10,3ª,18/01,Dom,16:00,CSE,1,Cruzeiro,2,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,11,3ª,18/01,Dom,16:00,Murici SC,1,AA Coruripe,0,José Gomes da Costa,Murici
+Primeira Fase,12,3ª,18/01,Dom,16:00,Penedense,0,CRB,1,Alfredo Leahy,Penedo
+Primeira Fase,13,4ª,21/01,Qua,19:00,Penedense,0,CSE,2,Alfredo Leahy,Penedo
+Primeira Fase,14,4ª,21/01,Qua,19:00,Murici SC,0,CSA,1,José Gomes da Costa,Murici
+Primeira Fase,15,4ª,21/01,Qua,20:00,CRB,1,Cruzeiro,0,Rei Pelé,Maceió
+Primeira Fase,16,4ª,21/01,Qua,20:00,ASA,2,AA Coruripe,0,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,17,5ª,24/01,Sáb,16:00,CSA,1,CRB,1,Rei Pelé,Maceió
+Primeira Fase,18,5ª,24/01,Sáb,16:00,Cruzeiro,0,Murici SC,2,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,19,5ª,25/01,Dom,16:00,AA Coruripe,1,Penedense,1,Gerson Amaral,Coruripe
+Primeira Fase,20,5ª,25/01,Dom,16:00,CSE,1,ASA,2,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,21,6ª,31/01,Sáb,16:00,CRB,0,ASA,3,Rei Pelé,Maceió
+Primeira Fase,22,6ª,31/01,Sáb,16:00,Cruzeiro,2,AA Coruripe,1,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,23,6ª,01/02,Dom,16:00,Penedense,0,Murici SC,0,Alfredo Leahy,Penedo
+Primeira Fase,24,6ª,01/02,Dom,16:00,CSE,0,CSA,1,Juca Sampaio,Palmeira dos Índios
+Primeira Fase,25,7ª,07/02,Sáb,16:00,CSA,2,Cruzeiro,0,Rei Pelé,Maceió
+Primeira Fase,26,7ª,07/02,Sáb,16:00,Murici SC,3,CSE,1,José Gomes da Costa,Murici
+Primeira Fase,27,7ª,07/02,Sáb,16:00,ASA,2,Penedense,0,Coaracy da Mata Fonseca,Arapiraca
+Primeira Fase,28,7ª,07/02,Sáb,16:00,AA Coruripe,2,CRB,1,Gerson Amaral,Coruripe
+Semifinal,29,I,14/02,Sáb,16:00,Murici SC,0,ASA,0,José Gomes da Costa,Murici
+Semifinal,30,I,18/02,Qua,20:00,CRB,2,CSA,0,Rei Pelé,Maceió
+Semifinal,31,V,22/02,Dom,16:00,ASA,3,Murici SC,0,Coaracy da Mata Fonseca,Arapiraca
+Semifinal,32,V,21/02,Sáb,16:00,CSA,0,CRB,2,Rei Pelé,Maceió
+Final,33,I,28/02,Sáb,16:00,CRB,3,ASA,0,Rei Pelé,Maceió
+Final,34,V,07/03,Sáb,16:00,ASA,1,CRB,1,Coaracy da Mata Fonseca,Arapiraca
