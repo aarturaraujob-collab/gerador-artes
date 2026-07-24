@@ -1,0 +1,142 @@
+<svg width="1080" height="1440" viewBox="0 0 1080 1440" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="classificacao_8_feed" clip-path="url(#clip_classificacao)">
+<rect id="img_background" width="1080" height="1440" fill="url(#pattern_background)"></rect>
+<text id="txt_titulo" fill="#2D0077" style="white-space: pre" xml:space="preserve" font-family="Prometo, Prompt" font-size="77" font-weight="900" letter-spacing="-0.01em" text-anchor="middle"><tspan x="540" y="236">CLASSIFICAÇÃO</tspan></text>
+<text id="txt_subtitulo" fill="#17171C" fill-opacity="0.72" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="28" font-weight="600" letter-spacing="0.06em" text-anchor="middle"><tspan x="540" y="292">CAMPEONATO ALAGOANO • 1ª RODADA</tspan></text>
+<text id="txt_label_clube" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em"><tspan x="246" y="356">CLUBE</tspan></text>
+<text id="txt_label_j" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="642" y="356">J</tspan></text>
+<text id="txt_label_v" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="704" y="356">V</tspan></text>
+<text id="txt_label_e" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="766" y="356">E</tspan></text>
+<text id="txt_label_d" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="828" y="356">D</tspan></text>
+<text id="txt_label_sg" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="890" y="356">SG</tspan></text>
+<text id="txt_label_pts" fill="#2D0077" fill-opacity="0.65" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="24" font-weight="700" letter-spacing="0.08em" text-anchor="middle"><tspan x="966" y="356">PTS</tspan></text>
+<g id="grp_pos_1">
+<rect x="80" y="390.00" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="1"></rect>
+<text id="txt_pos" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="448.60">1</tspan></text>
+<rect id="img_escudo" x="146" y="397.00" width="78.00" height="78.00" fill="url(#pattern_escudo_1)"></rect>
+<text id="txt_clube" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="448.60">ASA</tspan></text>
+<text id="txt_j" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="448.60">0</tspan></text>
+<text id="txt_v" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="448.60">0</tspan></text>
+<text id="txt_e" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="448.60">0</tspan></text>
+<text id="txt_d" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="448.60">0</tspan></text>
+<text id="txt_sg" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="448.60">0</tspan></text>
+<text id="txt_pts" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="448.60">0</tspan></text>
+</g>
+<g id="grp_pos_2">
+<rect x="80" y="503.75" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="1"></rect>
+<text id="txt_pos_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="562.35">2</tspan></text>
+<rect id="img_escudo_2" x="146" y="510.75" width="78.00" height="78.00" fill="url(#pattern_escudo_2)"></rect>
+<text id="txt_clube_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="562.35">CRB</tspan></text>
+<text id="txt_j_2" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="562.35">0</tspan></text>
+<text id="txt_v_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="562.35">0</tspan></text>
+<text id="txt_e_2" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="562.35">0</tspan></text>
+<text id="txt_d_2" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="562.35">0</tspan></text>
+<text id="txt_sg_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="562.35">0</tspan></text>
+<text id="txt_pts_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="562.35">0</tspan></text>
+</g>
+<g id="grp_pos_3">
+<rect x="80" y="617.50" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="1"></rect>
+<text id="txt_pos_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="676.10">3</tspan></text>
+<rect id="img_escudo_3" x="146" y="624.50" width="78.00" height="78.00" fill="url(#pattern_escudo_3)"></rect>
+<text id="txt_clube_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="676.10">CSA</tspan></text>
+<text id="txt_j_3" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="676.10">0</tspan></text>
+<text id="txt_v_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="676.10">0</tspan></text>
+<text id="txt_e_3" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="676.10">0</tspan></text>
+<text id="txt_d_3" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="676.10">0</tspan></text>
+<text id="txt_sg_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="676.10">0</tspan></text>
+<text id="txt_pts_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="676.10">0</tspan></text>
+</g>
+<g id="grp_pos_4">
+<rect x="80" y="731.25" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="1"></rect>
+<text id="txt_pos_4" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="789.85">4</tspan></text>
+<rect id="img_escudo_4" x="146" y="738.25" width="78.00" height="78.00" fill="url(#pattern_escudo_4)"></rect>
+<text id="txt_clube_4" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="789.85">CSE</tspan></text>
+<text id="txt_j_4" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="789.85">0</tspan></text>
+<text id="txt_v_4" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="789.85">0</tspan></text>
+<text id="txt_e_4" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="789.85">0</tspan></text>
+<text id="txt_d_4" fill="#D9CCFF" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="789.85">0</tspan></text>
+<text id="txt_sg_4" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="789.85">0</tspan></text>
+<text id="txt_pts_4" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="789.85">0</tspan></text>
+</g>
+<g id="grp_pos_5">
+<rect x="80" y="845.00" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="0.08"></rect>
+<text id="txt_pos_5" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="903.60">5</tspan></text>
+<rect id="img_escudo_5" x="146" y="852.00" width="78.00" height="78.00" fill="url(#pattern_escudo_5)"></rect>
+<text id="txt_clube_5" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="903.60">MURICI</tspan></text>
+<text id="txt_j_5" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="903.60">0</tspan></text>
+<text id="txt_v_5" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="903.60">0</tspan></text>
+<text id="txt_e_5" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="903.60">0</tspan></text>
+<text id="txt_d_5" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="903.60">0</tspan></text>
+<text id="txt_sg_5" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="903.60">0</tspan></text>
+<text id="txt_pts_5" fill="#2D0077" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="903.60">0</tspan></text>
+</g>
+<g id="grp_pos_6">
+<rect x="80" y="958.75" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="0.08"></rect>
+<text id="txt_pos_6" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="1017.35">6</tspan></text>
+<rect id="img_escudo_6" x="146" y="965.75" width="78.00" height="78.00" fill="url(#pattern_escudo_6)"></rect>
+<text id="txt_clube_6" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="1017.35">CORURIPE</tspan></text>
+<text id="txt_j_6" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="1017.35">0</tspan></text>
+<text id="txt_v_6" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="1017.35">0</tspan></text>
+<text id="txt_e_6" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="1017.35">0</tspan></text>
+<text id="txt_d_6" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="1017.35">0</tspan></text>
+<text id="txt_sg_6" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="1017.35">0</tspan></text>
+<text id="txt_pts_6" fill="#2D0077" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="1017.35">0</tspan></text>
+</g>
+<g id="grp_pos_7">
+<rect x="80" y="1072.50" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="0.08"></rect>
+<text id="txt_pos_7" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="1131.10">7</tspan></text>
+<rect id="img_escudo_7" x="146" y="1079.50" width="78.00" height="78.00" fill="url(#pattern_escudo_7)"></rect>
+<text id="txt_clube_7" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="1131.10">PENEDENSE</tspan></text>
+<text id="txt_j_7" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="1131.10">0</tspan></text>
+<text id="txt_v_7" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="1131.10">0</tspan></text>
+<text id="txt_e_7" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="1131.10">0</tspan></text>
+<text id="txt_d_7" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="1131.10">0</tspan></text>
+<text id="txt_sg_7" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="1131.10">0</tspan></text>
+<text id="txt_pts_7" fill="#2D0077" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="1131.10">0</tspan></text>
+</g>
+<g id="grp_pos_8">
+<rect x="80" y="1186.25" width="920" height="92.00" rx="12.9" fill="#2D0077" fill-opacity="0.08"></rect>
+<text id="txt_pos_8" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="38" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="116" y="1244.85">8</tspan></text>
+<rect id="img_escudo_8" x="146" y="1193.25" width="78.00" height="78.00" fill="url(#pattern_escudo_8)"></rect>
+<text id="txt_clube_8" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="36" font-weight="800" letter-spacing="0em"><tspan x="246" y="1244.85">ZUMBI</tspan></text>
+<text id="txt_j_8" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="642" y="1244.85">0</tspan></text>
+<text id="txt_v_8" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="704" y="1244.85">0</tspan></text>
+<text id="txt_e_8" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="766" y="1244.85">0</tspan></text>
+<text id="txt_d_8" fill="#4A4A55" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="500" text-anchor="middle" letter-spacing="0em"><tspan x="828" y="1244.85">0</tspan></text>
+<text id="txt_sg_8" fill="#17171C" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="34" font-weight="600" text-anchor="middle" letter-spacing="0em"><tspan x="890" y="1244.85">0</tspan></text>
+<text id="txt_pts_8" fill="#2D0077" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="39" font-weight="900" text-anchor="middle" letter-spacing="0em"><tspan x="966" y="1244.85">0</tspan></text>
+</g>
+</g>
+<defs>
+<pattern id="pattern_background" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_background" width="1080" height="1440" transform="scale(0.00092593 0.00069444)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_1" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_1" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_2" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_2" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_3" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_3" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_4" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_4" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_5" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_5" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_6" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_6" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_7" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_7" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<pattern id="pattern_escudo_8" patternContentUnits="objectBoundingBox" width="1" height="1">
+<image id="image_escudo_8" width="500" height="500" transform="scale(0.002)" preserveAspectRatio="none"></image>
+</pattern>
+<clipPath id="clip_classificacao">
+<rect width="1080" height="1440" fill="white"></rect>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,62 @@
+{
+  "id": "classificacao",
+  "name": "Classificação",
+  "variants": [
+    {
+      "games": 8,
+      "file": "classificacao_8_feed.svg",
+      "format": "feed"
+    },
+    {
+      "games": 10,
+      "file": "classificacao_10_feed.svg",
+      "format": "feed"
+    },
+    {
+      "games": 12,
+      "file": "classificacao_12_feed.svg",
+      "format": "feed"
+    },
+    {
+      "games": 16,
+      "file": "classificacao_16_feed.svg",
+      "format": "feed"
+    },
+    {
+      "games": 20,
+      "file": "classificacao_20_feed.svg",
+      "format": "feed"
+    },
+    {
+      "games": 8,
+      "file": "classificacao_8_story.svg",
+      "format": "story"
+    },
+    {
+      "games": 10,
+      "file": "classificacao_10_story.svg",
+      "format": "story"
+    },
+    {
+      "games": 12,
+      "file": "classificacao_12_story.svg",
+      "format": "story"
+    },
+    {
+      "games": 16,
+      "file": "classificacao_16_story.svg",
+      "format": "story"
+    },
+    {
+      "games": 20,
+      "file": "classificacao_20_story.svg",
+      "format": "story"
+    }
+  ],
+  "fields": {
+    "txt_clube": {
+      "maxWidth": 330,
+      "minFontSize": 20
+    }
+  }
+}
