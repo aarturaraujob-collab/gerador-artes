@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
@@ -31,8 +32,9 @@ import { backgroundRepository, type BackgroundAsset } from "@/modules/background
 
 const STEP_LABELS = ["Dados", "Assets", "Importação", "Templates", "Resumo"];
 
-const CATEGORY_OPTIONS = ["Profissional", "Base", "Amador", "Universitário"];
-const AGE_GROUP_OPTIONS = ["Livre", "Sub-13", "Sub-15", "Sub-17", "Sub-20", "Máster"];
+const CATEGORY_OPTIONS = ["Profissional", "Base", "Amador", "Universitário"] as const;
+const AGE_GROUP_OPTIONS = ["Livre", "Sub-13", "Sub-15", "Sub-17", "Sub-20", "Máster"] as const;
+const GENDER_OPTIONS = ["Masculino", "Feminino", "Misto"] as const;
 
 function seasonYearOptions(currentSeason: number): number[] {
   const currentYear = new Date().getFullYear();
@@ -77,6 +79,39 @@ function fileToDataUri(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+const competitionFormSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .min(1, "Informe o ID da competição.")
+    .regex(/^[A-Za-z0-9_-]+$/, "O ID deve conter apenas letras, números, hífen ou underscore."),
+  seriesId: z.string(),
+  name: z.string().trim().min(1, "Informe o nome da competição."),
+  season: z
+    .number()
+    .int("A temporada deve ser um ano válido.")
+    .min(1900, "A temporada deve ser um ano válido.")
+    .max(2100, "A temporada deve ser um ano válido."),
+  category: z
+    .string()
+    .refine(
+      (value) => value === "" || CATEGORY_OPTIONS.includes(value as (typeof CATEGORY_OPTIONS)[number]),
+      "Categoria inválida.",
+    ),
+  gender: z
+    .string()
+    .refine(
+      (value) => value === "" || GENDER_OPTIONS.includes(value as (typeof GENDER_OPTIONS)[number]),
+      "Sexo inválido.",
+    ),
+  ageGroup: z
+    .string()
+    .refine(
+      (value) => value === "" || AGE_GROUP_OPTIONS.includes(value as (typeof AGE_GROUP_OPTIONS)[number]),
+      "Faixa etária inválida.",
+    ),
+});
 
 export function CompetitionWizard() {
   const { id: editingId } = useParams<{ id?: string }>();
@@ -192,16 +227,22 @@ export function CompetitionWizard() {
   }
 
   async function finish() {
+    const result = competitionFormSchema.safeParse(form);
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message ?? "Verifique os campos da competição.");
+      return;
+    }
+
     setSaving(true);
     try {
       const record: CompetitionRecord = {
-        id: form.id.trim().toUpperCase(),
-        seriesId: form.seriesId.trim() || undefined,
-        name: form.name.trim(),
-        season: form.season,
-        category: form.category,
-        gender: form.gender,
-        ageGroup: form.ageGroup,
+        id: result.data.id.toUpperCase(),
+        seriesId: result.data.seriesId.trim() || undefined,
+        name: result.data.name,
+        season: result.data.season,
+        category: result.data.category,
+        gender: result.data.gender,
+        ageGroup: result.data.ageGroup,
         logo: form.logo,
         background: form.background,
         templates: form.templates,

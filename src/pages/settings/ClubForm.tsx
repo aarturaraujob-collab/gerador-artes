@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +17,29 @@ import { dataStore, type Club } from "@/modules/dataStore";
 const BRAZILIAN_STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
-];
+] as const;
+
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const CURRENT_YEAR = new Date().getFullYear();
+
+const clubFormSchema = z.object({
+  fullName: z.string().trim().min(1, "Informe o nome do clube."),
+  shortName: z.string().trim(),
+  shield: z.string(),
+  cityId: z.string(),
+  state: z.enum(BRAZILIAN_STATES, { message: "Selecione uma UF válida." }),
+  primaryColor: z.string().refine((value) => value === "" || HEX_COLOR_PATTERN.test(value), "Cor primária inválida."),
+  secondaryColor: z
+    .string()
+    .refine((value) => value === "" || HEX_COLOR_PATTERN.test(value), "Cor secundária inválida."),
+  foundedYear: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || (/^\d{4}$/.test(value) && Number(value) >= 1800 && Number(value) <= CURRENT_YEAR),
+      `Ano de fundação deve ser um ano entre 1800 e ${CURRENT_YEAR}.`,
+    ),
+});
 
 interface FormState {
   fullName: string;
@@ -91,28 +114,30 @@ export function ClubForm() {
   const cityOptions = store.cities.map((city) => ({ value: city.id, label: city.name }));
 
   async function handleSave() {
-    if (!form.fullName.trim()) {
-      toast.error("Preencha o nome do clube.");
+    const result = clubFormSchema.safeParse(form);
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message ?? "Verifique os campos do formulário.");
       return;
     }
+
     setSaving(true);
     try {
       const record: Club = {
         id: editingId ?? "",
-        fullName: form.fullName.trim(),
-        shortName: form.shortName.trim() || form.fullName.trim(),
-        shield: form.shield,
-        cityId: form.cityId || undefined,
-        state: form.state || undefined,
-        primaryColor: form.primaryColor || undefined,
-        secondaryColor: form.secondaryColor || undefined,
-        foundedYear: form.foundedYear ? Number(form.foundedYear) : null,
+        fullName: result.data.fullName,
+        shortName: result.data.shortName || result.data.fullName,
+        shield: result.data.shield,
+        cityId: result.data.cityId || undefined,
+        state: result.data.state || undefined,
+        primaryColor: result.data.primaryColor || undefined,
+        secondaryColor: result.data.secondaryColor || undefined,
+        foundedYear: result.data.foundedYear ? Number(result.data.foundedYear) : null,
       };
 
       if (isEditing) {
         await dataStore.updateClub(editingId!, record);
       } else {
-        const id = form.fullName.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const id = result.data.fullName.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
         if (store.clubs.some((item) => item.id === id)) {
           toast.error("Já existe um clube com esse nome.");
           setSaving(false);
