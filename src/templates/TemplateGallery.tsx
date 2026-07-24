@@ -108,7 +108,13 @@ export function TemplateGallery() {
 
                 <button
                   type="button"
-                  onClick={() => navigate(`/templates/${template.folder}`)}
+                  onClick={() =>
+                    navigate(
+                      template.scope === "competition"
+                        ? "/cadastros/competicoes"
+                        : `/templates/${template.folder}`,
+                    )
+                  }
                   className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <div className="aspect-[4/5] overflow-hidden bg-muted">
@@ -127,7 +133,9 @@ export function TemplateGallery() {
                       {template.name}
                     </h3>
                     <p className="mt-1 text-sm text-foreground-secondary">
-                      Clique para abrir
+                      {template.scope === "competition"
+                        ? "Abra uma competição e use a aba Classificação"
+                        : "Clique para abrir"}
                     </p>
                   </div>
                 </button>

@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Download,
   FileText,
+  ImageDown,
   Pencil,
   Search,
   Star,
@@ -27,7 +28,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Select,
   SelectContent,
@@ -42,9 +43,12 @@ import { resolveCompetitionStatus, STATUS_TONE, parseMatchDate } from "@/modules
 import { groupMatchesByRound } from "@/modules/rounds";
 import { calculateStandings, calculateStats } from "@/modules/standings";
 import { templates as templateRegistry } from "@/templates/templates";
-import { assetRepository, spreadsheetImporter } from "@/engine";
+import { assetRepository, readSvgDimensions, spreadsheetImporter, standingsTemplateRenderer } from "@/engine";
+import type { TemplateFormat } from "@/engine/core/TemplateConfig";
+import { exportToPng } from "@/engine/export/PngExporter";
 import { useFavoriteTemplates } from "@/hooks/useFavoriteTemplates";
 import { toggleFavoriteTemplate } from "@/modules/templateFavorites";
+import { logActivity } from "@/modules/activityLog";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
 import type { Match, ExtractedRow } from "@/modules/dataStore";
@@ -73,6 +77,8 @@ export function CompetitionHub() {
   const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
+  const [standingsFormat, setStandingsFormat] = useState<TemplateFormat>("feed");
+  const [generatingStandings, setGeneratingStandings] = useState(false);
 
   const [selectedRound, setSelectedRound] = useState<string | null>(null);
   const [roundFilter, setRoundFilter] = useState(ALL);
@@ -184,9 +190,33 @@ export function CompetitionHub() {
     }
   }
 
+  async function handleGenerateStandings() {
+    if (!competition) return;
+    setGeneratingStandings(true);
+    try {
+      const svg = await standingsTemplateRenderer.render("classificacao", competition.id, standingsFormat);
+      const { width, height } = readSvgDimensions(svg);
+      await exportToPng(svg, width, height, `classificacao-${competition.id}-${standingsFormat}.png`);
+      logActivity("export.png", `Classificação exportada para "${competition.name}".`);
+      toast.success("Classificação exportada.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível gerar a classificação.");
+    } finally {
+      setGeneratingStandings(false);
+    }
+  }
+
+  // "Exportar" always opens the match-based Central de Geração, so competition-scoped
+  // templates (e.g. Classificação) are skipped when picking a default — they have no
+  // match picker to open. Their generation lives in the "Classificação" tab instead.
   function handleExport() {
     if (!competition) return;
-    const folder = competition.templates[0] ?? templateRegistry[0]?.folder;
+    const matchScopedIds = competition.templates.filter(
+      (templateId) => templateRegistry.find((item) => item.id === templateId)?.scope !== "competition",
+    );
+    const folder =
+      templateRegistry.find((item) => item.id === matchScopedIds[0])?.folder ??
+      templateRegistry.find((item) => item.scope !== "competition")?.folder;
     if (!folder) {
       toast.error("Nenhum template disponível para exportar.");
       return;
@@ -458,7 +488,7 @@ export function CompetitionHub() {
             )}
           </TabsContent>
 
-          <TabsContent value="classificacao" className="mt-6">
+          <TabsContent value="classificacao" className="mt-6 space-y-4">
             {standings.length === 0 ? (
               <Empty>
                 <EmptyHeader>
@@ -469,7 +499,21 @@ export function CompetitionHub() {
                 </EmptyHeader>
               </Empty>
             ) : (
-              <Card className="overflow-x-auto p-0">
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Select value={standingsFormat} onValueChange={(value) => setStandingsFormat(value as TemplateFormat)}>
+                    <SelectTrigger className="h-10 w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="feed">Feed</SelectItem>
+                      <SelectItem value="story">Story</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" onClick={() => void handleGenerateStandings()} disabled={generatingStandings}>
+                    {generatingStandings ? <Spinner /> : <ImageDown size={16} />}
+                    Gerar Classificação
+                  </Button>
+                </div>
+                <Card className="overflow-x-auto p-0">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                     <tr>
@@ -504,7 +548,8 @@ export function CompetitionHub() {
                     ))}
                   </tbody>
                 </table>
-              </Card>
+                </Card>
+              </>
             )}
           </TabsContent>
 
@@ -711,7 +756,13 @@ export function CompetitionHub() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/artes/${template?.folder ?? templateId}?competicao=${competition.id}`)}
+                        onClick={() => {
+                          if (template?.scope === "competition") {
+                            setActiveTab("classificacao");
+                            return;
+                          }
+                          navigate(`/artes/${template?.folder ?? templateId}?competicao=${competition.id}`);
+                        }}
                       >
                         Abrir
                       </Button>

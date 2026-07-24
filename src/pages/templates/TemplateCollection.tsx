@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import {
   Select,
   SelectContent,
@@ -289,6 +289,36 @@ export function TemplateCollection() {
 
   const current = results[previewIndex];
 
+  // Competition-scoped templates (e.g. Classificação) render a whole
+  // competition via calculateStandings, not a hand-picked list of matches —
+  // they have no place in this match/date/round-driven flow. Reachable only
+  // by a stale link or a hand-edited URL, since the "Tipo de Arte" picker
+  // below and the gallery card both route those templates elsewhere.
+  const currentTemplateEntry = templateRegistry.find((item) => item.folder === folder);
+  if (currentTemplateEntry?.scope === "competition") {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-7xl">
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ImageIcon />
+              </EmptyMedia>
+              <EmptyTitle>"{currentTemplateEntry.name}" não usa esta tela</EmptyTitle>
+              <EmptyDescription>
+                Esse template é gerado a partir de uma competição inteira, não de jogos avulsos. Abra a
+                competição desejada e use a aba "Classificação".
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => navigate("/cadastros/competicoes")}>Ir para Competições</Button>
+            </EmptyContent>
+          </Empty>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
@@ -371,9 +401,11 @@ export function TemplateCollection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {templateRegistry.map((template) => (
-                  <SelectItem key={template.folder} value={template.folder}>{template.name}</SelectItem>
-                ))}
+                {templateRegistry
+                  .filter((template) => template.scope !== "competition")
+                  .map((template) => (
+                    <SelectItem key={template.folder} value={template.folder}>{template.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

@@ -31,7 +31,8 @@ export interface RenderBatchInput {
 const DEFAULT_WIDTH = 1080;
 const DEFAULT_HEIGHT = 1350;
 
-function readDimensions(svg: string): { width: number; height: number } {
+/** Reads the pixel size a rendered SVG will export at — from explicit width/height, falling back to viewBox, then a hardcoded default. Shared by anything that exports a single art outside the batch flow (e.g. the Classificação renderer). */
+export function readSvgDimensions(svg: string): { width: number; height: number } {
   const root = new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("svg");
   const width = Number.parseInt(root?.getAttribute("width") ?? "", 10);
   const height = Number.parseInt(root?.getAttribute("height") ?? "", 10);
@@ -78,7 +79,7 @@ export class BatchRenderService {
         index: results.length + 1,
         svg,
         matches: [...group],
-        ...readDimensions(svg),
+        ...readSvgDimensions(svg),
       });
     }
 
