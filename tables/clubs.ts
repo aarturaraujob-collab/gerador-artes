@@ -9,7 +9,7 @@ export const clubs = [
     "id": "CEO",
     "shortName": "CEO",
     "fullName": "Centro Esportivo Olhodaguense",
-    "shield": ""
+    "shield": "ceo.png"
   },
   {
     "id": "ind-atalaia",
@@ -99,12 +99,6 @@ export const clubs = [
     "id": "cse",
     "shortName": "CSE",
     "fullName": "CSE",
-    "shield": ""
-  },
-  {
-    "id": "u-cse",
-    "shortName": "cse",
-    "fullName": "cse",
     "shield": ""
   },
   {
@@ -198,10 +192,10 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "cruzeiro-al",
+    "id": "cruzeiro",
     "shortName": "Cruzeiro",
     "fullName": "Cruzeiro Alagoano",
-    "shield": "cruzeiro_alagoano.png"
+    "shield": ""
   },
   {
     "id": "unec",
@@ -219,7 +213,7 @@ export const clubs = [
     "id": "chuts-fc",
     "shortName": "Chuts FC",
     "fullName": "Chuts FC",
-    "shield": ""
+    "shield": "chuts.png"
   },
   {
     "id": "chute-inicial",
@@ -243,7 +237,7 @@ export const clubs = [
     "id": "liga-penedense",
     "shortName": "Liga Penedense",
     "fullName": "Liga Penedense",
-    "shield": ""
+    "shield": "liga-penedense.png"
   },
   {
     "id": "atletico-alagoano",

@@ -21,8 +21,8 @@
 </g>
 </g>
 </g>
-<rect id="img_mandante" x="333" y="248" width="585" height="585" fill="url(#pattern0_1_2)"/>
-<rect id="img_visitante" x="1003" y="248" width="585" height="585" fill="url(#pattern1_1_2)"/>
+<rect id="img_escudo_mandante" x="333" y="248" width="585" height="585" fill="url(#pattern0_1_2)"/>
+<rect id="img_escudo_visitante" x="1003" y="248" width="585" height="585" fill="url(#pattern1_1_2)"/>
 <rect id="img_rodada" x="710" y="908" width="500" height="90" fill="url(#pattern2_1_2)"/>
 </g>
 <defs>

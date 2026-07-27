@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   ArrowDown,
   ArrowUp,
+  Check,
   ClipboardList,
   Download,
   FileText,
@@ -16,6 +17,7 @@ import {
   Swords,
   Trophy,
   Upload,
+  X,
 } from "lucide-react";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -57,6 +59,7 @@ import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities }
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 
 const ALL = "__all__";
+const INVALID_SCORE = Symbol("invalid-score");
 
 function formatPeriod(dates: Date[]): string {
   if (dates.length === 0) return "—";
@@ -86,6 +89,9 @@ export function CompetitionHub() {
   const [awayFilter, setAwayFilter] = useState(ALL);
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [search, setSearch] = useState("");
+  const [editingScoreRef, setEditingScoreRef] = useState<string | null>(null);
+  const [scoreDraft, setScoreDraft] = useState({ home: "", away: "" });
+  const [savingScore, setSavingScore] = useState(false);
 
   const competition = store.competitions.find((item) => item.id === id);
   const matches = useMemo(
@@ -242,6 +248,43 @@ export function CompetitionHub() {
     await handleTemplatesChange(next);
   }
 
+  function startEditScore(match: Match) {
+    setEditingScoreRef(buildGameRef(match));
+    setScoreDraft({ home: match.homeGoals?.toString() ?? "", away: match.awayGoals?.toString() ?? "" });
+  }
+
+  function cancelEditScore() {
+    setEditingScoreRef(null);
+  }
+
+  function parseScoreInput(value: string): number | null | typeof INVALID_SCORE {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 0) return INVALID_SCORE;
+    return parsed;
+  }
+
+  async function saveScore(match: Match) {
+    const homeGoals = parseScoreInput(scoreDraft.home);
+    const awayGoals = parseScoreInput(scoreDraft.away);
+    if (homeGoals === INVALID_SCORE || awayGoals === INVALID_SCORE) {
+      toast.error("Informe um placar válido (número inteiro ≥ 0) ou deixe em branco.");
+      return;
+    }
+
+    setSavingScore(true);
+    try {
+      await dataStore.updateMatch(buildGameRef(match), { homeGoals, awayGoals });
+      toast.success("Placar atualizado — classificação e tabela já refletem o novo resultado.");
+      setEditingScoreRef(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar o placar.");
+    } finally {
+      setSavingScore(false);
+    }
+  }
+
   async function handleArchiveToggle() {
     if (!competition) return;
     try {
@@ -282,7 +325,7 @@ export function CompetitionHub() {
   }));
   const stadiumOptions: StadiumOption[] = store.stadiums.map((stadium) => {
     const cityName = store.citiesById.get(stadium.cityId)?.name ?? "";
-    return { value: stadium.id, label: `${stadium.name} — ${cityName}`, cityName };
+    return { value: stadium.id, label: `${stadium.name} — ${cityName}`, cityName, cityId: stadium.cityId };
   });
 
   return (
@@ -443,15 +486,39 @@ export function CompetitionHub() {
                   const home = store.clubsById.get(match.homeClubId);
                   const away = store.clubsById.get(match.awayClubId);
                   const finished = match.homeGoals !== null && match.awayGoals !== null;
+                  const gameRef = buildGameRef(match);
+                  const isEditingScore = editingScoreRef === gameRef;
                   return (
                     <div key={index} className="flex flex-wrap items-center gap-4 p-3">
                       <span className="w-16 shrink-0 text-xs text-foreground-muted">{match.round || "—"}</span>
                       <div className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-foreground">
                         <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 object-contain" />
                         <span>{home?.shortName ?? match.homeClubId}</span>
-                        <span className="text-foreground-muted">
-                          {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
-                        </span>
+                        {isEditingScore ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={scoreDraft.home}
+                              onChange={(event) => setScoreDraft((current) => ({ ...current, home: event.target.value }))}
+                              className="h-8 w-14 px-2 text-center"
+                              placeholder="-"
+                            />
+                            <span className="text-foreground-muted">×</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={scoreDraft.away}
+                              onChange={(event) => setScoreDraft((current) => ({ ...current, away: event.target.value }))}
+                              className="h-8 w-14 px-2 text-center"
+                              placeholder="-"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-foreground-muted">
+                            {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
+                          </span>
+                        )}
                         <span>{away?.shortName ?? match.awayClubId}</span>
                         <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 object-contain" />
                       </div>
@@ -461,6 +528,32 @@ export function CompetitionHub() {
                       <Status tone={finished ? "success" : "neutral"} className="shrink-0">
                         {finished ? "Finalizado" : "Pendente"}
                       </Status>
+                      {isEditingScore ? (
+                        <>
+                          <IconButton
+                            aria-label="Salvar placar"
+                            title="Salvar placar"
+                            onClick={() => void saveScore(match)}
+                            disabled={savingScore}
+                          >
+                            {savingScore ? <Spinner /> : <Check size={16} />}
+                          </IconButton>
+                          <IconButton aria-label="Cancelar" title="Cancelar" onClick={cancelEditScore} disabled={savingScore}>
+                            <X size={16} />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => startEditScore(match)}
+                        >
+                          <Pencil size={14} />
+                          Editar placar
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="outline"

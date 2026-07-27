@@ -23,4 +23,9 @@ export class MatchFaftvRepository {
     const store = await getStore("matchFaftv", "readwrite");
     store.put(record);
   }
+
+  async remove(gameRef: string): Promise<void> {
+    const store = await getStore("matchFaftv", "readwrite");
+    store.delete(gameRef);
+  }
 }

@@ -24,6 +24,7 @@ export type ActivityAction =
   | "staff.restored"
   | "import.matches"
   | "import.playerStats"
+  | "match.updated"
   | "export.png"
   | "imt.generated"
   | "detailedTable.updated";

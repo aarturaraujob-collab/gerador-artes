@@ -141,6 +141,12 @@ export class AssetRepository {
     const dataUri = fetch(path)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Asset não encontrado: ${path}`);
+        // Some hosts (Vite's own dev server included) answer a missing static
+        // path with 200 + the SPA's index.html rather than a 404 — treating
+        // that as success would bake a corrupted "image" (actually HTML) into
+        // the art. Only a real image response counts as found.
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!contentType.startsWith("image/")) throw new Error(`Asset não é uma imagem: ${path}`);
         return toDataUri(await response.blob());
       })
       .catch((error: unknown) => {

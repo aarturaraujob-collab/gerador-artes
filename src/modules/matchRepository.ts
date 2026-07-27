@@ -27,6 +27,20 @@ export class MatchRepository {
   }
 
   /**
+   * Persists an edit to one match. `gameRef` is derived from round/date/time/
+   * clubs (see gameRef.ts), so changing any of those changes the stored key —
+   * delete the old key and insert the new one rather than leaving a stale
+   * duplicate behind.
+   */
+  async update(previous: Match, next: Match): Promise<void> {
+    const store = await getStore("matches", "readwrite");
+    const oldId = buildGameRef(previous);
+    const newId = buildGameRef(next);
+    if (oldId !== newId) store.delete(oldId);
+    store.put(toStored(next));
+  }
+
+  /**
    * Atomically replaces every match belonging to `competitionId` with
    * `records` — matches an import wholesale-replacing a competition's
    * schedule, not merging row by row. Same single-transaction pattern as

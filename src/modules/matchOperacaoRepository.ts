@@ -24,4 +24,9 @@ export class MatchOperacaoRepository {
     const store = await getStore("matchOperacao", "readwrite");
     store.put(record);
   }
+
+  async remove(gameRef: string): Promise<void> {
+    const store = await getStore("matchOperacao", "readwrite");
+    store.delete(gameRef);
+  }
 }

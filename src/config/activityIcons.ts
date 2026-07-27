@@ -1,4 +1,4 @@
-import { Download, FileText, History, Plus, RotateCcw, Table2, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { Download, FileText, History, Pencil, Plus, RotateCcw, Table2, Trash2, Upload, type LucideIcon } from "lucide-react";
 
 import type { ActivityAction } from "@/modules/activityLog";
 
@@ -25,6 +25,7 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "staff.restored": { icon: RotateCcw, tone: "text-success" },
   "import.matches": { icon: Upload, tone: "text-info" },
   "import.playerStats": { icon: Upload, tone: "text-info" },
+  "match.updated": { icon: Pencil, tone: "text-info" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },
   "detailedTable.updated": { icon: Table2, tone: "text-info" },

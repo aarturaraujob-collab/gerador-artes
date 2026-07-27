@@ -30,6 +30,22 @@ export interface TemplateConfig {
   variants: TemplateVariant[];
   /** Keyed by the base SVG id (without the `_2`, `_3`, ... slot suffix). */
   fields?: Record<string, TemplateFieldConfig>;
+  /**
+   * Per-variant overrides, merged over `fields` for that one field. A base id
+   * can mean very different things depending on the variant — e.g. a 1-game
+   * hero's centered, generously-spaced headline vs. the same id used as a
+   * compact list-row label in the 4-game variant — and `fields` alone can't
+   * express both. Keyed by `variant.games`.
+   */
+  variantFields?: Record<number, Record<string, TemplateFieldConfig>>;
+}
+
+/** Merges a field's base config with its variant-specific override, if either exists. `games` omitted (e.g. non-match templates like Standings) skips variantFields entirely. */
+export function resolveFieldConfig(config: TemplateConfig, baseId: string, games?: number): TemplateFieldConfig | undefined {
+  const base = config.fields?.[baseId];
+  const override = games !== undefined ? config.variantFields?.[games]?.[baseId] : undefined;
+  if (!base && !override) return undefined;
+  return { ...base, ...override };
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { TemplateConfig } from "@/engine/core/TemplateConfig";
+import { resolveFieldConfig, type TemplateConfig } from "@/engine/core/TemplateConfig";
 import type { SvgDocument } from "@/engine/document/SvgDocument";
 import { fitText } from "@/engine/document/fitText";
 import { applyAlignment } from "@/engine/layout/TextAlignmentEngine";
@@ -16,12 +16,16 @@ export function slotId(base: string, index: number): string {
  * post-fitText font-size. Templates that declare nothing keep the exact
  * raw-replace behavior; both steps are opt-in. Shared by every renderer that
  * fills a template's text slots.
+ *
+ * `games` scopes the field hint to one variant (e.g. a 1-game hero vs. a
+ * 4-game list row reusing the same base id) via `config.variantFields`.
+ * Omitted for templates with no such axis (e.g. Standings).
  */
-export function applyTextField(document: SvgDocument, config: TemplateConfig, baseId: string, index: number, value: string): void {
+export function applyTextField(document: SvgDocument, config: TemplateConfig, baseId: string, index: number, value: string, games?: number): void {
   const id = slotId(baseId, index);
   document.setText(id, value);
 
-  const field = config.fields?.[baseId];
+  const field = resolveFieldConfig(config, baseId, games);
   if (!field) return;
 
   const node = document.getNode(id);

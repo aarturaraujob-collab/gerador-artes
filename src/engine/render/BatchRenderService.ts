@@ -64,23 +64,42 @@ export class BatchRenderService {
     if (matches.length === 0) return [];
 
     const config = await this.templates.load(template);
-    const batches = TemplateLayoutResolver.resolve(variantSizes(config, format), matches.length);
+    const sizes = variantSizes(config, format);
+
+    // Group by competition first, in order of first appearance — a template's
+    // shared assets (competition logo/background/round image, applied once per
+    // art from the batch's first match — see MatchTemplateRenderer.applySharedAssets)
+    // only make sense when every match in that art belongs to the same
+    // competition. Slicing the flat selection by size alone (the previous
+    // behavior) could mix competitions into one art whenever the user selected
+    // matches from more than one competition, showing the wrong badge for
+    // every match after the first.
+    const byCompetition = new Map<string, Match[]>();
+    for (const match of matches) {
+      const group = byCompetition.get(match.competitionId);
+      if (group) group.push(match);
+      else byCompetition.set(match.competitionId, [match]);
+    }
 
     const results: RenderResult[] = [];
-    let cursor = 0;
 
-    for (const size of batches) {
-      const group = matches.slice(cursor, cursor + size);
-      cursor += group.length;
-      if (group.length === 0) break;
+    for (const competitionMatches of byCompetition.values()) {
+      const batches = TemplateLayoutResolver.resolve(sizes, competitionMatches.length);
+      let cursor = 0;
 
-      const svg = await this.renderer.render(template, group, format);
-      results.push({
-        index: results.length + 1,
-        svg,
-        matches: [...group],
-        ...readSvgDimensions(svg),
-      });
+      for (const size of batches) {
+        const group = competitionMatches.slice(cursor, cursor + size);
+        cursor += group.length;
+        if (group.length === 0) break;
+
+        const svg = await this.renderer.render(template, group, format);
+        results.push({
+          index: results.length + 1,
+          svg,
+          matches: [...group],
+          ...readSvgDimensions(svg),
+        });
+      }
     }
 
     return results;
