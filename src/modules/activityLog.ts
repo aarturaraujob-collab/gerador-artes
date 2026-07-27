@@ -23,6 +23,7 @@ export type ActivityAction =
   | "staff.deleted"
   | "staff.restored"
   | "import.matches"
+  | "import.playerStats"
   | "export.png"
   | "imt.generated"
   | "detailedTable.updated";

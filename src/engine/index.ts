@@ -4,6 +4,7 @@ import { BatchRenderService } from "@/engine/render/BatchRenderService";
 import { MatchTemplateRenderer } from "@/engine/render/MatchTemplateRenderer";
 import { StandingsTemplateRenderer } from "@/engine/render/StandingsTemplateRenderer";
 import { SpreadsheetImporter } from "@/engine/import/SpreadsheetImporter";
+import { PlayerStatsImporter } from "@/engine/import/PlayerStatsImporter";
 import { dataStore } from "@/modules/dataStore";
 
 // Compose the engine once, bound to the single data store. Everything visual —
@@ -17,6 +18,7 @@ export const standingsTemplateRenderer = new StandingsTemplateRenderer(dataStore
 export const templateResolver = templates;
 export const assetRepository = assets;
 export const spreadsheetImporter = new SpreadsheetImporter(dataStore);
+export const playerStatsImporter = new PlayerStatsImporter();
 
 export { readSvgDimensions } from "@/engine/render/BatchRenderService";
 export type { RenderResult } from "@/engine/render/BatchRenderService";

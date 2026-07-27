@@ -17,6 +17,7 @@ import { CityForm } from "@/pages/settings/CityForm";
 import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
 import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
 import { MatchPage } from "@/pages/matches/MatchPage";
+import { FafLabDashboard } from "@/pages/faflab/FafLabDashboard";
 import { AssetsPage } from "@/pages/settings/AssetsPage";
 import { ConfiguracoesPage } from "@/pages/settings/ConfiguracoesPage";
 import { TrashPage } from "@/pages/settings/TrashPage";
@@ -38,6 +39,10 @@ export default function App() {
       {/* Compatibilidade temporária */}
       <Route path="/templates" component={Templates} />
       <Route path="/templates/:folder" component={TemplateCollection} />
+
+      {/* FAF Lab */}
+      <Route path="/faf-lab" component={FafLabDashboard} />
+      <Route path="/faf-lab/:competitionId" component={FafLabDashboard} />
 
       {/* Cadastros */}
       <Route

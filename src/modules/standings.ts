@@ -31,7 +31,7 @@ export interface CompetitionStats {
   topScorers: { clubId: string; goals: number }[];
 }
 
-function isFinished(match: Match): boolean {
+export function isFinished(match: Match): boolean {
   return match.homeGoals !== null && match.awayGoals !== null;
 }
 

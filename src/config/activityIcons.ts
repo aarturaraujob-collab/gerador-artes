@@ -24,6 +24,7 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "staff.deleted": { icon: Trash2, tone: "text-danger" },
   "staff.restored": { icon: RotateCcw, tone: "text-success" },
   "import.matches": { icon: Upload, tone: "text-info" },
+  "import.playerStats": { icon: Upload, tone: "text-info" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },
   "detailedTable.updated": { icon: Table2, tone: "text-info" },
