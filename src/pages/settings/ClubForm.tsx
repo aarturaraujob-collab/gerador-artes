@@ -85,7 +85,11 @@ export function ClubForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
+    // Clubes agora vêm do Supabase (Fase 1 da migração) — carregam
+    // assincronamente, então esse efeito precisa reagir a `store.clubs`
+    // preenchendo depois do primeiro render, não só na chegada da rota.
+    // `loaded` no guard acima garante que só aplicamos uma vez.
     const existing = store.clubs.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -100,8 +104,7 @@ export function ClubForm() {
       });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.clubs]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -159,7 +162,13 @@ export function ClubForm() {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Clube não encontrado.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Clube não encontrado.</p>
+          )}
         </div>
       </AppShell>
     );

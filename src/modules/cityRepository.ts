@@ -1,4 +1,4 @@
-import { getStore, promisify } from "./db";
+import { supabase } from "@/lib/supabaseClient";
 
 export interface City {
   id: string;
@@ -9,30 +9,47 @@ export interface City {
   deletedAt?: number | null;
 }
 
-/** Persists city records in IndexedDB, seeded once from tables/cities.ts. */
+interface CityRow {
+  id: string;
+  name: string;
+  state: string | null;
+  deleted_at: string | null;
+}
+
+function fromRow(row: CityRow): City {
+  return {
+    id: row.id,
+    name: row.name,
+    state: row.state ?? undefined,
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
+  };
+}
+
+function toRow(city: City): CityRow {
+  return {
+    id: city.id,
+    name: city.name,
+    state: city.state ?? null,
+    deleted_at: city.deletedAt ? new Date(city.deletedAt).toISOString() : null,
+  };
+}
+
+/** Persists city records in Supabase (Postgres table "cities", RLS: any authenticated user). */
 export class CityRepository {
   async list(): Promise<City[]> {
-    const store = await getStore("cities", "readonly");
-    return promisify(store.getAll());
-  }
-
-  async seedIfEmpty(seed: readonly City[]): Promise<City[]> {
-    const existing = await this.list();
-    if (existing.length > 0) return existing;
-
-    const store = await getStore("cities", "readwrite");
-    for (const record of seed) store.put(record);
-    return [...seed];
+    const { data, error } = await supabase.from("cities").select("*");
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   async upsert(record: City): Promise<void> {
-    const store = await getStore("cities", "readwrite");
-    store.put(record);
+    const { error } = await supabase.from("cities").upsert(toRow(record));
+    if (error) throw error;
   }
 
   async remove(id: string): Promise<void> {
-    const store = await getStore("cities", "readwrite");
-    store.delete(id);
+    const { error } = await supabase.from("cities").delete().eq("id", id);
+    if (error) throw error;
   }
 }
 

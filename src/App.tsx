@@ -1,5 +1,9 @@
+import type { ReactNode } from "react";
 import { Route, Switch } from "wouter";
 
+import { Spinner } from "@/components/ui/spinner";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { LoginPage } from "@/pages/auth/LoginPage";
 import { Home } from "@/pages/dashboard/Home";
 
 import { Templates } from "@/pages/templates/Templates";
@@ -25,74 +29,80 @@ import { HistoryPage } from "@/pages/settings/HistoryPage";
 
 import NotFound from "@/pages/NotFound";
 
+/** Gate everything behind a Supabase Auth session (Fase 1 da migração — contas individuais). */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuthSession();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!session) return <LoginPage />;
+
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
-    <Switch>
+    <RequireAuth>
+      <Switch>
+        {/* Dashboard */}
+        <Route path="/" component={Home} />
 
-      {/* Dashboard */}
-      <Route path="/" component={Home} />
+        {/* Artes */}
+        <Route path="/artes" component={Templates} />
+        <Route path="/artes/:folder" component={TemplateCollection} />
 
-      {/* Artes */}
-      <Route path="/artes" component={Templates} />
-      <Route path="/artes/:folder" component={TemplateCollection} />
+        {/* Compatibilidade temporária */}
+        <Route path="/templates" component={Templates} />
+        <Route path="/templates/:folder" component={TemplateCollection} />
 
-      {/* Compatibilidade temporária */}
-      <Route path="/templates" component={Templates} />
-      <Route path="/templates/:folder" component={TemplateCollection} />
+        {/* FAF Lab */}
+        <Route path="/faf-lab" component={FafLabDashboard} />
+        <Route path="/faf-lab/:competitionId" component={FafLabDashboard} />
 
-      {/* FAF Lab */}
-      <Route path="/faf-lab" component={FafLabDashboard} />
-      <Route path="/faf-lab/:competitionId" component={FafLabDashboard} />
+        {/* Cadastros */}
+        <Route path="/cadastros/competicoes" component={CompetitionsPage} />
 
-      {/* Cadastros */}
-      <Route
-        path="/cadastros/competicoes"
-        component={CompetitionsPage}
-      />
+        <Route path="/cadastros/competicoes/nova" component={CompetitionWizard} />
 
-      <Route
-        path="/cadastros/competicoes/nova"
-        component={CompetitionWizard}
-      />
+        <Route path="/cadastros/competicoes/:id/editar" component={CompetitionWizard} />
 
-      <Route
-        path="/cadastros/competicoes/:id/editar"
-        component={CompetitionWizard}
-      />
+        <Route path="/cadastros/competicoes/:id" component={CompetitionHub} />
 
-      <Route path="/cadastros/competicoes/:id" component={CompetitionHub} />
+        <Route path="/cadastros/competicoes/:competitionId/jogos/:matchParam" component={MatchPage} />
 
-      <Route
-        path="/cadastros/competicoes/:competitionId/jogos/:matchParam"
-        component={MatchPage}
-      />
+        <Route path="/cadastros/clubes" component={ClubsPage} />
+        <Route path="/cadastros/clubes/novo" component={ClubForm} />
+        <Route path="/cadastros/clubes/:id/editar" component={ClubForm} />
 
-      <Route path="/cadastros/clubes" component={ClubsPage} />
-      <Route path="/cadastros/clubes/novo" component={ClubForm} />
-      <Route path="/cadastros/clubes/:id/editar" component={ClubForm} />
+        <Route path="/cadastros/estadios" component={StadiumsPage} />
+        <Route path="/cadastros/estadios/novo" component={StadiumForm} />
+        <Route path="/cadastros/estadios/:id/editar" component={StadiumForm} />
 
-      <Route path="/cadastros/estadios" component={StadiumsPage} />
-      <Route path="/cadastros/estadios/novo" component={StadiumForm} />
-      <Route path="/cadastros/estadios/:id/editar" component={StadiumForm} />
+        <Route path="/cadastros/cidades" component={CitiesPage} />
+        <Route path="/cadastros/cidades/novo" component={CityForm} />
+        <Route path="/cadastros/cidades/:id/editar" component={CityForm} />
 
-      <Route path="/cadastros/cidades" component={CitiesPage} />
-      <Route path="/cadastros/cidades/novo" component={CityForm} />
-      <Route path="/cadastros/cidades/:id/editar" component={CityForm} />
+        <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
+        <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
+        <Route path="/cadastros/faftv/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
 
-      <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
-      <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
-      <Route path="/cadastros/faftv/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
+        <Route path="/cadastros/oficiais-dco" component={() => <OperationalStaffPage area="DCO" />} />
+        <Route path="/cadastros/oficiais-dco/novo" component={() => <OperationalStaffForm area="DCO" />} />
+        <Route path="/cadastros/oficiais-dco/:id/editar" component={() => <OperationalStaffForm area="DCO" />} />
 
-      <Route path="/cadastros/oficiais-dco" component={() => <OperationalStaffPage area="DCO" />} />
-      <Route path="/cadastros/oficiais-dco/novo" component={() => <OperationalStaffForm area="DCO" />} />
-      <Route path="/cadastros/oficiais-dco/:id/editar" component={() => <OperationalStaffForm area="DCO" />} />
+        <Route path="/assets" component={AssetsPage} />
+        <Route path="/configuracoes" component={ConfiguracoesPage} />
+        <Route path="/lixeira" component={TrashPage} />
+        <Route path="/historico" component={HistoryPage} />
 
-      <Route path="/assets" component={AssetsPage} />
-      <Route path="/configuracoes" component={ConfiguracoesPage} />
-      <Route path="/lixeira" component={TrashPage} />
-      <Route path="/historico" component={HistoryPage} />
-
-      <Route component={NotFound} />
-    </Switch>
+        <Route component={NotFound} />
+      </Switch>
+    </RequireAuth>
   );
 }

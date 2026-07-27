@@ -47,7 +47,11 @@ export function StadiumForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
+    // Estádios agora vêm do Supabase (Fase 1 da migração) — carregam
+    // assincronamente, então esse efeito precisa reagir a `store.stadiums`
+    // preenchendo depois do primeiro render. `loaded` no guard acima garante
+    // que só aplicamos uma vez.
     const existing = store.stadiums.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -59,8 +63,7 @@ export function StadiumForm() {
       });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.stadiums]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -113,7 +116,13 @@ export function StadiumForm() {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Estádio não encontrado.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Estádio não encontrado.</p>
+          )}
         </div>
       </AppShell>
     );
