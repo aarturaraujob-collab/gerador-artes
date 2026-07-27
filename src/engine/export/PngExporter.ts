@@ -15,28 +15,29 @@ export async function exportToPng(
 
   document.body.appendChild(div);
 
-  const svg = div.querySelector("svg");
+  try {
+    const svg = div.querySelector("svg");
 
-  if (!svg) {
+    if (!svg) {
+      throw new Error("SVG não encontrado");
+    }
+
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+
+    await document.fonts.ready;
+
+    const png = await svgAsPngUri(svg, {
+      scale: 1,
+      encoderOptions: 1,
+      backgroundColor: "transparent",
+    });
+
+    const a = document.createElement("a");
+    a.href = png;
+    a.download = filename;
+    a.click();
+  } finally {
     document.body.removeChild(div);
-    throw new Error("SVG não encontrado");
   }
-
-  svg.setAttribute("width", String(width));
-  svg.setAttribute("height", String(height));
-
-  await document.fonts.ready;
-
-  const png = await svgAsPngUri(svg, {
-    scale: 1,
-    encoderOptions: 1,
-    backgroundColor: "transparent",
-  });
-
-  document.body.removeChild(div);
-
-  const a = document.createElement("a");
-  a.href = png;
-  a.download = filename;
-  a.click();
 }

@@ -169,12 +169,16 @@ export function CompetitionWizard() {
   }
 
   function canAdvanceFromStep1(): boolean {
-    return form.id.trim().length > 0 && form.name.trim().length > 0;
+    return form.name.trim().length > 0 && /^[A-Za-z0-9_-]+$/.test(form.id.trim());
   }
 
   function goNext() {
     if (step === 1 && !canAdvanceFromStep1()) {
-      toast.error("Preencha ao menos Nome e ID para continuar.");
+      toast.error(
+        form.id.trim().length === 0
+          ? "Preencha ao menos Nome e ID para continuar."
+          : "O ID deve conter apenas letras, números, hífen ou underscore.",
+      );
       return;
     }
     setStep((current) => Math.min(5, current + 1));
