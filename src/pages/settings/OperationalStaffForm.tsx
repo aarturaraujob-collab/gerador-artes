@@ -18,7 +18,9 @@ interface OperationalStaffFormProps {
 }
 
 function basePath(area: StaffArea): string {
-  return area === "FAFTV" ? "/cadastros/faftv" : "/cadastros/oficiais-dco";
+  if (area === "FAFTV") return "/cadastros/faftv";
+  if (area === "DCO") return "/cadastros/oficiais-dco";
+  return "/cadastros/arbitros";
 }
 
 interface FormState {

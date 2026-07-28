@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Download,
   FileText,
+  Flag,
   ImageDown,
   Pencil,
   Search,
@@ -51,6 +52,12 @@ import type { TemplateFormat } from "@/engine/core/TemplateConfig";
 import { exportToPng } from "@/engine/export/PngExporter";
 import { useFavoriteTemplates } from "@/hooks/useFavoriteTemplates";
 import { toggleFavoriteTemplate } from "@/modules/templateFavorites";
+import {
+  STANDINGS_HIGHLIGHT_OPTIONS,
+  getStandingsHighlightCount,
+  setStandingsHighlightCount,
+  type StandingsHighlightCount,
+} from "@/modules/standingsHighlightPreference";
 import { logActivity } from "@/modules/activityLog";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
@@ -82,6 +89,7 @@ export function CompetitionHub() {
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
   const [standingsFormat, setStandingsFormat] = useState<TemplateFormat>("feed");
+  const [standingsHighlightCount, setStandingsHighlightCountState] = useState<StandingsHighlightCount>(getStandingsHighlightCount);
   const [generatingStandings, setGeneratingStandings] = useState(false);
 
   const [selectedRound, setSelectedRound] = useState<string | null>(null);
@@ -204,7 +212,7 @@ export function CompetitionHub() {
     if (!competition) return;
     setGeneratingStandings(true);
     try {
-      const svg = await standingsTemplateRenderer.render("classificacao", competition.id, standingsFormat);
+      const svg = await standingsTemplateRenderer.render("classificacao", competition.id, standingsFormat, standingsHighlightCount);
       const { width, height } = readSvgDimensions(svg);
       await exportToPng(svg, width, height, `classificacao-${competition.id}-${standingsFormat}.png`);
       logActivity("export.png", `Classificação exportada para "${competition.name}".`);
@@ -377,6 +385,10 @@ export function CompetitionHub() {
             <Button variant="success" onClick={handleExport}>
               <Download size={16} />
               Exportar
+            </Button>
+            <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/escala-oficiais`)}>
+              <Flag size={16} />
+              Escala de Oficiais
             </Button>
             <Button variant="outline" onClick={() => void handleArchiveToggle()}>
               {competition.active ? <Archive size={16} /> : <ArchiveRestore size={16} />}
@@ -587,9 +599,9 @@ export function CompetitionHub() {
             {standings.length === 0 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>Sem jogos finalizados</EmptyTitle>
+                  <EmptyTitle>Sem jogos cadastrados</EmptyTitle>
                   <EmptyDescription>
-                    A classificação é calculada automaticamente assim que houver jogos com placar lançado.
+                    A classificação lista os clubes assim que houver jogos importados — os pontos e o saldo se atualizam conforme os placares forem lançados.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -601,6 +613,21 @@ export function CompetitionHub() {
                     <SelectContent>
                       <SelectItem value="feed">Feed</SelectItem>
                       <SelectItem value="story">Story</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(standingsHighlightCount)}
+                    onValueChange={(value) => {
+                      const count = Number(value) as StandingsHighlightCount;
+                      setStandingsHighlightCountState(count);
+                      setStandingsHighlightCount(count);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 w-44"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STANDINGS_HIGHLIGHT_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={String(option)}>{option} classificados em destaque</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button type="button" onClick={() => void handleGenerateStandings()} disabled={generatingStandings}>
@@ -943,6 +970,7 @@ export function CompetitionHub() {
           season={String(competition.season)}
           round={imtMatch.round}
           gameRef={buildGameRef(imtMatch)}
+          matchRef={imtMatch.ref}
           homeClubName={clubDisplayName(imtMatch.homeClubId, store.clubsById)}
           awayClubName={clubDisplayName(imtMatch.awayClubId, store.clubsById)}
           currentDate={imtMatch.date}

@@ -73,3 +73,26 @@ export function computeOperacaoStatus(record: OperacaoStatusInput): OperacaoStat
   const checklistComplete = OPERACAO_CHECKLIST_ITEMS.every((item) => record.checklist[item.id]);
   return rolesAssigned && checklistComplete ? "pronto" : "em_preparacao";
 }
+
+export type ArbitragemStatus = "pendente" | "parcial" | "completo";
+
+interface ArbitragemStatusInput {
+  arbitroStaffId: string | null;
+  primeiroAssistenteStaffId: string | null;
+  segundoAssistenteStaffId: string | null;
+  delegadoStaffId: string | null;
+}
+
+/** Observador e 4º Árbitro são opcionais — o núcleo obrigatório de uma escala é árbitro + 2 assistentes + delegado. */
+export function computeArbitragemStatus(record: ArbitragemStatusInput): ArbitragemStatus {
+  const roles = [
+    record.arbitroStaffId,
+    record.primeiroAssistenteStaffId,
+    record.segundoAssistenteStaffId,
+    record.delegadoStaffId,
+  ];
+  const filled = roles.filter((value) => value !== null).length;
+  if (filled === 0) return "pendente";
+  if (filled === roles.length) return "completo";
+  return "parcial";
+}

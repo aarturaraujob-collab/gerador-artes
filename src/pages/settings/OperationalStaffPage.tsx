@@ -27,11 +27,21 @@ interface OperationalStaffPageProps {
 }
 
 function basePath(area: StaffArea): string {
-  return area === "FAFTV" ? "/cadastros/faftv" : "/cadastros/oficiais-dco";
+  if (area === "FAFTV") return "/cadastros/faftv";
+  if (area === "DCO") return "/cadastros/oficiais-dco";
+  return "/cadastros/arbitros";
 }
 
 function pageTitle(area: StaffArea): string {
-  return area === "FAFTV" ? "FAFTV" : "Oficiais DCO";
+  if (area === "FAFTV") return "FAFTV";
+  if (area === "DCO") return "Oficiais DCO";
+  return "Árbitros";
+}
+
+function pageDescription(area: StaffArea): string {
+  if (area === "FAFTV") return "Cadastro de equipe de transmissão, reutilizado em todas as partidas.";
+  if (area === "DCO") return "Cadastro de equipe de operação (DCO/Oficiais), reutilizado em todas as partidas.";
+  return "Cadastro de árbitros, assistentes, delegados e observadores, reutilizado na escala de oficiais de cada partida.";
 }
 
 export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
@@ -58,11 +68,7 @@ export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
           title={pageTitle(area)}
-          description={
-            area === "FAFTV"
-              ? "Cadastro de equipe de transmissão, reutilizado em todas as partidas."
-              : "Cadastro de equipe de operação (DCO/Oficiais), reutilizado em todas as partidas."
-          }
+          description={pageDescription(area)}
           actions={
             <Button onClick={() => navigate(`${base}/novo`)}>
               <Plus size={16} />

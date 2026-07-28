@@ -49,6 +49,8 @@ export interface GenerateIMTDialogProps {
   season: string;
   round: string;
   gameRef: string;
+  /** External match reference (the REF column from the official schedule), if known. */
+  matchRef?: string | null;
   homeClubName: string;
   awayClubName: string;
   currentDate: string;
@@ -99,6 +101,7 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
     season,
     round,
     gameRef,
+    matchRef,
     homeClubName,
     awayClubName,
     currentDate,
@@ -167,13 +170,13 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
             competitionName,
             season,
             number: previewNumber,
+            matchRef,
             homeClubName,
             awayClubName,
             oldGame: { date: currentDate, time: currentTime, stadiumName: currentStadiumName, cityName: currentCityName },
             newGame: { date: form.newDate, time: form.newTime, stadiumName: newStadiumName, cityName: newCityName },
             requester: form.requester,
             reason: form.reason,
-            responsible: form.responsible,
             createdAt: previewCreatedAt,
           }),
         )
@@ -190,6 +193,7 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
         competitionId,
         competitionName,
         gameRef,
+        matchRef,
         homeClubName,
         awayClubName,
         round,

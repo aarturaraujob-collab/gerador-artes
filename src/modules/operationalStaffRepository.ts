@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 
-export type StaffArea = "FAFTV" | "DCO";
+export type StaffArea = "FAFTV" | "DCO" | "Arbitragem";
 
 export const FAFTV_ROLES = [
   "Coordenador",
@@ -14,11 +14,23 @@ export const FAFTV_ROLES = [
 
 export const DCO_ROLES = ["Delegado", "Supervisor", "Fiscal", "Controle de Acesso"] as const;
 
+export const ARBITRAGEM_ROLES = [
+  "Árbitro",
+  "1º Assistente",
+  "2º Assistente",
+  "4º Árbitro",
+  "Delegado",
+  "Observador",
+] as const;
+
 export type FaftvRole = (typeof FAFTV_ROLES)[number];
 export type DcoRole = (typeof DCO_ROLES)[number];
+export type ArbitragemRole = (typeof ARBITRAGEM_ROLES)[number];
 
 export function rolesForArea(area: StaffArea): readonly string[] {
-  return area === "FAFTV" ? FAFTV_ROLES : DCO_ROLES;
+  if (area === "FAFTV") return FAFTV_ROLES;
+  if (area === "DCO") return DCO_ROLES;
+  return ARBITRAGEM_ROLES;
 }
 
 export interface OperationalStaff {

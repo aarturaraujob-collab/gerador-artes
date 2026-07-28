@@ -1,4 +1,5 @@
 import type { Match } from "./dataStore";
+import { isPlaceholderClubId } from "./clubDisplay";
 
 export interface StandingsRow {
   clubId: string;
@@ -35,7 +36,13 @@ export function isFinished(match: Match): boolean {
   return match.homeGoals !== null && match.awayGoals !== null;
 }
 
-/** Classificação (P/J/V/E/D/GP/GC/SG/PTS), considerando apenas jogos com placar lançado. */
+/**
+ * Classificação (P/J/V/E/D/GP/GC/SG/PTS). Toda equipe real escalada em algum
+ * jogo da competição aparece, mesmo com 0 partidas disputadas — só as
+ * estatísticas (V/E/D/GP/GC/PTS) vêm exclusivamente de jogos com placar
+ * lançado; vagas de mata-mata ainda não definidas ("1º Colocado" etc.) nunca
+ * entram na tabela.
+ */
 export function calculateStandings(matches: readonly Match[]): StandingsRow[] {
   const rows = new Map<string, StandingsRow>();
 
@@ -46,6 +53,15 @@ export function calculateStandings(matches: readonly Match[]): StandingsRow[] {
       rows.set(clubId, row);
     }
     return row;
+  }
+
+  // Every real (non-placeholder) club scheduled in the competition gets a row
+  // from the start, at 0 games — not just clubs that already have a finished
+  // match. TBD knockout slots ("1º Colocado" etc.) never get a row: they're
+  // not real clubs, and their fixtures have no result to rank by anyway.
+  for (const match of matches) {
+    if (!isPlaceholderClubId(match.homeClubId)) ensure(match.homeClubId);
+    if (!isPlaceholderClubId(match.awayClubId)) ensure(match.awayClubId);
   }
 
   for (const match of matches) {

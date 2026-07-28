@@ -184,6 +184,19 @@ create table if not exists match_operations_history (
   timestamp timestamptz not null default now()
 );
 
+create table if not exists match_arbitragem (
+  id text primary key references matches(id),
+  game_ref text not null,
+  arbitro_staff_id text references operational_staff(id),
+  primeiro_assistente_staff_id text references operational_staff(id),
+  segundo_assistente_staff_id text references operational_staff(id),
+  quarto_arbitro_staff_id text references operational_staff(id),
+  delegado_staff_id text references operational_staff(id),
+  observador_staff_id text references operational_staff(id),
+  status text not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists player_competition_stats (
   id text primary key,
   competition_id text references competitions(id),
@@ -256,6 +269,7 @@ alter table operational_staff enable row level security;
 alter table match_faftv enable row level security;
 alter table match_operacao enable row level security;
 alter table match_operations_history enable row level security;
+alter table match_arbitragem enable row level security;
 alter table player_competition_stats enable row level security;
 alter table lab_notes enable row level security;
 alter table backgrounds enable row level security;
@@ -286,6 +300,10 @@ drop policy if exists "authenticated full access" on match_operations_history;
 create policy "authenticated full access" on match_operations_history
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists "authenticated full access" on match_arbitragem;
+create policy "authenticated full access" on match_arbitragem
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
 drop policy if exists "authenticated full access" on player_competition_stats;
 create policy "authenticated full access" on player_competition_stats
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
@@ -312,6 +330,7 @@ grant select, insert, update, delete on public.operational_staff to authenticate
 grant select, insert, update, delete on public.match_faftv to authenticated;
 grant select, insert, update, delete on public.match_operacao to authenticated;
 grant select, insert, update, delete on public.match_operations_history to authenticated;
+grant select, insert, update, delete on public.match_arbitragem to authenticated;
 grant select, insert, update, delete on public.player_competition_stats to authenticated;
 grant select, insert, update, delete on public.lab_notes to authenticated;
 grant select, insert, update, delete on public.backgrounds to authenticated;

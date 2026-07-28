@@ -21,6 +21,7 @@ import { CityForm } from "@/pages/settings/CityForm";
 import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
 import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
 import { MatchPage } from "@/pages/matches/MatchPage";
+import { EscalaOficiaisPage } from "@/pages/settings/EscalaOficiaisPage";
 import { FafLabDashboard } from "@/pages/faflab/FafLabDashboard";
 import { AssetsPage } from "@/pages/settings/AssetsPage";
 import { ConfiguracoesPage } from "@/pages/settings/ConfiguracoesPage";
@@ -76,6 +77,8 @@ export default function App() {
 
         <Route path="/cadastros/competicoes/:competitionId/jogos/:matchParam" component={MatchPage} />
 
+        <Route path="/cadastros/competicoes/:id/escala-oficiais" component={EscalaOficiaisPage} />
+
         <Route path="/cadastros/clubes" component={ClubsPage} />
         <Route path="/cadastros/clubes/novo" component={ClubForm} />
         <Route path="/cadastros/clubes/:id/editar" component={ClubForm} />
@@ -95,6 +98,10 @@ export default function App() {
         <Route path="/cadastros/oficiais-dco" component={() => <OperationalStaffPage area="DCO" />} />
         <Route path="/cadastros/oficiais-dco/novo" component={() => <OperationalStaffForm area="DCO" />} />
         <Route path="/cadastros/oficiais-dco/:id/editar" component={() => <OperationalStaffForm area="DCO" />} />
+
+        <Route path="/cadastros/arbitros" component={() => <OperationalStaffPage area="Arbitragem" />} />
+        <Route path="/cadastros/arbitros/novo" component={() => <OperationalStaffForm area="Arbitragem" />} />
+        <Route path="/cadastros/arbitros/:id/editar" component={() => <OperationalStaffForm area="Arbitragem" />} />
 
         <Route path="/assets" component={AssetsPage} />
         <Route path="/configuracoes" component={ConfiguracoesPage} />

@@ -12,6 +12,12 @@ function formatSigned(value: number): string {
   return value > 0 ? `+${value}` : String(value);
 }
 
+/** Highlight palette for a standings row — solid gray background with white text when in the destaque group, subtle tint with dark text otherwise. */
+const ROW_COLORS = {
+  highlighted: { rect: "1", primary: "white", secondary: "#D4D4D8" },
+  normal: { rect: "0.08", primary: "#17171C", secondary: "#4A4A55", pts: "#52525B" },
+} as const;
+
 /**
  * Label of the most recent round with at least one result, for the subtitle —
  * null if nothing's been played yet. Relies on `groupMatchesByRound`'s
@@ -41,7 +47,7 @@ export class StandingsTemplateRenderer {
     private readonly assets: AssetRepository,
   ) {}
 
-  async render(folder: string, competitionId: string, format?: TemplateFormat): Promise<string> {
+  async render(folder: string, competitionId: string, format?: TemplateFormat, highlightCount = 4): Promise<string> {
     const matches = this.store.matches.filter((match) => match.competitionId === competitionId);
     const standings = calculateStandings(matches);
     if (standings.length === 0) throw new Error("Nenhum jogo com placar lançado para calcular a classificação.");
@@ -54,7 +60,7 @@ export class StandingsTemplateRenderer {
     const document = new SvgDocument(svg);
 
     const rows = standings.slice(0, variant.games);
-    await Promise.all(rows.map((row, index) => this.applyRow(document, config, row, index)));
+    await Promise.all(rows.map((row, index) => this.applyRow(document, config, row, index, index < highlightCount)));
     for (let index = rows.length; index < variant.games; index += 1) {
       document.hide(`grp_pos_${index + 1}`);
     }
@@ -74,7 +80,13 @@ export class StandingsTemplateRenderer {
     return variant;
   }
 
-  private async applyRow(document: SvgDocument, config: TemplateConfig, row: StandingsRow, index: number): Promise<void> {
+  private async applyRow(
+    document: SvgDocument,
+    config: TemplateConfig,
+    row: StandingsRow,
+    index: number,
+    highlighted: boolean,
+  ): Promise<void> {
     const shield = await this.assets.getClubShieldDataUri(row.clubId);
 
     applyTextField(document, config, "txt_pos", index, String(index + 1));
@@ -86,6 +98,17 @@ export class StandingsTemplateRenderer {
     applyTextField(document, config, "txt_sg", index, formatSigned(row.goalDifference));
     applyTextField(document, config, "txt_pts", index, String(row.points));
     document.setImage(slotId("img_escudo", index), shield);
+
+    const colors = highlighted ? ROW_COLORS.highlighted : ROW_COLORS.normal;
+    document.setAttribute(slotId("rect_pos", index), "fill-opacity", colors.rect);
+    document.setAttribute(slotId("txt_pos", index), "fill", colors.primary);
+    document.setAttribute(slotId("txt_clube", index), "fill", colors.primary);
+    document.setAttribute(slotId("txt_j", index), "fill", colors.secondary);
+    document.setAttribute(slotId("txt_v", index), "fill", colors.primary);
+    document.setAttribute(slotId("txt_e", index), "fill", colors.secondary);
+    document.setAttribute(slotId("txt_d", index), "fill", colors.secondary);
+    document.setAttribute(slotId("txt_sg", index), "fill", colors.primary);
+    document.setAttribute(slotId("txt_pts", index), "fill", highlighted ? colors.primary : ROW_COLORS.normal.pts);
   }
 
   private applySubtitle(document: SvgDocument, competitionId: string, matches: readonly Match[]): void {
