@@ -1,4 +1,4 @@
-import { getStore, promisify } from "./db";
+import { supabase } from "@/lib/supabaseClient";
 
 export type StaffArea = "FAFTV" | "DCO";
 
@@ -36,20 +36,61 @@ export interface OperationalStaff {
   deletedAt?: number | null;
 }
 
-/** Persists operational staff (FAFTV + Oficiais DCO) in IndexedDB — one shared cadastro, reused across every match. */
+interface StaffRow {
+  id: string;
+  name: string;
+  photo: string | null;
+  cpf: string | null;
+  phone: string | null;
+  address: string | null;
+  role: string;
+  area: string;
+  deleted_at: string | null;
+}
+
+function fromRow(row: StaffRow): OperationalStaff {
+  return {
+    id: row.id,
+    name: row.name,
+    photo: row.photo ?? undefined,
+    cpf: row.cpf ?? undefined,
+    phone: row.phone ?? undefined,
+    address: row.address ?? undefined,
+    role: row.role,
+    area: row.area as StaffArea,
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
+  };
+}
+
+function toRow(staff: OperationalStaff): StaffRow {
+  return {
+    id: staff.id,
+    name: staff.name,
+    photo: staff.photo ?? null,
+    cpf: staff.cpf ?? null,
+    phone: staff.phone ?? null,
+    address: staff.address ?? null,
+    role: staff.role,
+    area: staff.area,
+    deleted_at: staff.deletedAt ? new Date(staff.deletedAt).toISOString() : null,
+  };
+}
+
+/** Persists operational staff (FAFTV + Oficiais DCO) in Supabase — one shared cadastro, reused across every match. */
 export class OperationalStaffRepository {
   async list(): Promise<OperationalStaff[]> {
-    const store = await getStore("operationalStaff", "readonly");
-    return promisify(store.getAll());
+    const { data, error } = await supabase.from("operational_staff").select("*");
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   async upsert(record: OperationalStaff): Promise<void> {
-    const store = await getStore("operationalStaff", "readwrite");
-    store.put(record);
+    const { error } = await supabase.from("operational_staff").upsert(toRow(record));
+    if (error) throw error;
   }
 
   async remove(id: string): Promise<void> {
-    const store = await getStore("operationalStaff", "readwrite");
-    store.delete(id);
+    const { error } = await supabase.from("operational_staff").delete().eq("id", id);
+    if (error) throw error;
   }
 }

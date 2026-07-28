@@ -136,7 +136,7 @@ export function CompetitionWizard() {
   }, []);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
     const existing = store.competitions.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -153,9 +153,8 @@ export function CompetitionWizard() {
       });
       setLoaded(true);
     }
-    // Only sync from the store once, on arrival — further edits are local until saved.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+    // Only sync from the store once it resolves — further edits are local until saved.
+  }, [isEditing, editingId, loaded, store.competitions]);
 
   const existingMatchCount = form.id ? store.matches.filter((match) => match.competitionId === form.id).length : 0;
   const seriesOptions = groupCompetitionsBySeries(store.competitions).map((group) => ({
@@ -281,7 +280,13 @@ export function CompetitionWizard() {
     return (
       <AppShell>
         <div className="mx-auto max-w-3xl">
-          <p className="text-sm text-foreground-muted">Competição não encontrada.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Competição não encontrada.</p>
+          )}
         </div>
       </AppShell>
     );

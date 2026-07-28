@@ -4,6 +4,7 @@ import type { TemplateConfig, TemplateFormat, TemplateVariant } from "@/engine/c
 import { SvgDocument } from "@/engine/document/SvgDocument";
 import { applyTextField, slotId } from "@/engine/render/templateFields";
 import type { DataStore, Match } from "@/modules/dataStore";
+import { clubDisplayName } from "@/modules/clubDisplay";
 import { groupMatchesByRound } from "@/modules/rounds";
 import { calculateStandings, type StandingsRow } from "@/modules/standings";
 
@@ -74,11 +75,10 @@ export class StandingsTemplateRenderer {
   }
 
   private async applyRow(document: SvgDocument, config: TemplateConfig, row: StandingsRow, index: number): Promise<void> {
-    const club = this.store.clubsById.get(row.clubId);
     const shield = await this.assets.getClubShieldDataUri(row.clubId);
 
     applyTextField(document, config, "txt_pos", index, String(index + 1));
-    applyTextField(document, config, "txt_clube", index, (club?.shortName ?? row.clubId).toUpperCase());
+    applyTextField(document, config, "txt_clube", index, clubDisplayName(row.clubId, this.store.clubsById).toUpperCase());
     applyTextField(document, config, "txt_j", index, String(row.played));
     applyTextField(document, config, "txt_v", index, String(row.wins));
     applyTextField(document, config, "txt_e", index, String(row.draws));

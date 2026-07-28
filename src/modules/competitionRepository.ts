@@ -1,12 +1,10 @@
 /**
  * Competitions are the one piece of registration data that must survive
  * reloads and be manageable entirely from the UI — no editing tables/*.ts,
- * no editing config.json, no dropping files by hand. IndexedDB is the
- * storage: it comfortably holds the Data URIs produced by asset uploads
- * (a few hundred KB to a few MB each), unlike localStorage's ~5-10MB cap.
+ * no editing config.json, no dropping files by hand.
  */
 
-import { getStore, promisify } from "./db";
+import { supabase } from "@/lib/supabaseClient";
 
 export interface BackgroundAssets {
   thumb: string;
@@ -41,7 +39,7 @@ export interface CompetitionRecord {
    * Setting it here always wins over the automatic suggestion.
    */
   status?: "A acontecer" | "Em andamento" | "Finalizada" | "Arquivada";
-  /** Soft-delete marker (ms epoch) — set by "Excluir" (moves to trash), cleared by "Restaurar". Never removed from IndexedDB until purged. */
+  /** Soft-delete marker (ms epoch) — set by "Excluir" (moves to trash), cleared by "Restaurar". Never removed until purged. */
   deletedAt?: number | null;
 }
 
@@ -78,8 +76,6 @@ export const OFFICIAL_COMPETITIONS_2026: CompetitionRecord[] = [
   active: true,
 }));
 
-// The two competitions with real, already-imported match data ship with the
-// backgrounds already on disk from an earlier sprint.
 const KNOWN_BACKGROUNDS: Record<string, string> = {
   ALAGOANO20A1: "bg_thumbnail_20a1.png",
   ALAGOANO20A2: "bg_thumbnail_20a2.png",
@@ -89,15 +85,64 @@ for (const competition of OFFICIAL_COMPETITIONS_2026) {
   if (thumb) competition.background = { ...emptyBackground(), thumb };
 }
 
-/**
- * Persists competition records in IndexedDB. This is the only place that
- * knows about the storage mechanism — everything else works with plain
- * CompetitionRecord objects.
- */
+interface CompetitionRow {
+  id: string;
+  series_id: string | null;
+  name: string;
+  season: number;
+  category: string | null;
+  gender: string | null;
+  age_group: string | null;
+  logo: string | null;
+  background: BackgroundAssets;
+  templates: string[];
+  active: boolean;
+  status: string | null;
+  deleted_at: string | null;
+}
+
+function fromRow(row: CompetitionRow): CompetitionRecord {
+  return {
+    id: row.id,
+    seriesId: row.series_id ?? undefined,
+    name: row.name,
+    season: row.season,
+    category: row.category ?? "",
+    gender: row.gender ?? "",
+    ageGroup: row.age_group ?? "",
+    logo: row.logo ?? "",
+    background: row.background ?? emptyBackground(),
+    templates: row.templates ?? [],
+    active: row.active,
+    status: (row.status as CompetitionRecord["status"]) ?? undefined,
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
+  };
+}
+
+function toRow(record: CompetitionRecord): CompetitionRow {
+  return {
+    id: record.id,
+    series_id: record.seriesId ?? null,
+    name: record.name,
+    season: record.season,
+    category: record.category || null,
+    gender: record.gender || null,
+    age_group: record.ageGroup || null,
+    logo: record.logo || null,
+    background: record.background,
+    templates: record.templates,
+    active: record.active,
+    status: record.status ?? null,
+    deleted_at: record.deletedAt ? new Date(record.deletedAt).toISOString() : null,
+  };
+}
+
+/** Persists competition records in Supabase (Postgres table "competitions", RLS: any authenticated user). */
 export class CompetitionRepository {
   async list(): Promise<CompetitionRecord[]> {
-    const store = await getStore("competitions", "readonly");
-    return promisify(store.getAll());
+    const { data, error } = await supabase.from("competitions").select("*");
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   /** Seeds the official calendar on first run. No-op if anything is already registered. */
@@ -105,18 +150,18 @@ export class CompetitionRepository {
     const existing = await this.list();
     if (existing.length > 0) return existing;
 
-    const store = await getStore("competitions", "readwrite");
-    for (const record of OFFICIAL_COMPETITIONS_2026) store.put(record);
+    const { error } = await supabase.from("competitions").insert(OFFICIAL_COMPETITIONS_2026.map(toRow));
+    if (error) throw error;
     return OFFICIAL_COMPETITIONS_2026;
   }
 
   async upsert(record: CompetitionRecord): Promise<void> {
-    const store = await getStore("competitions", "readwrite");
-    store.put(record);
+    const { error } = await supabase.from("competitions").upsert(toRow(record));
+    if (error) throw error;
   }
 
   async remove(id: string): Promise<void> {
-    const store = await getStore("competitions", "readwrite");
-    store.delete(id);
+    const { error } = await supabase.from("competitions").delete().eq("id", id);
+    if (error) throw error;
   }
 }

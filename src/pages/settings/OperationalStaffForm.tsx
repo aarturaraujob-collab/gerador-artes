@@ -66,7 +66,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
     const existing = store.staff.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -79,8 +79,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
       });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.staff]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -133,7 +132,13 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Registro não encontrado.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Registro não encontrado.</p>
+          )}
         </div>
       </AppShell>
     );

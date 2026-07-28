@@ -7,7 +7,13 @@ import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { Status } from "@/components/ui/status";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { templates as templateRegistry } from "@/templates/templates";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type CompetitionRecord, type Match } from "@/modules/dataStore";
-import { resolveCompetitionStatus, STATUS_TONE } from "@/modules/competitionStatus";
+import { resolveCompetitionStatus, COMPETITION_STATUSES, type CompetitionStatus } from "@/modules/competitionStatus";
 
 function templateNames(ids: string[]): string {
   if (ids.length === 0) return "—";
@@ -59,6 +65,17 @@ export function CompetitionsPage() {
       navigate(`/cadastros/competicoes/${newId}/editar`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao duplicar competição.");
+    }
+  }
+
+  async function handleStatusChange(competition: CompetitionRecord, value: string) {
+    try {
+      await dataStore.updateCompetition(competition.id, {
+        status: value === "auto" ? undefined : (value as CompetitionStatus),
+      });
+      toast.success("Status atualizado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar status.");
     }
   }
 
@@ -139,7 +156,18 @@ export function CompetitionsPage() {
                   <td className="px-5 py-3 text-foreground-secondary">{templateNames(competition.templates)}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <Status tone={STATUS_TONE[status]}>{status}</Status>
+                      <Select
+                        value={competition.status ?? "auto"}
+                        onValueChange={(value) => void handleStatusChange(competition, value)}
+                      >
+                        <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Automático ({status})</SelectItem>
+                          {COMPETITION_STATUSES.map((option) => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <span className="text-xs text-foreground-muted">
                         {matches.length} jogo(s)
                       </span>

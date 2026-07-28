@@ -41,6 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore } from "@/modules/dataStore";
+import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, STATUS_TONE, parseMatchDate } from "@/modules/competitionStatus";
 import { groupMatchesByRound } from "@/modules/rounds";
 import { calculateStandings, calculateStats } from "@/modules/standings";
@@ -100,7 +101,10 @@ export function CompetitionHub() {
   );
 
   const clubIds = useMemo(
-    () => new Set(matches.flatMap((match) => [match.homeClubId, match.awayClubId])),
+    () =>
+      new Set(
+        matches.flatMap((match) => [match.homeClubId, match.awayClubId]).filter((id) => !isPlaceholderClubId(id)),
+      ),
     [matches],
   );
   const rounds = useMemo(() => groupMatchesByRound(matches), [matches]);
@@ -110,7 +114,7 @@ export function CompetitionHub() {
   const detailedTableStandings = useMemo(
     () =>
       standings.map((row) => ({
-        clubName: store.clubsById.get(row.clubId)?.shortName ?? row.clubId,
+        clubName: clubDisplayName(row.clubId, store.clubsById),
         played: row.played,
         wins: row.wins,
         draws: row.draws,
@@ -127,8 +131,8 @@ export function CompetitionHub() {
       rounds.map((round) => ({
         round: round.round,
         matches: round.matches.map((match) => ({
-          homeClubName: store.clubsById.get(match.homeClubId)?.shortName ?? match.homeClubId,
-          awayClubName: store.clubsById.get(match.awayClubId)?.shortName ?? match.awayClubId,
+          homeClubName: clubDisplayName(match.homeClubId, store.clubsById),
+          awayClubName: clubDisplayName(match.awayClubId, store.clubsById),
           date: match.date,
           time: match.time,
           stadiumName: store.stadiumsById.get(match.stadiumId)?.name ?? "—",
@@ -156,8 +160,8 @@ export function CompetitionHub() {
       if (statusFilter === "finished" && !finished) return false;
       if (statusFilter === "pending" && finished) return false;
       if (!query) return true;
-      const home = store.clubsById.get(match.homeClubId)?.shortName ?? "";
-      const away = store.clubsById.get(match.awayClubId)?.shortName ?? "";
+      const home = clubDisplayName(match.homeClubId, store.clubsById);
+      const away = clubDisplayName(match.awayClubId, store.clubsById);
       return `${home} ${away}`.toLocaleLowerCase("pt-BR").includes(query);
     });
   }, [matches, roundFilter, homeFilter, awayFilter, statusFilter, search, store]);
@@ -321,7 +325,7 @@ export function CompetitionHub() {
   const status = resolveCompetitionStatus(competition, matches);
   const clubOptions = [...clubIds].map((clubId) => ({
     id: clubId,
-    name: store.clubsById.get(clubId)?.shortName ?? clubId,
+    name: clubDisplayName(clubId, store.clubsById),
   }));
   const stadiumOptions: StadiumOption[] = store.stadiums.map((stadium) => {
     const cityName = store.citiesById.get(stadium.cityId)?.name ?? "";
@@ -483,8 +487,6 @@ export function CompetitionHub() {
             ) : (
               <Card className="divide-y divide-border p-0">
                 {visibleMatches.map((match, index) => {
-                  const home = store.clubsById.get(match.homeClubId);
-                  const away = store.clubsById.get(match.awayClubId);
                   const finished = match.homeGoals !== null && match.awayGoals !== null;
                   const gameRef = buildGameRef(match);
                   const isEditingScore = editingScoreRef === gameRef;
@@ -493,7 +495,7 @@ export function CompetitionHub() {
                       <span className="w-16 shrink-0 text-xs text-foreground-muted">{match.round || "—"}</span>
                       <div className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-foreground">
                         <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 object-contain" />
-                        <span>{home?.shortName ?? match.homeClubId}</span>
+                        <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
                         {isEditingScore ? (
                           <div className="flex items-center gap-1">
                             <Input
@@ -519,7 +521,7 @@ export function CompetitionHub() {
                             {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
                           </span>
                         )}
-                        <span>{away?.shortName ?? match.awayClubId}</span>
+                        <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
                         <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 object-contain" />
                       </div>
                       <span className="w-32 shrink-0 text-right text-xs text-foreground-muted">
@@ -627,7 +629,7 @@ export function CompetitionHub() {
                       <tr key={row.clubId}>
                         <td className="px-4 py-2 text-foreground-muted">{index + 1}</td>
                         <td className="px-4 py-2 font-medium text-foreground">
-                          {store.clubsById.get(row.clubId)?.shortName ?? row.clubId}
+                          {clubDisplayName(row.clubId, store.clubsById)}
                         </td>
                         <td className="px-3 py-2 text-center text-foreground-secondary">{row.played}</td>
                         <td className="px-3 py-2 text-center text-foreground-secondary">{row.wins}</td>
@@ -677,17 +679,15 @@ export function CompetitionHub() {
                 </Button>
                 <Card className="divide-y divide-border p-0">
                   {(rounds.find((round) => round.round === selectedRound)?.matches ?? []).map((match, index) => {
-                    const home = store.clubsById.get(match.homeClubId);
-                    const away = store.clubsById.get(match.awayClubId);
                     const finished = match.homeGoals !== null && match.awayGoals !== null;
                     return (
                       <div key={index} className="flex flex-wrap items-center gap-4 p-3">
                         <div className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-foreground">
-                          <span>{home?.shortName ?? match.homeClubId}</span>
+                          <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
                           <span className="text-foreground-muted">
                             {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
                           </span>
-                          <span>{away?.shortName ?? match.awayClubId}</span>
+                          <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
                         </div>
                         <span className="text-xs text-foreground-muted">
                           {match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
@@ -745,31 +745,31 @@ export function CompetitionHub() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <MetricCard
                   label="Maior ataque"
-                  value={stats.topAttack ? store.clubsById.get(stats.topAttack.clubId)?.shortName ?? stats.topAttack.clubId : "—"}
+                  value={stats.topAttack ? clubDisplayName(stats.topAttack.clubId, store.clubsById) : "—"}
                   trend={stats.topAttack ? { label: `${stats.topAttack.value} gols pró`, direction: "up" } : undefined}
                   tone="info"
                 />
                 <MetricCard
                   label="Melhor defesa"
-                  value={stats.bestDefense ? store.clubsById.get(stats.bestDefense.clubId)?.shortName ?? stats.bestDefense.clubId : "—"}
+                  value={stats.bestDefense ? clubDisplayName(stats.bestDefense.clubId, store.clubsById) : "—"}
                   trend={stats.bestDefense ? { label: `${stats.bestDefense.value} gols sofridos`, direction: "neutral" } : undefined}
                   tone="success"
                 />
                 <MetricCard
                   label="Mais vitórias"
-                  value={stats.mostWins ? store.clubsById.get(stats.mostWins.clubId)?.shortName ?? stats.mostWins.clubId : "—"}
+                  value={stats.mostWins ? clubDisplayName(stats.mostWins.clubId, store.clubsById) : "—"}
                   trend={stats.mostWins ? { label: `${stats.mostWins.value} vitórias`, direction: "up" } : undefined}
                   tone="success"
                 />
                 <MetricCard
                   label="Mais empates"
-                  value={stats.mostDraws ? store.clubsById.get(stats.mostDraws.clubId)?.shortName ?? stats.mostDraws.clubId : "—"}
+                  value={stats.mostDraws ? clubDisplayName(stats.mostDraws.clubId, store.clubsById) : "—"}
                   trend={stats.mostDraws ? { label: `${stats.mostDraws.value} empates`, direction: "neutral" } : undefined}
                   tone="info"
                 />
                 <MetricCard
                   label="Mais derrotas"
-                  value={stats.mostLosses ? store.clubsById.get(stats.mostLosses.clubId)?.shortName ?? stats.mostLosses.clubId : "—"}
+                  value={stats.mostLosses ? clubDisplayName(stats.mostLosses.clubId, store.clubsById) : "—"}
                   trend={stats.mostLosses ? { label: `${stats.mostLosses.value} derrotas`, direction: "down" } : undefined}
                   tone="warning"
                 />
@@ -943,8 +943,8 @@ export function CompetitionHub() {
           season={String(competition.season)}
           round={imtMatch.round}
           gameRef={buildGameRef(imtMatch)}
-          homeClubName={store.clubsById.get(imtMatch.homeClubId)?.shortName ?? imtMatch.homeClubId}
-          awayClubName={store.clubsById.get(imtMatch.awayClubId)?.shortName ?? imtMatch.awayClubId}
+          homeClubName={clubDisplayName(imtMatch.homeClubId, store.clubsById)}
+          awayClubName={clubDisplayName(imtMatch.awayClubId, store.clubsById)}
           currentDate={imtMatch.date}
           currentTime={imtMatch.time}
           currentStadiumName={store.stadiumsById.get(imtMatch.stadiumId)?.name ?? "—"}

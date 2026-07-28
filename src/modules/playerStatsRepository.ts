@@ -1,4 +1,4 @@
-import { getDb, getStore, promisify } from "./db";
+import { supabase } from "@/lib/supabaseClient";
 
 /** One player's aggregated stats for a single competition edition (FAF Lab). */
 export interface PlayerCompetitionStats {
@@ -25,6 +25,73 @@ export interface PlayerCompetitionStats {
   estrangeiro?: boolean;
 }
 
+interface PlayerStatsRow {
+  id: string;
+  competition_id: string;
+  cbf: string | null;
+  club_id: string;
+  apelido: string | null;
+  nome: string | null;
+  idade: number | null;
+  vinculo: string | null;
+  jogos: number;
+  titular: number;
+  minutos: number;
+  gols: number;
+  cartoes_amarelos: number;
+  cartoes_vermelhos: number;
+  entrou: number;
+  saiu: number;
+  sub: boolean | null;
+  estrangeiro: boolean | null;
+}
+
+function fromRow(row: PlayerStatsRow): PlayerCompetitionStats {
+  return {
+    id: row.id,
+    competitionId: row.competition_id,
+    cbf: row.cbf,
+    clubId: row.club_id,
+    apelido: row.apelido ?? "",
+    nome: row.nome ?? "",
+    idade: row.idade,
+    vinculo: row.vinculo ?? "",
+    jogos: row.jogos,
+    titular: row.titular,
+    minutos: row.minutos,
+    gols: row.gols,
+    cartoesAmarelos: row.cartoes_amarelos,
+    cartoesVermelhos: row.cartoes_vermelhos,
+    entrou: row.entrou,
+    saiu: row.saiu,
+    sub: row.sub ?? undefined,
+    estrangeiro: row.estrangeiro ?? undefined,
+  };
+}
+
+function toRow(record: PlayerCompetitionStats): PlayerStatsRow {
+  return {
+    id: record.id,
+    competition_id: record.competitionId,
+    cbf: record.cbf,
+    club_id: record.clubId,
+    apelido: record.apelido || null,
+    nome: record.nome || null,
+    idade: record.idade,
+    vinculo: record.vinculo || null,
+    jogos: record.jogos,
+    titular: record.titular,
+    minutos: record.minutos,
+    gols: record.gols,
+    cartoes_amarelos: record.cartoesAmarelos,
+    cartoes_vermelhos: record.cartoesVermelhos,
+    entrou: record.entrou,
+    saiu: record.saiu,
+    sub: record.sub ?? null,
+    estrangeiro: record.estrangeiro ?? null,
+  };
+}
+
 /**
  * Persists per-player, per-competition stats for the FAF Lab area. Not part
  * of the global reactive DataStore (only one edition is viewed at a time) —
@@ -32,36 +99,34 @@ export interface PlayerCompetitionStats {
  */
 export class PlayerStatsRepository {
   async list(): Promise<PlayerCompetitionStats[]> {
-    const store = await getStore("playerStats", "readonly");
-    return promisify(store.getAll());
+    const { data, error } = await supabase.from("player_competition_stats").select("*");
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   async listByCompetition(competitionId: string): Promise<PlayerCompetitionStats[]> {
-    const all = await this.list();
-    return all.filter((item) => item.competitionId === competitionId);
+    const { data, error } = await supabase
+      .from("player_competition_stats")
+      .select("*")
+      .eq("competition_id", competitionId);
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   /**
    * Atomically replaces every row belonging to `competitionId` — an import
-   * wholesale-replaces the edition's roster/stats, same convention as
-   * matchRepository.replaceForCompetition.
+   * wholesale-replaces the edition's roster/stats.
    */
   async replaceForCompetition(competitionId: string, records: readonly PlayerCompetitionStats[]): Promise<void> {
-    const db = await getDb();
-    const tx = db.transaction("playerStats", "readwrite");
-    const store = tx.objectStore("playerStats");
+    const { error: deleteError } = await supabase
+      .from("player_competition_stats")
+      .delete()
+      .eq("competition_id", competitionId);
+    if (deleteError) throw deleteError;
 
-    const existing = await promisify<PlayerCompetitionStats[]>(store.getAll());
-    for (const item of existing) {
-      if (item.competitionId === competitionId) store.delete(item.id);
-    }
-    for (const record of records) store.put(record);
-
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error ?? new Error("Transação abortada ao salvar as estatísticas."));
-    });
+    if (records.length === 0) return;
+    const { error: insertError } = await supabase.from("player_competition_stats").insert(records.map(toRow));
+    if (insertError) throw insertError;
   }
 }
 

@@ -12,6 +12,7 @@ import { StadiumRepository, type Stadium } from "./stadiumRepository";
 import { CityRepository, type City } from "./cityRepository";
 import { MatchRepository } from "./matchRepository";
 import { buildGameRef } from "./gameRef";
+import { clubDisplayName } from "./clubDisplay";
 import { logActivity } from "./activityLog";
 import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
 import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
@@ -192,36 +193,36 @@ class DataStoreController implements DataStore {
   private readonly historyRepo = new MatchOperationsHistoryRepository();
 
   constructor() {
-    // Clubs/estádios/cidades (Fase 1 da migração pro Supabase) start empty
-    // and populate once the fetch resolves — see `registryLoading`. Matches
-    // still render synchronously from the bundled seed on first paint (the
-    // IndexedDB-backed version, which may include user edits, swaps in once
-    // it resolves), same pattern as competitions below.
-    this.snapshot = buildSnapshot([], [], [], [], matchRows as unknown as Match[], [], new Map(), true);
+    // Every collection (Fases 1-6 da migração pro Supabase) starts empty and
+    // populates once the initial fetch resolves — see `loadingRegistry`.
+    this.snapshot = buildSnapshot([], [], [], [], [], [], new Map(), true);
 
-    void this.competitionRepo.seedIfEmpty().then((competitions) => {
-      this.replaceCompetitions(competitions);
-    });
-    void Promise.all([this.clubRepo.list(), this.stadiumRepo.list(), this.cityRepo.list()]).then(
-      ([clubs, stadiums, cities]) => {
-        this.snapshot = buildSnapshot(
-          this.snapshot.competitions,
-          clubs,
-          cities,
-          stadiums,
-          this.snapshot.matches,
-          this.snapshot.staff,
-          this.snapshot.matchOps,
-          false,
-        );
-        this.listeners.forEach((listener) => listener());
-      },
-    );
-    void this.matchRepo.seedIfEmpty(matchRows as unknown as Match[]).then((matches) => {
-      this.replaceMatches(matches);
-    });
-    void this.staffRepo.list().then((staff) => {
-      this.replaceStaff(staff);
+    void Promise.all([
+      this.competitionRepo.seedIfEmpty(),
+      this.clubRepo.list(),
+      this.stadiumRepo.list(),
+      this.cityRepo.list(),
+      this.matchRepo.seedIfEmpty(matchRows as unknown as Match[]),
+      this.staffRepo.list(),
+    ]).then(([competitions, clubs, stadiums, cities, matches, staff]: [
+      CompetitionRecord[],
+      Club[],
+      Stadium[],
+      City[],
+      Match[],
+      OperationalStaff[],
+    ]) => {
+      this.snapshot = buildSnapshot(
+        competitions.filter((item) => !item.deletedAt),
+        clubs.filter((item) => !item.deletedAt),
+        cities.filter((item) => !item.deletedAt),
+        stadiums.filter((item) => !item.deletedAt),
+        matches,
+        staff.filter((item) => !item.deletedAt),
+        this.snapshot.matchOps,
+        false,
+      );
+      this.listeners.forEach((listener) => listener());
     });
   }
 
@@ -769,9 +770,13 @@ class DataStoreController implements DataStore {
     const updated: Match = { ...previous, ...patch };
     const newGameRef = buildGameRef(updated);
 
+    // Insert the new row first, then migrate FAFTV/Operação/Histórico off the
+    // old gameRef (they FK-reference matches.id), and only then remove the
+    // old row — removing it before the migration would violate those FKs.
     await this.matchRepo.update(previous, updated);
     if (newGameRef !== gameRef) {
       await this.migrateMatchOps(gameRef, newGameRef);
+      await this.matchRepo.remove(gameRef);
     }
 
     const matches = [...this.snapshot.matches];
@@ -798,8 +803,8 @@ class DataStoreController implements DataStore {
     );
     this.listeners.forEach((listener) => listener());
 
-    const home = this.snapshot.clubsById.get(updated.homeClubId)?.shortName ?? updated.homeClubId;
-    const away = this.snapshot.clubsById.get(updated.awayClubId)?.shortName ?? updated.awayClubId;
+    const home = clubDisplayName(updated.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(updated.awayClubId, this.snapshot.clubsById);
     logActivity("match.updated", `${home} × ${away} atualizado.`);
   }
 

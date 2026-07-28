@@ -1,50 +1,117 @@
-import type { IMT } from "../types/imt";
+import { supabase } from "@/lib/supabaseClient";
+import type { GameSnapshot, IMT, IMTStatus } from "../types/imt";
 import { formatIMTNumber } from "../types/imt";
 import { triggerBlobDownload } from "../utils/downloadBlob";
-import { getStore as getStoreForTable, promisify } from "./documentsDb";
 
-const STORE_NAME = "imts";
+interface IMTRow {
+  id: string;
+  competition_id: string;
+  competition_name: string;
+  game_ref: string;
+  home_club_name: string;
+  away_club_name: string;
+  round: string;
+  number: number;
+  season: string;
+  old_game: GameSnapshot;
+  new_game: GameSnapshot;
+  reason: string;
+  requester: string;
+  responsible: string;
+  created_at: string;
+  status: string;
+  html: string;
+}
 
-function getStore(mode: IDBTransactionMode): Promise<IDBObjectStore> {
-  return getStoreForTable(STORE_NAME, mode);
+function fromRow(row: IMTRow): IMT {
+  return {
+    id: row.id,
+    competitionId: row.competition_id,
+    competitionName: row.competition_name,
+    gameRef: row.game_ref,
+    homeClubName: row.home_club_name,
+    awayClubName: row.away_club_name,
+    round: row.round,
+    number: row.number,
+    season: row.season,
+    oldGame: row.old_game,
+    newGame: row.new_game,
+    reason: row.reason,
+    requester: row.requester,
+    responsible: row.responsible,
+    createdAt: new Date(row.created_at),
+    status: row.status as IMTStatus,
+    html: row.html,
+  };
+}
+
+function toRow(imt: IMT): IMTRow {
+  return {
+    id: imt.id,
+    competition_id: imt.competitionId,
+    competition_name: imt.competitionName,
+    game_ref: imt.gameRef,
+    home_club_name: imt.homeClubName,
+    away_club_name: imt.awayClubName,
+    round: imt.round,
+    number: imt.number,
+    season: imt.season,
+    old_game: imt.oldGame,
+    new_game: imt.newGame,
+    reason: imt.reason,
+    requester: imt.requester,
+    responsible: imt.responsible,
+    created_at: imt.createdAt.toISOString(),
+    status: imt.status,
+    html: imt.html,
+  };
 }
 
 /** Persists and queries IMT documents. This is the only place that knows about the storage mechanism. */
 export class IMTRepository {
   async list(): Promise<IMT[]> {
-    const store = await getStore("readonly");
-    return promisify(store.getAll());
+    const { data, error } = await supabase.from("imts").select("*");
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   async get(id: string): Promise<IMT | undefined> {
-    const store = await getStore("readonly");
-    return promisify(store.get(id));
+    const { data, error } = await supabase.from("imts").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? fromRow(data) : undefined;
   }
 
   async remove(id: string): Promise<void> {
-    const store = await getStore("readwrite");
-    store.delete(id);
+    const { error } = await supabase.from("imts").delete().eq("id", id);
+    if (error) throw error;
   }
 
   async listBySeason(season: string): Promise<IMT[]> {
-    const all = await this.list();
-    return all.filter((imt) => imt.season === season);
+    const { data, error } = await supabase.from("imts").select("*").eq("season", season);
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   /** All IMTs registered for a competition, newest first — backs the "Documentos" tab. */
   async listByCompetition(competitionId: string): Promise<IMT[]> {
-    const all = await this.list();
-    return all
-      .filter((imt) => imt.competitionId === competitionId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const { data, error } = await supabase
+      .from("imts")
+      .select("*")
+      .eq("competition_id", competitionId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   /** All IMTs ever issued for a given match, newest first — the "consulta futura" the sprint asks for. */
   async listByGameRef(gameRef: string): Promise<IMT[]> {
-    const all = await this.list();
-    return all
-      .filter((imt) => imt.gameRef === gameRef)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const { data, error } = await supabase
+      .from("imts")
+      .select("*")
+      .eq("game_ref", gameRef)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(fromRow);
   }
 
   /** Next sequential number for the season: highest existing + 1, starting at 1. */
@@ -54,8 +121,8 @@ export class IMTRepository {
   }
 
   async save(imt: IMT): Promise<void> {
-    const store = await getStore("readwrite");
-    store.put(imt);
+    const { error } = await supabase.from("imts").upsert(toRow(imt));
+    if (error) throw error;
   }
 
   /**

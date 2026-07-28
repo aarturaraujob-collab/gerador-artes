@@ -36,6 +36,7 @@ import { exportToPng } from "@/engine/export/PngExporter";
 import { useDataStore } from "@/hooks/useDataStore";
 import type { Match } from "@/modules/dataStore";
 import { logActivity } from "@/modules/activityLog";
+import { clubDisplayName } from "@/modules/clubDisplay";
 import { loadArtesFilterPreferences, saveArtesFilterPreferences } from "@/modules/artesFilterPreferences";
 import {
   DEFAULT_DATE_FILTER,
@@ -138,8 +139,8 @@ export function TemplateCollection() {
       if (round && match.round !== round) return false;
       if (!query) return true;
       const values = [
-        store.clubsById.get(match.homeClubId)?.shortName,
-        store.clubsById.get(match.awayClubId)?.shortName,
+        clubDisplayName(match.homeClubId, store.clubsById),
+        clubDisplayName(match.awayClubId, store.clubsById),
         store.citiesById.get(match.cityId)?.name,
         store.stadiumsById.get(match.stadiumId)?.name,
       ];
@@ -493,8 +494,6 @@ export function TemplateCollection() {
               )}
 
               {visibleMatches.map((match) => {
-                const home = store.clubsById.get(match.homeClubId);
-                const away = store.clubsById.get(match.awayClubId);
                 const isSelected = selectedKeys.has(matchKey(match));
                 return (
                   <button
@@ -511,12 +510,12 @@ export function TemplateCollection() {
                     <div className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.homeClubId)} alt="" />
-                        {home?.shortName ?? match.homeClubId}
+                        {clubDisplayName(match.homeClubId, store.clubsById)}
                       </span>
                       <span className="text-foreground-muted">×</span>
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.awayClubId)} alt="" />
-                        {away?.shortName ?? match.awayClubId}
+                        {clubDisplayName(match.awayClubId, store.clubsById)}
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-foreground-muted">

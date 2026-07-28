@@ -1,4 +1,5 @@
 import type { DataStore } from "@/modules/dataStore";
+import { isPlaceholderClubId } from "@/modules/clubDisplay";
 
 const ESCUDOS_DIR = "/assets/escudos";
 const LOGOS_DIR = "/assets/logos";
@@ -42,9 +43,12 @@ export class AssetRepository {
   /**
    * Resolves a club shield path. Uses the club's `shield` field when set,
    * otherwise derives it from the club id (`inter-arabia` → `inter_arabia.png`).
-   * Missing assets fall back at load time to the FAF badge.
+   * Missing assets fall back at load time to the FAF badge — TBD knockout
+   * slots (`isPlaceholderClubId`, e.g. "1º Colocado") always use the FAF
+   * badge directly, since they're not a real club and never get their own shield.
    */
   clubShieldPath(clubId: string): string {
+    if (isPlaceholderClubId(clubId)) return FALLBACK_CLUB_SHIELD;
     const club = this.store.clubsById.get(clubId);
     const shield = club?.shield?.trim();
     if (shield) return resolveAssetValue(shield, ESCUDOS_DIR);
