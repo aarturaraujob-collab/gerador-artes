@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Video, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -70,10 +70,24 @@ export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
           title={pageTitle(area)}
           description={pageDescription(area)}
           actions={
-            <Button onClick={() => navigate(`${base}/novo`)}>
-              <Plus size={16} />
-              Nova Pessoa
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {area === "FAFTV" && (
+                <>
+                  <Button variant="outline" onClick={() => navigate("/cadastros/faftv/operacoes")}>
+                    <Video size={16} />
+                    Operações
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/cadastros/faftv/pagamentos")}>
+                    <Wallet size={16} />
+                    Pagamentos
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => navigate(`${base}/novo`)}>
+                <Plus size={16} />
+                Nova Pessoa
+              </Button>
+            </div>
           }
         />
 

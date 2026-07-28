@@ -22,6 +22,8 @@ import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
 import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
 import { MatchPage } from "@/pages/matches/MatchPage";
 import { EscalaOficiaisPage } from "@/pages/settings/EscalaOficiaisPage";
+import { FaftvOperacoesPage } from "@/pages/settings/FaftvOperacoesPage";
+import { FaftvPagamentosPage } from "@/pages/settings/FaftvPagamentosPage";
 import { FafLabDashboard } from "@/pages/faflab/FafLabDashboard";
 import { AssetsPage } from "@/pages/settings/AssetsPage";
 import { ConfiguracoesPage } from "@/pages/settings/ConfiguracoesPage";
@@ -91,6 +93,8 @@ export default function App() {
         <Route path="/cadastros/cidades/novo" component={CityForm} />
         <Route path="/cadastros/cidades/:id/editar" component={CityForm} />
 
+        <Route path="/cadastros/faftv/operacoes" component={FaftvOperacoesPage} />
+        <Route path="/cadastros/faftv/pagamentos" component={FaftvPagamentosPage} />
         <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
         <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
         <Route path="/cadastros/faftv/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
