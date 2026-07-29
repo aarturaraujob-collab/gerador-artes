@@ -117,12 +117,10 @@ export function TemplateGallery() {
                   }
                   className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <div className="aspect-[4/5] overflow-hidden bg-muted">
-                    <img
-                      src={template.preview}
-                      alt={template.name}
-                      className="h-full w-full object-cover"
-                    />
+                  <div className="flex aspect-[16/10] items-center justify-center bg-foreground p-6 text-center">
+                    <p className="text-2xl font-black uppercase leading-tight tracking-tight text-background">
+                      {template.name}
+                    </p>
                   </div>
 
                   <div className="p-4">
