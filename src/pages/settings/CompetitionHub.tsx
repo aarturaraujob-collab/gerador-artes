@@ -477,7 +477,7 @@ export function CompetitionHub() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap">
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
             <TabsTrigger value="jogos">Jogos</TabsTrigger>
             <TabsTrigger value="classificacao">Classificação</TabsTrigger>

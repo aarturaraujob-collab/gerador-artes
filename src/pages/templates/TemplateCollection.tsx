@@ -510,12 +510,12 @@ export function TemplateCollection() {
                     <div className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.homeClubId)} alt="" />
-                        {clubDisplayName(match.homeClubId, store.clubsById)}
+                        <span className="truncate">{clubDisplayName(match.homeClubId, store.clubsById)}</span>
                       </span>
-                      <span className="text-foreground-muted">×</span>
+                      <span className="shrink-0 text-foreground-muted">×</span>
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.awayClubId)} alt="" />
-                        {clubDisplayName(match.awayClubId, store.clubsById)}
+                        <span className="truncate">{clubDisplayName(match.awayClubId, store.clubsById)}</span>
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-foreground-muted">

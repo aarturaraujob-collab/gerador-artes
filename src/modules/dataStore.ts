@@ -17,6 +17,8 @@ import { logActivity } from "./activityLog";
 import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
 import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
 import { MatchOperacaoRepository, type MatchOperacaoRecord } from "./matchOperacaoRepository";
+import { MatchFaftvEscalaRepository } from "./matchFaftvEscalaRepository";
+import { MatchArbitragemRepository } from "./matchArbitragemRepository";
 import {
   MatchOperationsHistoryRepository,
   type MatchHistoryEntry,
@@ -195,6 +197,8 @@ class DataStoreController implements DataStore {
   private readonly faftvRepo = new MatchFaftvRepository();
   private readonly operacaoRepo = new MatchOperacaoRepository();
   private readonly historyRepo = new MatchOperationsHistoryRepository();
+  private readonly faftvEscalaRepo = new MatchFaftvEscalaRepository();
+  private readonly arbitragemRepo = new MatchArbitragemRepository();
 
   constructor() {
     // Every collection (Fases 1-6 da migração pro Supabase) starts empty and
@@ -828,10 +832,12 @@ class DataStoreController implements DataStore {
   }
 
   private async migrateMatchOps(oldGameRef: string, newGameRef: string): Promise<void> {
-    const [faftv, operacao, history] = await Promise.all([
+    const [faftv, operacao, history, faftvEscala, arbitragem] = await Promise.all([
       this.faftvRepo.get(oldGameRef),
       this.operacaoRepo.get(oldGameRef),
       this.historyRepo.listByGameRef(oldGameRef),
+      this.faftvEscalaRepo.listByGameRefs([oldGameRef]),
+      this.arbitragemRepo.get(oldGameRef),
     ]);
 
     if (faftv) {
@@ -844,6 +850,14 @@ class DataStoreController implements DataStore {
     }
     for (const entry of history) {
       await this.historyRepo.append({ ...entry, gameRef: newGameRef });
+    }
+    if (faftvEscala[0]) {
+      await this.faftvEscalaRepo.upsert({ ...faftvEscala[0], id: newGameRef, gameRef: newGameRef });
+      await this.faftvEscalaRepo.remove(oldGameRef);
+    }
+    if (arbitragem) {
+      await this.arbitragemRepo.upsert({ ...arbitragem, id: newGameRef, gameRef: newGameRef });
+      await this.arbitragemRepo.remove(oldGameRef);
     }
   }
 

@@ -186,7 +186,7 @@ export function AssetsPage() {
         />
 
         <Tabs defaultValue="escudos">
-          <TabsList className="flex-wrap">
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="escudos">
               Escudos<span className="ml-1.5 text-foreground-muted">{store.clubs.length}</span>
             </TabsTrigger>
