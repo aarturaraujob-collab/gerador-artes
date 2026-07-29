@@ -1,4 +1,4 @@
-import { resolveFieldConfig, type TemplateConfig } from "@/engine/core/TemplateConfig";
+import { resolveFieldConfig, type TemplateConfig, type TextAlign } from "@/engine/core/TemplateConfig";
 import type { SvgDocument } from "@/engine/document/SvgDocument";
 import { fitText } from "@/engine/document/fitText";
 import { applyAlignment } from "@/engine/layout/TextAlignmentEngine";
@@ -21,16 +21,24 @@ export function slotId(base: string, index: number): string {
  * 4-game list row reusing the same base id) via `config.variantFields`.
  * Omitted for templates with no such axis (e.g. Standings).
  */
-export function applyTextField(document: SvgDocument, config: TemplateConfig, baseId: string, index: number, value: string, games?: number): void {
+export function applyTextField(
+  document: SvgDocument,
+  config: TemplateConfig,
+  baseId: string,
+  index: number,
+  value: string,
+  games?: number,
+  forceAlign?: TextAlign,
+): void {
   const id = slotId(baseId, index);
   document.setText(id, value);
 
   const field = resolveFieldConfig(config, baseId, games);
-  if (!field) return;
+  const align = forceAlign ?? field?.align;
 
   const node = document.getNode(id);
   if (!node) return;
 
-  if (field.maxWidth) fitText(node.element, field.maxWidth, { minFontSize: field.minFontSize });
-  if (field.align) applyAlignment(node, field.align, value);
+  if (field?.maxWidth) fitText(node.element, field.maxWidth, { minFontSize: field.minFontSize });
+  if (align) applyAlignment(node, align, value);
 }

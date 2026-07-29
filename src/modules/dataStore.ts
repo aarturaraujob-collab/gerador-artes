@@ -59,6 +59,10 @@ export interface Match {
   phase?: string | null;
   /** External match reference from the REF column — optional, informational only, not used as a dedup key. */
   ref?: string | null;
+  /** Attendance for this match — optional, filled in manually or by a future import; null until then. */
+  publico?: number | null;
+  /** Gate revenue for this match (R$) — optional, same as `publico`. */
+  renda?: number | null;
 }
 
 /** One normalized row produced by the spreadsheet importer. */
@@ -626,7 +630,7 @@ class DataStoreController implements DataStore {
    * reused; matches for that competition are replaced wholesale (re-running
    * an import corrects the table rather than appending to it).
    */
-  importMatchesForCompetition(competitionId: string, rows: readonly ExtractedRow[]): { count: number } {
+  async importMatchesForCompetition(competitionId: string, rows: readonly ExtractedRow[]): Promise<{ count: number }> {
     return this.mergeMatches(competitionId, rows);
   }
 
@@ -637,7 +641,7 @@ class DataStoreController implements DataStore {
    * the quick "Importar CSV/XLSX" shortcut keeps working without forcing a
    * trip through the full registration wizard.
    */
-  ingest(competitionName: string, rows: readonly ExtractedRow[]): { competitionId: string; count: number } {
+  async ingest(competitionName: string, rows: readonly ExtractedRow[]): Promise<{ competitionId: string; count: number }> {
     const competitionId = slug(competitionName).toUpperCase();
 
     if (!this.snapshot.competitions.some((item) => item.id === competitionId)) {
@@ -653,6 +657,7 @@ class DataStoreController implements DataStore {
         templates: ["jogos-do-dia", "thumb-faftv"],
         active: true,
       };
+      await this.competitionRepo.upsert(record);
       this.snapshot = buildSnapshot(
         [...this.snapshot.competitions, record],
         this.snapshot.clubs,
@@ -663,24 +668,34 @@ class DataStoreController implements DataStore {
         this.snapshot.matchOps,
         this.snapshot.loadingRegistry,
       );
-      void this.competitionRepo.upsert(record);
     }
 
-    const { count } = this.mergeMatches(competitionId, rows);
+    const { count } = await this.mergeMatches(competitionId, rows);
     return { competitionId, count };
   }
 
-  private mergeMatches(competitionId: string, rows: readonly ExtractedRow[]): { count: number } {
+  /**
+   * Persists cities → stadiums → matches in that order and awaits each step:
+   * `matches.stadium_id`/`city_id` are foreign keys, so inserting a match
+   * before its stadium/city row has actually committed fails with an FK
+   * violation. Nothing here fires-and-forgets — a failed write throws instead
+   * of silently leaving the local snapshot out of sync with the database.
+   */
+  private async mergeMatches(competitionId: string, rows: readonly ExtractedRow[]): Promise<{ count: number }> {
     const clubs = [...this.snapshot.clubs];
     const cities = [...this.snapshot.cities];
     const stadiums = [...this.snapshot.stadiums];
+
+    const newClubs: Club[] = [];
+    const newCities: City[] = [];
+    const newStadiums: Stadium[] = [];
 
     const upsertClub = (name: string): string => {
       const id = slug(name);
       if (!clubs.some((club) => club.id === id)) {
         const club: Club = { id, shortName: name, fullName: name, shield: "" };
         clubs.push(club);
-        void this.clubRepo.upsert(club);
+        newClubs.push(club);
       }
       return id;
     };
@@ -697,7 +712,7 @@ class DataStoreController implements DataStore {
       if (cityName && !cities.some((city) => city.id === cityId)) {
         const city: City = { id: cityId, name: cityName };
         cities.push(city);
-        void this.cityRepo.upsert(city);
+        newCities.push(city);
       }
 
       const stadiumName = row.stadium ?? "";
@@ -705,7 +720,7 @@ class DataStoreController implements DataStore {
       if (stadiumName && !stadiums.some((stadium) => stadium.id === stadiumId)) {
         const stadium: Stadium = { id: stadiumId, name: stadiumName, cityId };
         stadiums.push(stadium);
-        void this.stadiumRepo.upsert(stadium);
+        newStadiums.push(stadium);
       }
 
       importedMatches.push({
@@ -725,11 +740,15 @@ class DataStoreController implements DataStore {
       });
     }
 
+    await Promise.all(newClubs.map((club) => this.clubRepo.upsert(club)));
+    await Promise.all(newCities.map((city) => this.cityRepo.upsert(city)));
+    await Promise.all(newStadiums.map((stadium) => this.stadiumRepo.upsert(stadium)));
+    await this.matchRepo.replaceForCompetition(competitionId, importedMatches);
+
     const matches = [
       ...this.snapshot.matches.filter((match) => match.competitionId !== competitionId),
       ...importedMatches,
     ];
-    void this.matchRepo.replaceForCompetition(competitionId, importedMatches);
 
     this.snapshot = buildSnapshot(
       this.snapshot.competitions,

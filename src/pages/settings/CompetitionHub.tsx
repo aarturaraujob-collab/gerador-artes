@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import {
@@ -9,7 +9,6 @@ import {
   Check,
   ClipboardList,
   Download,
-  FileText,
   Flag,
   ImageDown,
   Pencil,
@@ -60,14 +59,26 @@ import {
 } from "@/modules/standingsHighlightPreference";
 import { logActivity } from "@/modules/activityLog";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
+import { EditMatchDialog } from "./EditMatchDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
 import type { Match, ExtractedRow } from "@/modules/dataStore";
 import { buildGameRef, encodeGameRefParam } from "@/modules/gameRef";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
+import { competitionReportRepository, type CompetitionReport } from "@/modules/competitionReportRepository";
+import { triggerBlobDownload } from "@/documents/utils/downloadBlob";
 
 const ALL = "__all__";
 const INVALID_SCORE = Symbol("invalid-score");
+
+function fileToDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 function formatPeriod(dates: Date[]): string {
   if (dates.length === 0) return "—";
@@ -85,6 +96,7 @@ export function CompetitionHub() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [imtMatch, setImtMatch] = useState<Match | null>(null);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
@@ -101,6 +113,9 @@ export function CompetitionHub() {
   const [editingScoreRef, setEditingScoreRef] = useState<string | null>(null);
   const [scoreDraft, setScoreDraft] = useState({ home: "", away: "" });
   const [savingScore, setSavingScore] = useState(false);
+  const [report, setReport] = useState<CompetitionReport | null>(null);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const reportInputRef = useRef<HTMLInputElement>(null);
 
   const competition = store.competitions.find((item) => item.id === id);
   const matches = useMemo(
@@ -174,6 +189,46 @@ export function CompetitionHub() {
     });
   }, [matches, roundFilter, homeFilter, awayFilter, statusFilter, search, store]);
 
+  useEffect(() => {
+    if (!competition) {
+      setReport(null);
+      return;
+    }
+    let cancelled = false;
+    void competitionReportRepository.get(competition.id).then((record) => {
+      if (!cancelled) setReport(record);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [competition]);
+
+  async function handleUploadReport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !competition) return;
+
+    setUploadingReport(true);
+    try {
+      const dataUri = await fileToDataUri(file);
+      const record: CompetitionReport = { competitionId: competition.id, fileName: file.name, dataUri };
+      await competitionReportRepository.upsert(record);
+      setReport(record);
+      toast.success("Relatório enviado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao enviar o relatório.");
+    } finally {
+      setUploadingReport(false);
+    }
+  }
+
+  function handleDownloadReport() {
+    if (!report) return;
+    fetch(report.dataUri)
+      .then((response) => response.blob())
+      .then((blob) => triggerBlobDownload(blob, report.fileName));
+  }
+
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -199,7 +254,7 @@ export function CompetitionHub() {
     if (!competition) return;
     setImporting(true);
     try {
-      const { count } = dataStore.importMatchesForCompetition(competition.id, rows);
+      const { count } = await dataStore.importMatchesForCompetition(competition.id, rows);
       toast.success(`${count} jogo(s) importado(s).`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao importar a planilha.");
@@ -394,6 +449,24 @@ export function CompetitionHub() {
               {competition.active ? <Archive size={16} /> : <ArchiveRestore size={16} />}
               {competition.active ? "Arquivar" : "Reativar"}
             </Button>
+            {report ? (
+              <Button variant="outline" onClick={handleDownloadReport} title={report.fileName}>
+                <Download size={16} />
+                Baixar relatório
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => reportInputRef.current?.click()} disabled={uploadingReport}>
+                {uploadingReport ? <Spinner /> : <Upload size={16} />}
+                Enviar relatório
+              </Button>
+            )}
+            <input
+              ref={reportInputRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={(event) => void handleUploadReport(event)}
+            />
           </div>
         </div>
 
@@ -568,15 +641,16 @@ export function CompetitionHub() {
                           Editar placar
                         </Button>
                       )}
+                      {/* "Gerar IMT" guardado para uso futuro — Urano hoje é só MKT, sem geração de documentos. */}
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => setImtMatch(match)}
+                        onClick={() => setEditingMatch(match)}
                       >
-                        <FileText size={14} />
-                        Gerar IMT
+                        <Pencil size={14} />
+                        Editar partida
                       </Button>
                       <Button
                         type="button"
@@ -983,6 +1057,19 @@ export function CompetitionHub() {
           onGenerated={() => setDocumentsRefreshToken((token) => token + 1)}
           onDetailedTableUpdated={() => setDocumentsRefreshToken((token) => token + 1)}
           onNavigateToDocuments={() => setActiveTab("documentos")}
+        />
+      )}
+
+      {editingMatch && (
+        <EditMatchDialog
+          open={editingMatch !== null}
+          onOpenChange={(next) => !next && setEditingMatch(null)}
+          match={editingMatch}
+          homeClubName={clubDisplayName(editingMatch.homeClubId, store.clubsById)}
+          awayClubName={clubDisplayName(editingMatch.awayClubId, store.clubsById)}
+          currentStadiumName={store.stadiumsById.get(editingMatch.stadiumId)?.name ?? "—"}
+          stadiumOptions={stadiumOptions}
+          onSaved={() => setDocumentsRefreshToken((token) => token + 1)}
         />
       )}
 

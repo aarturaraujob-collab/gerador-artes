@@ -136,3 +136,28 @@ export function calculateStats(matches: readonly Match[]): CompetitionStats {
     topScorers: [],
   };
 }
+
+function parseMatchDate(value: string): Date | null {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+/** Last `limit` finished results for a club, oldest to newest — "V"/"E"/"D" (vitória/empate/derrota), sofascore-style form strip. */
+export function getRecentForm(clubId: string, matches: readonly Match[], limit = 5): ("V" | "E" | "D")[] {
+  const finished = matches
+    .filter((match) => isFinished(match) && (match.homeClubId === clubId || match.awayClubId === clubId))
+    .map((match) => ({ match, date: parseMatchDate(match.date) }))
+    .filter((entry): entry is { match: Match; date: Date } => entry.date !== null)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return finished.slice(-limit).map(({ match }) => {
+    const isHome = match.homeClubId === clubId;
+    const goalsFor = (isHome ? match.homeGoals : match.awayGoals) as number;
+    const goalsAgainst = (isHome ? match.awayGoals : match.homeGoals) as number;
+    if (goalsFor > goalsAgainst) return "V";
+    if (goalsFor < goalsAgainst) return "D";
+    return "E";
+  });
+}

@@ -21,7 +21,7 @@ export const dashboardModules = [
   {
     title: "Assets",
     description: "Escudos, fundos e logos.",
-    href: "/assets",
+    href: "/biblioteca-assets",
     icon: Folder,
   },
   {

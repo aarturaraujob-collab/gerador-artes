@@ -147,6 +147,7 @@ create table if not exists operational_staff (
   cpf text,
   phone text,
   address text,
+  pix_key text,
   role text not null,
   area text not null,
   deleted_at timestamptz
@@ -200,7 +201,7 @@ create table if not exists match_arbitragem (
 create table if not exists match_faftv_escala (
   id text primary key references matches(id),
   game_ref text not null,
-  coordenador_staff_id text references operational_staff(id),
+  coordenador_staff_ids text[] not null default '{}',
   produtor_staff_id text references operational_staff(id),
   cinegrafista_staff_id text references operational_staff(id),
   transmitir boolean not null default true,
@@ -210,6 +211,15 @@ create table if not exists match_faftv_escala (
   checklist jsonb not null default '{}'::jsonb,
   status text not null default 'a_acontecer',
   updated_at timestamptz not null default now()
+);
+
+create table if not exists faftv_payment_records (
+  id text primary key,
+  staff_id text not null references operational_staff(id),
+  date text not null,
+  amount numeric not null,
+  description text,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists player_competition_stats (
@@ -286,6 +296,7 @@ alter table match_operacao enable row level security;
 alter table match_operations_history enable row level security;
 alter table match_arbitragem enable row level security;
 alter table match_faftv_escala enable row level security;
+alter table faftv_payment_records enable row level security;
 alter table player_competition_stats enable row level security;
 alter table lab_notes enable row level security;
 alter table backgrounds enable row level security;
@@ -324,6 +335,10 @@ drop policy if exists "authenticated full access" on match_faftv_escala;
 create policy "authenticated full access" on match_faftv_escala
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists "authenticated full access" on faftv_payment_records;
+create policy "authenticated full access" on faftv_payment_records
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
 drop policy if exists "authenticated full access" on player_competition_stats;
 create policy "authenticated full access" on player_competition_stats
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
@@ -352,8 +367,180 @@ grant select, insert, update, delete on public.match_operacao to authenticated;
 grant select, insert, update, delete on public.match_operations_history to authenticated;
 grant select, insert, update, delete on public.match_arbitragem to authenticated;
 grant select, insert, update, delete on public.match_faftv_escala to authenticated;
+grant select, insert, update, delete on public.faftv_payment_records to authenticated;
 grant select, insert, update, delete on public.player_competition_stats to authenticated;
 grant select, insert, update, delete on public.lab_notes to authenticated;
 grant select, insert, update, delete on public.backgrounds to authenticated;
 grant select, insert, update, delete on public.imts to authenticated;
 grant select, insert, update, delete on public.detailed_tables to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- RLS por papel (1ª fase): payments é o dado mais sensível do sistema
+-- (dinheiro real sendo pago) — restringe escrita a admins, mantendo leitura
+-- liberada pra qualquer autenticado. Papel é definido manualmente hoje
+-- (update profiles set role = 'admin' where id = '...') até existir uma tela
+-- de gestão de usuários.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table profiles add column if not exists role text not null default 'membro'
+  check (role in ('admin', 'membro'));
+
+create or replace function public.is_admin()
+returns boolean as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
+$$ language sql stable security definer;
+
+drop policy if exists "authenticated full access" on faftv_payment_records;
+
+drop policy if exists "read payments" on faftv_payment_records;
+create policy "read payments" on faftv_payment_records
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "admin writes payments" on faftv_payment_records;
+create policy "admin writes payments" on faftv_payment_records
+  for insert with check (public.is_admin());
+
+drop policy if exists "admin updates payments" on faftv_payment_records;
+create policy "admin updates payments" on faftv_payment_records
+  for update using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "admin deletes payments" on faftv_payment_records;
+create policy "admin deletes payments" on faftv_payment_records
+  for delete using (public.is_admin());
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Item 4: cachês FAFTV configuráveis (antes hardcoded em faftvEarnings.ts).
+-- Linha única (id fixo 'default') — não é preciso mais que isso hoje.
+-- ─────────────────────────────────────────────────────────────────────────
+
+create table if not exists faftv_settings (
+  id text primary key default 'default',
+  valor_jogo_cinegrafista numeric not null default 200,
+  valor_diaria_coordenador numeric not null default 200,
+  updated_at timestamptz not null default now()
+);
+
+insert into faftv_settings (id) values ('default') on conflict (id) do nothing;
+
+alter table faftv_settings enable row level security;
+
+drop policy if exists "read faftv settings" on faftv_settings;
+create policy "read faftv settings" on faftv_settings
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "admin writes faftv settings" on faftv_settings;
+create policy "admin writes faftv settings" on faftv_settings
+  for update using (public.is_admin()) with check (public.is_admin());
+
+grant select, update on public.faftv_settings to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Relatório (PDF) por competição — um único arquivo por edição, upado pelo
+-- usuário e disponível pro botão "Baixar relatório" no CompetitionHub.
+-- Mesma convenção de `backgrounds`/`shield`: arquivo guardado como data URI.
+-- ─────────────────────────────────────────────────────────────────────────
+
+create table if not exists competition_reports (
+  competition_id text primary key references competitions(id) on delete cascade,
+  file_name text not null,
+  data_uri text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table competition_reports enable row level security;
+
+drop policy if exists "authenticated full access" on competition_reports;
+create policy "authenticated full access" on competition_reports
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+grant select, insert, update, delete on public.competition_reports to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- FAF Lab público — a página /publico/faf-lab não exige login, então o
+-- cliente Supabase se conecta com a role `anon`. Libera SOMENTE leitura
+-- (nunca insert/update/delete) e SOMENTE nas 4 tabelas que essa página usa.
+-- Deliberadamente NÃO inclui operational_staff (tem CPF/telefone/PIX).
+-- ─────────────────────────────────────────────────────────────────────────
+
+drop policy if exists "public read access" on competitions;
+create policy "public read access" on competitions
+  for select using (true);
+
+drop policy if exists "public read access" on clubs;
+create policy "public read access" on clubs
+  for select using (true);
+
+drop policy if exists "public read access" on matches;
+create policy "public read access" on matches
+  for select using (true);
+
+drop policy if exists "public read access" on player_competition_stats;
+create policy "public read access" on player_competition_stats
+  for select using (true);
+
+grant select on public.competitions to anon;
+grant select on public.clubs to anon;
+grant select on public.matches to anon;
+grant select on public.player_competition_stats to anon;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Relatório externo do FAF Lab — PDF enviado manualmente por edição,
+-- disponível pro botão "Baixar relatório" na página pública. Tabela própria,
+-- separada de competition_reports (que é o regulamento do CompetitionHub):
+-- são documentos diferentes, não devem se sobrescrever.
+-- ─────────────────────────────────────────────────────────────────────────
+
+create table if not exists faflab_reports (
+  competition_id text primary key references competitions(id) on delete cascade,
+  file_name text not null,
+  data_uri text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table faflab_reports enable row level security;
+
+drop policy if exists "authenticated full access" on faflab_reports;
+create policy "authenticated full access" on faflab_reports
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+drop policy if exists "public read access" on faflab_reports;
+create policy "public read access" on faflab_reports
+  for select using (true);
+
+grant select, insert, update, delete on public.faflab_reports to authenticated;
+grant select on public.faflab_reports to anon;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- FAF Lab — aba Mídia: vídeos do YouTube relacionados à edição, cadastrados
+-- manualmente pelo admin (a busca automática de vídeos é feita à parte,
+-- fora do app — aqui só guardamos o que foi adicionado).
+-- ─────────────────────────────────────────────────────────────────────────
+
+create table if not exists faflab_media (
+  id text primary key,
+  competition_id text references competitions(id) on delete cascade,
+  title text not null,
+  youtube_id text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table faflab_media enable row level security;
+
+drop policy if exists "authenticated full access" on faflab_media;
+create policy "authenticated full access" on faflab_media
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+drop policy if exists "public read access" on faflab_media;
+create policy "public read access" on faflab_media
+  for select using (true);
+
+grant select, insert, update, delete on public.faflab_media to authenticated;
+grant select on public.faflab_media to anon;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Público e renda por partida — campos abertos, começam vazios até os dados
+-- reais serem enviados (manual ou por uma futura importação).
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table matches add column if not exists publico integer;
+alter table matches add column if not exists renda numeric;

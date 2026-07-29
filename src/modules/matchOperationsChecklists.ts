@@ -86,10 +86,10 @@ export const FAFTV_ESCALA_CHECKLIST_ITEMS: ChecklistItemDef[] = [
 ];
 
 /** Checklist items that can only be checked once a prerequisite field is filled — id of the item mapped to a check against the escala record. */
-export const FAFTV_ESCALA_CHECKLIST_GATES: Record<string, (record: { broadcastLink: string; cinegrafistaStaffId: string | null; coordenadorStaffId: string | null }) => boolean> = {
+export const FAFTV_ESCALA_CHECKLIST_GATES: Record<string, (record: { broadcastLink: string; cinegrafistaStaffId: string | null; coordenadorStaffIds: string[] }) => boolean> = {
   "live-criada": (record) => record.broadcastLink.trim().length > 0,
   cinegrafista: (record) => record.cinegrafistaStaffId !== null,
-  coordenador: (record) => record.coordenadorStaffId !== null,
+  coordenador: (record) => record.coordenadorStaffIds.length > 0,
 };
 
 export type ArbitragemStatus = "pendente" | "parcial" | "completo";

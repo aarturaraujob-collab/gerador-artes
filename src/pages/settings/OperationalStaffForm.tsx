@@ -18,7 +18,7 @@ interface OperationalStaffFormProps {
 }
 
 function basePath(area: StaffArea): string {
-  if (area === "FAFTV") return "/cadastros/faftv";
+  if (area === "FAFTV") return "/cadastros/faftv/equipe";
   if (area === "DCO") return "/cadastros/oficiais-dco";
   return "/cadastros/arbitros";
 }
@@ -29,11 +29,12 @@ interface FormState {
   cpf: string;
   phone: string;
   address: string;
+  pixKey: string;
   role: string;
 }
 
 function emptyForm(area: StaffArea): FormState {
-  return { name: "", photo: "", cpf: "", phone: "", address: "", role: rolesForArea(area)[0] };
+  return { name: "", photo: "", cpf: "", phone: "", address: "", pixKey: "", role: rolesForArea(area)[0] };
 }
 
 function fileToDataUri(file: File): Promise<string> {
@@ -77,6 +78,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
         cpf: existing.cpf ?? "",
         phone: existing.phone ?? "",
         address: existing.address ?? "",
+        pixKey: existing.pixKey ?? "",
         role: existing.role,
       });
       setLoaded(true);
@@ -105,6 +107,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
         cpf: form.cpf.trim() || undefined,
         phone: form.phone.trim() || undefined,
         address: form.address.trim() || undefined,
+        pixKey: form.pixKey.trim() || undefined,
         role: form.role,
         area,
       };
@@ -198,14 +201,25 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-foreground-secondary">Endereço</label>
-            <Input
-              value={form.address}
-              onChange={(event) => update("address", event.target.value)}
-              placeholder="Rua, número, bairro"
-              className="mt-2 h-11"
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-semibold text-foreground-secondary">Endereço</label>
+              <Input
+                value={form.address}
+                onChange={(event) => update("address", event.target.value)}
+                placeholder="Rua, número, bairro"
+                className="mt-2 h-11"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground-secondary">Chave Pix</label>
+              <Input
+                value={form.pixKey}
+                onChange={(event) => update("pixKey", event.target.value)}
+                placeholder="CPF, telefone, e-mail ou chave aleatória"
+                className="mt-2 h-11"
+              />
+            </div>
           </div>
 
           <div>

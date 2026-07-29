@@ -25,6 +25,7 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "staff.restored": { icon: RotateCcw, tone: "text-success" },
   "import.matches": { icon: Upload, tone: "text-info" },
   "import.playerStats": { icon: Upload, tone: "text-info" },
+  "import.faflabReport": { icon: FileText, tone: "text-info" },
   "match.updated": { icon: Pencil, tone: "text-info" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },

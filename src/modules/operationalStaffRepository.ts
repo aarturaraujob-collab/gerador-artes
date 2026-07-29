@@ -41,6 +41,8 @@ export interface OperationalStaff {
   cpf?: string;
   phone?: string;
   address?: string;
+  /** CPF, telefone, e-mail ou chave aleatória — como cadastrada no banco da pessoa, não necessariamente o CPF. */
+  pixKey?: string;
   /** One of FAFTV_ROLES or DCO_ROLES, depending on `area`. */
   role: string;
   area: StaffArea;
@@ -55,6 +57,7 @@ interface StaffRow {
   cpf: string | null;
   phone: string | null;
   address: string | null;
+  pix_key: string | null;
   role: string;
   area: string;
   deleted_at: string | null;
@@ -68,6 +71,7 @@ function fromRow(row: StaffRow): OperationalStaff {
     cpf: row.cpf ?? undefined,
     phone: row.phone ?? undefined,
     address: row.address ?? undefined,
+    pixKey: row.pix_key ?? undefined,
     role: row.role,
     area: row.area as StaffArea,
     deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
@@ -82,6 +86,7 @@ function toRow(staff: OperationalStaff): StaffRow {
     cpf: staff.cpf ?? null,
     phone: staff.phone ?? null,
     address: staff.address ?? null,
+    pix_key: staff.pixKey ?? null,
     role: staff.role,
     area: staff.area,
     deleted_at: staff.deletedAt ? new Date(staff.deletedAt).toISOString() : null,

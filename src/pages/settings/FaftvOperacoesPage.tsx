@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { Link, useSearchParams } from "wouter";
+import { AlertTriangle, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -9,10 +9,12 @@ import { Card } from "@/components/ui/card";
 import { Status } from "@/components/ui/status";
 import { Spinner } from "@/components/ui/spinner";
 import { Combobox } from "@/components/ui/combobox";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -23,16 +25,22 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { useDataStore } from "@/hooks/useDataStore";
 import { buildGameRef } from "@/modules/gameRef";
-import { clubDisplayName } from "@/modules/clubDisplay";
+import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import {
   matchFaftvEscalaRepository,
   type FaftvEscalaStatus,
   type MatchFaftvEscalaRecord,
 } from "@/modules/matchFaftvEscalaRepository";
 import { FAFTV_ESCALA_CHECKLIST_ITEMS, FAFTV_ESCALA_CHECKLIST_GATES, checklistProgress } from "@/modules/matchOperationsChecklists";
-import { toIsoDate } from "@/pages/templates/matchDateFilter";
+import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
 
 const ALL = "__all__";
+
+function addDaysIso(iso: string, days: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(year, month - 1, day + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 const STATUS_LABEL: Record<FaftvEscalaStatus, string> = {
   a_acontecer: "A acontecer",
@@ -67,7 +75,7 @@ function emptyRecord(gameRef: string): MatchFaftvEscalaRecord {
   return {
     id: gameRef,
     gameRef,
-    coordenadorStaffId: null,
+    coordenadorStaffIds: [],
     produtorStaffId: null,
     cinegrafistaStaffId: null,
     transmitir: true,
@@ -82,6 +90,7 @@ function emptyRecord(gameRef: string): MatchFaftvEscalaRecord {
 
 export function FaftvOperacoesPage() {
   const store = useDataStore();
+  const [searchParams] = useSearchParams();
 
   const [records, setRecords] = useState<Map<string, MatchFaftvEscalaRecord>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -90,7 +99,25 @@ export function FaftvOperacoesPage() {
   const [responsibleFilter, setResponsibleFilter] = useState(ALL);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [attentionOnly, setAttentionOnly] = useState(false);
   const [drafts, setDrafts] = useState<Map<string, { broadcastLink: string; observacoes: string; motivoNaoTransmitido: string }>>(new Map());
+
+  // Chegando de um widget da Home FAFTV (?periodo=hoje|7dias&atencao=1) — aplica
+  // o período e o filtro de atenção uma vez, na carga da página.
+  useEffect(() => {
+    const periodo = searchParams.get("periodo");
+    if (periodo === "hoje") {
+      const today = todayIso();
+      setStartDate(today);
+      setEndDate(today);
+    } else if (periodo === "7dias") {
+      const today = todayIso();
+      setStartDate(today);
+      setEndDate(addDaysIso(today, 7));
+    }
+    if (searchParams.get("atencao") === "1") setAttentionOnly(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Mirrors `records` synchronously so rapid, back-to-back edits on the same
    * card (Coordenador → Produtor → Cinegrafista, one click after another)
@@ -199,14 +226,19 @@ export function FaftvOperacoesPage() {
         if (responsibleFilter === ALL) return true;
         const record = recordFor(gameRef);
         return (
-          record.coordenadorStaffId === responsibleFilter ||
+          record.coordenadorStaffIds.includes(responsibleFilter) ||
           record.produtorStaffId === responsibleFilter ||
           record.cinegrafistaStaffId === responsibleFilter
         );
       })
+      .filter(({ match, gameRef }) => {
+        if (!attentionOnly) return true;
+        if (isPlaceholderClubId(match.homeClubId) || isPlaceholderClubId(match.awayClubId)) return false;
+        return !recordFor(gameRef).cinegrafistaStaffId;
+      })
       .sort((a, b) => (toIsoDate(a.match.date) ?? "").localeCompare(toIsoDate(b.match.date) ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchesWithGameRef, competitionFilter, statusFilter, responsibleFilter, startDate, endDate, records]);
+  }, [matchesWithGameRef, competitionFilter, statusFilter, responsibleFilter, startDate, endDate, attentionOnly, records]);
 
   return (
     <AppShell>
@@ -223,6 +255,17 @@ export function FaftvOperacoesPage() {
           title="Operações"
           description="Gerencie a escala de Coordenador, Produtor e Cinegrafista de todas as partidas."
         />
+
+        {attentionOnly && (
+          <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning-solid">
+            <AlertTriangle size={16} />
+            Mostrando apenas jogos sem Cinegrafista escalado.
+            <Button variant="ghost" className="ml-auto h-7 px-2" onClick={() => setAttentionOnly(false)}>
+              <X size={14} />
+              Limpar
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <div className="w-56">
@@ -347,12 +390,12 @@ export function FaftvOperacoesPage() {
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <label className="text-xs font-semibold text-foreground-secondary">Coordenador</label>
-                      <Combobox
-                        className="mt-1 h-10"
-                        options={faftvStaffByRole("Coordenador")}
-                        value={record.coordenadorStaffId ?? ""}
-                        onValueChange={(value) => void updateRecord(gameRef, { coordenadorStaffId: value || null })}
-                        placeholder="Selecione"
+                      <MultiSelect
+                        className="mt-1"
+                        options={faftvStaffByRole("Coordenador").filter((option) => option.value !== "")}
+                        value={record.coordenadorStaffIds}
+                        onValueChange={(value) => void updateRecord(gameRef, { coordenadorStaffIds: value })}
+                        placeholder="Selecione um ou mais"
                         searchPlaceholder="Buscar..."
                       />
                     </div>
@@ -419,7 +462,9 @@ export function FaftvOperacoesPage() {
                   </div>
 
                   <p className="text-xs text-foreground-muted">
-                    {staffName(record.coordenadorStaffId) && <>Coordenador: <b>{staffName(record.coordenadorStaffId)}</b> · </>}
+                    {record.coordenadorStaffIds.length > 0 && (
+                      <>Coordenador: <b>{record.coordenadorStaffIds.map((id) => staffName(id)).filter(Boolean).join(", ")}</b> · </>
+                    )}
                     {staffName(record.produtorStaffId) && <>Produtor: <b>{staffName(record.produtorStaffId)}</b> · </>}
                     {staffName(record.cinegrafistaStaffId) && <>Cinegrafista: <b>{staffName(record.cinegrafistaStaffId)}</b></>}
                   </p>

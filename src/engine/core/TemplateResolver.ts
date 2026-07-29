@@ -1,4 +1,5 @@
 import { TemplateLoader } from "@/engine/template-intelligence";
+import { publicPath } from "@/lib/publicPath";
 import type { TemplateConfig, TemplateFormat } from "./TemplateConfig";
 
 export class TemplateResolver {
@@ -9,7 +10,7 @@ export class TemplateResolver {
   load(folder: string): Promise<TemplateConfig> {
     const cached = this.configCache.get(folder);
     if (cached) return cached;
-    const config = fetch(`/templates/${folder}/config.json`).then(async (response) => {
+    const config = fetch(publicPath(`/templates/${folder}/config.json`)).then(async (response) => {
       if (!response.ok) throw new Error("Configuração do template não encontrada.");
       return response.json() as Promise<TemplateConfig>;
     });
@@ -22,7 +23,7 @@ export class TemplateResolver {
     const candidates = format ? config.variants.filter((item) => item.format === format) : config.variants;
     const variant = candidates.find((item) => item.games === games);
     if (!variant) throw new Error("Nenhuma variante encontrada para esta quantidade de jogos.");
-    return `/templates/${config.id}/${variant.file}`;
+    return publicPath(`/templates/${config.id}/${variant.file}`);
   }
 
   loadSvg(path: string): Promise<string> {

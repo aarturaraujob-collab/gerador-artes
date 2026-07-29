@@ -219,7 +219,7 @@ export function CompetitionWizard() {
     if (!importPreview || !form.id) return;
     setImporting(true);
     try {
-      const { count } = dataStore.importMatchesForCompetition(form.id, importPreview.rows);
+      const { count } = await dataStore.importMatchesForCompetition(form.id, importPreview.rows);
       setImportConfirmed(true);
       toast.success(`${count} jogo(s) importado(s).`);
     } catch (error) {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Route, Switch } from "wouter";
+import { Route, Router, Switch } from "wouter";
 
 import { Spinner } from "@/components/ui/spinner";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -22,6 +22,7 @@ import { OperationalStaffPage } from "@/pages/settings/OperationalStaffPage";
 import { OperationalStaffForm } from "@/pages/settings/OperationalStaffForm";
 import { MatchPage } from "@/pages/matches/MatchPage";
 import { EscalaOficiaisPage } from "@/pages/settings/EscalaOficiaisPage";
+import { FaftvHomePage } from "@/pages/settings/FaftvHomePage";
 import { FaftvOperacoesPage } from "@/pages/settings/FaftvOperacoesPage";
 import { FaftvPagamentosPage } from "@/pages/settings/FaftvPagamentosPage";
 import { FafLabDashboard } from "@/pages/faflab/FafLabDashboard";
@@ -50,23 +51,32 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+
   return (
-    <RequireAuth>
+    <Router base={routerBase}>
       <Switch>
-        {/* Dashboard */}
-        <Route path="/" component={Home} />
+        {/* Public FAF Lab — no login required. Reuses FafLabDashboard in
+            read-only mode, backed by usePublicFafLabData (never touches the
+            authenticated-only dataStore, which also loads staff PII). */}
+        <Route path="/publico/faf-lab" component={() => <FafLabDashboard publicMode />} />
+        <Route path="/publico/faf-lab/:competitionId" component={() => <FafLabDashboard publicMode />} />
+
+        <Route>
+          <RequireAuth>
+            <Switch>
+            {/* Dashboard */}
+            <Route path="/" component={Home} />
 
         {/* Artes */}
         <Route path="/artes" component={Templates} />
         <Route path="/artes/:folder" component={TemplateCollection} />
-
-        {/* Compatibilidade temporária */}
         <Route path="/templates" component={Templates} />
         <Route path="/templates/:folder" component={TemplateCollection} />
 
         {/* FAF Lab */}
-        <Route path="/faf-lab" component={FafLabDashboard} />
-        <Route path="/faf-lab/:competitionId" component={FafLabDashboard} />
+        <Route path="/faf-lab" component={() => <FafLabDashboard />} />
+        <Route path="/faf-lab/:competitionId" component={() => <FafLabDashboard />} />
 
         {/* Cadastros */}
         <Route path="/cadastros/competicoes" component={CompetitionsPage} />
@@ -95,9 +105,10 @@ export default function App() {
 
         <Route path="/cadastros/faftv/operacoes" component={FaftvOperacoesPage} />
         <Route path="/cadastros/faftv/pagamentos" component={FaftvPagamentosPage} />
-        <Route path="/cadastros/faftv" component={() => <OperationalStaffPage area="FAFTV" />} />
-        <Route path="/cadastros/faftv/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
-        <Route path="/cadastros/faftv/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
+        <Route path="/cadastros/faftv/equipe" component={() => <OperationalStaffPage area="FAFTV" />} />
+        <Route path="/cadastros/faftv/equipe/novo" component={() => <OperationalStaffForm area="FAFTV" />} />
+        <Route path="/cadastros/faftv/equipe/:id/editar" component={() => <OperationalStaffForm area="FAFTV" />} />
+        <Route path="/cadastros/faftv" component={FaftvHomePage} />
 
         <Route path="/cadastros/oficiais-dco" component={() => <OperationalStaffPage area="DCO" />} />
         <Route path="/cadastros/oficiais-dco/novo" component={() => <OperationalStaffForm area="DCO" />} />
@@ -107,13 +118,17 @@ export default function App() {
         <Route path="/cadastros/arbitros/novo" component={() => <OperationalStaffForm area="Arbitragem" />} />
         <Route path="/cadastros/arbitros/:id/editar" component={() => <OperationalStaffForm area="Arbitragem" />} />
 
-        <Route path="/assets" component={AssetsPage} />
+        {/* Not "/assets" — that collides with the public/assets/ static folder deployed to the same path (Apache serves the real directory instead of falling through to index.html, returning 403). */}
+        <Route path="/biblioteca-assets" component={AssetsPage} />
         <Route path="/configuracoes" component={ConfiguracoesPage} />
         <Route path="/lixeira" component={TrashPage} />
         <Route path="/historico" component={HistoryPage} />
 
-        <Route component={NotFound} />
+            <Route component={NotFound} />
+            </Switch>
+          </RequireAuth>
+        </Route>
       </Switch>
-    </RequireAuth>
+    </Router>
   );
 }

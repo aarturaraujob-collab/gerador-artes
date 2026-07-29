@@ -24,6 +24,7 @@ export type ActivityAction =
   | "staff.restored"
   | "import.matches"
   | "import.playerStats"
+  | "import.faflabReport"
   | "match.updated"
   | "export.png"
   | "imt.generated"

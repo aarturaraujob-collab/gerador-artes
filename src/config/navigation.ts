@@ -21,7 +21,7 @@ export const navigationItems: NavigationItem[] = [
   { label: "FAFTV", href: "/cadastros/faftv", icon: Video, group: "Cadastros" },
   { label: "Oficiais DCO", href: "/cadastros/oficiais-dco", icon: ShieldCheck, group: "Cadastros" },
   { label: "Árbitros", href: "/cadastros/arbitros", icon: Flag, group: "Cadastros" },
-  { label: "Assets", href: "/assets", icon: Folder, group: "Gestão" },
+  { label: "Assets", href: "/biblioteca-assets", icon: Folder, group: "Gestão" },
   { label: "Histórico", href: "/historico", icon: History, group: "Sistema" },
   { label: "Lixeira", href: "/lixeira", icon: Trash2, group: "Sistema" },
   { label: "Configurações", href: "/configuracoes", icon: Settings, group: "Sistema" },

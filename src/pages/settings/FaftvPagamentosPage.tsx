@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Status } from "@/components/ui/status";
 import {
   Select,
   SelectContent,
@@ -17,38 +18,52 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { useDataStore } from "@/hooks/useDataStore";
 import { buildGameRef } from "@/modules/gameRef";
+import { clubDisplayName } from "@/modules/clubDisplay";
 import { matchFaftvEscalaRepository, type MatchFaftvEscalaRecord } from "@/modules/matchFaftvEscalaRepository";
+import { faftvPaymentRepository, type FaftvPaymentRecord } from "@/modules/faftvPaymentRepository";
+import { computeFaftvEarnings, type FaftvEarningsRow } from "@/modules/faftvEarnings";
+import { faftvSettingsRepository, DEFAULT_FAFTV_SETTINGS, type FaftvSettings } from "@/modules/faftvSettingsRepository";
 import { toIsoDate } from "@/pages/templates/matchDateFilter";
 
 const ALL = "__all__";
-const VALOR_JOGO_CINEGRAFISTA = 200;
-const VALOR_DIARIA_COORDENADOR = 200;
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-interface PaymentRow {
-  staffId: string;
-  name: string;
-  role: "Cinegrafista" | "Coordenador";
-  units: number;
-  unitLabel: string;
-  total: number;
+type Bucket = "pago" | "aberto";
+
+/** Ledger dates come as "M/D/AA" (Excel/US style, e.g. "6/19/26") — reformats to "DD/MM/AAAA". */
+function formatLedgerDate(raw: string): string {
+  const parts = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!parts) return raw;
+  const [, month, day, yearRaw] = parts;
+  const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
+  return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
 }
 
 export function FaftvPagamentosPage() {
   const store = useDataStore();
   const [records, setRecords] = useState<MatchFaftvEscalaRecord[]>([]);
+  const [payments, setPayments] = useState<FaftvPaymentRecord[]>([]);
+  const [settings, setSettings] = useState<FaftvSettings>(DEFAULT_FAFTV_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [competitionFilter, setCompetitionFilter] = useState(ALL);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [bucketFilter, setBucketFilter] = useState<Bucket>("aberto");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void matchFaftvEscalaRepository.listAll().then((rows) => {
+    void Promise.all([
+      matchFaftvEscalaRepository.listAll(),
+      faftvPaymentRepository.listAll(),
+      faftvSettingsRepository.get(),
+    ]).then(([escalaRows, paymentRows, faftvSettings]) => {
       if (cancelled) return;
-      setRecords(rows.filter((row) => row.status === "confirmado"));
+      setRecords(escalaRows.filter((row) => row.status === "confirmado"));
+      setPayments(paymentRows);
+      setSettings(faftvSettings);
       setLoading(false);
     });
     return () => {
@@ -58,12 +73,11 @@ export function FaftvPagamentosPage() {
 
   const recordsByGameRef = useMemo(() => new Map(records.map((row) => [row.gameRef, row])), [records]);
 
-  const confirmedMatches = useMemo(() => {
+  const filteredMatches = useMemo(() => {
     return store.matches
-      .map((match) => ({ match, gameRef: buildGameRef(match) }))
-      .filter(({ gameRef }) => recordsByGameRef.has(gameRef))
-      .filter(({ match }) => competitionFilter === ALL || match.competitionId === competitionFilter)
-      .filter(({ match }) => {
+      .filter((match) => recordsByGameRef.has(buildGameRef(match)))
+      .filter((match) => competitionFilter === ALL || match.competitionId === competitionFilter)
+      .filter((match) => {
         if (!startDate && !endDate) return true;
         const iso = toIsoDate(match.date);
         if (!iso) return false;
@@ -73,41 +87,32 @@ export function FaftvPagamentosPage() {
       });
   }, [store.matches, recordsByGameRef, competitionFilter, startDate, endDate]);
 
-  const rows = useMemo(() => {
-    const cinegrafistaMatches = new Map<string, Set<string>>();
-    const coordenadorDates = new Map<string, Set<string>>();
+  const allRows: (FaftvEarningsRow & { bucket: Bucket })[] = useMemo(() => {
+    return computeFaftvEarnings(filteredMatches, recordsByGameRef, payments, store.staffById, settings).map((row) => ({
+      ...row,
+      bucket: row.saldoAberto <= 0 ? "pago" : "aberto",
+    }));
+  }, [filteredMatches, recordsByGameRef, payments, store.staffById, settings]);
 
-    for (const { match, gameRef } of confirmedMatches) {
-      const record = recordsByGameRef.get(gameRef);
-      if (!record) continue;
+  const pagoRows = allRows.filter((row) => row.bucket === "pago");
+  const abertoRows = allRows.filter((row) => row.bucket === "aberto");
+  const visibleRows = bucketFilter === "pago" ? pagoRows : abertoRows;
 
-      if (record.cinegrafistaStaffId) {
-        const set = cinegrafistaMatches.get(record.cinegrafistaStaffId) ?? new Set<string>();
-        set.add(gameRef);
-        cinegrafistaMatches.set(record.cinegrafistaStaffId, set);
-      }
+  // Os cards mostram o total agregado real (soma de tudo já pago / soma de todo
+  // saldo em aberto), não a soma restrita à lista filtrada abaixo — senão o
+  // card "Pago" ficaria artificialmente pequeno só por causa de quem ainda
+  // deve algo.
+  const pagoTotal = allRows.reduce((sum, row) => sum + row.totalPaid, 0);
+  const abertoTotal = allRows.reduce((sum, row) => sum + row.saldoAberto, 0);
 
-      if (record.coordenadorStaffId && match.date) {
-        const set = coordenadorDates.get(record.coordenadorStaffId) ?? new Set<string>();
-        set.add(match.date);
-        coordenadorDates.set(record.coordenadorStaffId, set);
-      }
-    }
-
-    const result: PaymentRow[] = [];
-    for (const [staffId, matches] of cinegrafistaMatches) {
-      const name = store.staffById.get(staffId)?.name ?? staffId;
-      result.push({ staffId, name, role: "Cinegrafista", units: matches.size, unitLabel: "jogo(s)", total: matches.size * VALOR_JOGO_CINEGRAFISTA });
-    }
-    for (const [staffId, dates] of coordenadorDates) {
-      const name = store.staffById.get(staffId)?.name ?? staffId;
-      result.push({ staffId, name, role: "Coordenador", units: dates.size, unitLabel: "diária(s)", total: dates.size * VALOR_DIARIA_COORDENADOR });
-    }
-
-    return result.sort((a, b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role));
-  }, [confirmedMatches, recordsByGameRef, store.staffById]);
-
-  const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   return (
     <AppShell>
@@ -148,16 +153,43 @@ export function FaftvPagamentosPage() {
           </div>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setBucketFilter("pago")}
+            className={`rounded-2xl border p-4 text-left transition-colors ${
+              bucketFilter === "pago" ? "border-success bg-success/10" : "border-card-border bg-card hover:bg-surface-hover"
+            }`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Pago</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{currency.format(pagoTotal)}</p>
+            <p className="text-xs text-foreground-muted">{pagoRows.length} pessoa(s) quitada(s) · clique para detalhar</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setBucketFilter("aberto")}
+            className={`rounded-2xl border p-4 text-left transition-colors ${
+              bucketFilter === "aberto" ? "border-danger bg-danger/10" : "border-card-border bg-card hover:bg-surface-hover"
+            }`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Em aberto</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{currency.format(abertoTotal)}</p>
+            <p className="text-xs text-foreground-muted">{abertoRows.length} pessoa(s) com saldo · clique para detalhar</p>
+          </button>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
-        ) : rows.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <Empty>
             <EmptyHeader>
-              <EmptyTitle>Nenhum pagamento a calcular</EmptyTitle>
+              <EmptyTitle>Nada por aqui</EmptyTitle>
               <EmptyDescription>
-                Confirme operações na aba Operações (Coordenador/Cinegrafista escalados) para elas entrarem aqui.
+                {bucketFilter === "pago"
+                  ? "Ninguém está com o pagamento quitado ainda para os filtros selecionados."
+                  : "Ninguém está com saldo em aberto para os filtros selecionados."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -166,28 +198,83 @@ export function FaftvPagamentosPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 <tr>
+                  <th className="px-4 py-2"></th>
                   <th className="px-4 py-2">Nome</th>
                   <th className="px-4 py-2">Função</th>
                   <th className="px-4 py-2">Quantidade</th>
-                  <th className="px-4 py-2 text-right">Total</th>
+                  <th className="px-4 py-2 text-right">Total devido</th>
+                  <th className="px-4 py-2 text-right">Já pago</th>
+                  <th className="px-4 py-2 text-right">Saldo em aberto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((row) => (
-                  <tr key={`${row.staffId}-${row.role}`}>
-                    <td className="px-4 py-2 font-medium text-foreground">{row.name}</td>
-                    <td className="px-4 py-2 text-foreground-secondary">{row.role}</td>
-                    <td className="px-4 py-2 text-foreground-secondary">{row.units} {row.unitLabel}</td>
-                    <td className="px-4 py-2 text-right font-semibold text-foreground">{currency.format(row.total)}</td>
-                  </tr>
-                ))}
+                {visibleRows.map((row) => {
+                  const key = `${row.staffId}-${row.role}`;
+                  const isExpanded = expanded.has(key);
+                  return (
+                    <Fragment key={key}>
+                      <tr
+                        className="cursor-pointer hover:bg-surface-hover"
+                        onClick={() => toggleExpanded(key)}
+                      >
+                        <td className="px-4 py-2 text-foreground-muted">
+                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </td>
+                        <td className="px-4 py-2 font-medium text-foreground">{row.name}</td>
+                        <td className="px-4 py-2 text-foreground-secondary">{row.role}</td>
+                        <td className="px-4 py-2 text-foreground-secondary">{row.units} {row.unitLabel}</td>
+                        <td className="px-4 py-2 text-right text-foreground-secondary">{currency.format(row.totalOwed)}</td>
+                        <td className="px-4 py-2 text-right text-foreground-secondary">{currency.format(row.totalPaid)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-foreground">
+                          {row.saldoAberto <= 0 ? (
+                            <Status tone="success">Quitado</Status>
+                          ) : (
+                            currency.format(row.saldoAberto)
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td></td>
+                          <td colSpan={6} className="px-4 py-3 space-y-3">
+                            {row.payments.length > 0 && (
+                              <div>
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-foreground-muted">Pagamentos</p>
+                                <ul className="space-y-0.5 text-xs text-foreground-secondary">
+                                  {row.payments.map((payment) => (
+                                    <li key={payment.id}>
+                                      {currency.format(payment.amount)} - pago em {formatLedgerDate(payment.date)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {row.matches.length > 0 && (
+                              <div>
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-foreground-muted">Jogos</p>
+                                <ul className="space-y-1 text-xs text-foreground-secondary">
+                                  {row.matches.map(({ gameRef, match }) => {
+                                    const competition = store.competitions.find((c) => c.id === match.competitionId);
+                                    return (
+                                      <li key={gameRef} className="flex flex-wrap gap-2">
+                                        <span className="font-medium text-foreground-muted">{match.date || "Data a definir"}</span>
+                                        <span>{competition?.name ?? match.competitionId} · {match.round || "—"}</span>
+                                        <span>
+                                          {clubDisplayName(match.homeClubId, store.clubsById)} × {clubDisplayName(match.awayClubId, store.clubsById)}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
-              <tfoot>
-                <tr className="border-t border-border bg-muted">
-                  <td className="px-4 py-2 font-semibold text-foreground" colSpan={3}>Total geral</td>
-                  <td className="px-4 py-2 text-right font-bold text-foreground">{currency.format(grandTotal)}</td>
-                </tr>
-              </tfoot>
             </table>
           </Card>
         )}

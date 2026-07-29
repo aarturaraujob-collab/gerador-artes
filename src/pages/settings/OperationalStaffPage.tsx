@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Pencil, Plus, Trash2, Video, Wallet } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, Pencil, Plus, Trash2, Video, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -27,7 +27,7 @@ interface OperationalStaffPageProps {
 }
 
 function basePath(area: StaffArea): string {
-  if (area === "FAFTV") return "/cadastros/faftv";
+  if (area === "FAFTV") return "/cadastros/faftv/equipe";
   if (area === "DCO") return "/cadastros/oficiais-dco";
   return "/cadastros/arbitros";
 }
@@ -66,6 +66,16 @@ export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
+        {area === "FAFTV" && (
+          <Link
+            href="/cadastros/faftv"
+            className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground"
+          >
+            <ArrowLeft size={14} />
+            Voltar para FAFTV
+          </Link>
+        )}
+
         <PageHeader
           title={pageTitle(area)}
           description={pageDescription(area)}

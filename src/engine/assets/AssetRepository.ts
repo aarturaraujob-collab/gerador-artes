@@ -1,10 +1,11 @@
 import type { DataStore } from "@/modules/dataStore";
 import { isPlaceholderClubId } from "@/modules/clubDisplay";
+import { publicPath } from "@/lib/publicPath";
 
-const ESCUDOS_DIR = "/assets/escudos";
-const LOGOS_DIR = "/assets/logos";
-const BACKGROUNDS_DIR = "/assets/backgrounds";
-const RODADAS_DIR = "/assets/rodadas";
+const ESCUDOS_DIR = publicPath("/assets/escudos");
+const LOGOS_DIR = publicPath("/assets/logos");
+const BACKGROUNDS_DIR = publicPath("/assets/backgrounds");
+const RODADAS_DIR = publicPath("/assets/rodadas");
 
 const FALLBACK_CLUB_SHIELD = `${LOGOS_DIR}/faf.png`;
 

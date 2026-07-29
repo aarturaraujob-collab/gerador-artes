@@ -65,7 +65,7 @@ export class SpreadsheetImporter {
     if (rows.length === 0) throw new Error("Nenhuma partida encontrada na planilha.");
 
     const competitionName = baseName(file.name);
-    const { competitionId, count } = this.store.ingest(competitionName, rows);
+    const { competitionId, count } = await this.store.ingest(competitionName, rows);
 
     if (count === 0) throw new Error("Nenhuma partida válida na planilha.");
     return { competitionId, competitionName, count };

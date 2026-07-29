@@ -56,11 +56,11 @@ export class MatchTemplateRenderer {
     // Resultados do Dia score fields — no-op today on templates whose SVG
     // doesn't declare these ids yet (e.g. jogos-do-dia); populates
     // automatically the moment a template adds them (CP7).
-    if (document.getNode(slotId("txt_placar_mandante", index))) {
-      applyTextField(document, config, "txt_placar_mandante", index, formatGoals(match.homeGoals), games);
+    if (document.getNode(slotId("txt_placar_home", index))) {
+      applyTextField(document, config, "txt_placar_home", index, formatGoals(match.homeGoals), games);
     }
-    if (document.getNode(slotId("txt_placar_visitante", index))) {
-      applyTextField(document, config, "txt_placar_visitante", index, formatGoals(match.awayGoals), games);
+    if (document.getNode(slotId("txt_placar_away", index))) {
+      applyTextField(document, config, "txt_placar_away", index, formatGoals(match.awayGoals), games);
     }
 
     document.setImage(slotId("img_escudo_mandante", index), homeShield);
@@ -74,19 +74,26 @@ export class MatchTemplateRenderer {
    * sometimes repeat the header/competition label once per visual "page" of
    * the story; every instance found gets the same shared value.
    */
-  private fillRepeatedText(document: SvgDocument, config: TemplateConfig, baseId: string, value: string, games: number): void {
+  private fillRepeatedText(
+    document: SvgDocument,
+    config: TemplateConfig,
+    baseId: string,
+    value: string,
+    games: number,
+    forceAlign?: "start" | "middle" | "end",
+  ): void {
     for (let index = 0; document.getNode(slotId(baseId, index)); index++) {
-      applyTextField(document, config, baseId, index, value, games);
+      applyTextField(document, config, baseId, index, value, games, forceAlign);
     }
   }
 
   /** Assets shared by the whole art, driven by the first match of the batch. */
   private async applySharedAssets(document: SvgDocument, config: TemplateConfig, match: Match, games: number): Promise<void> {
-    this.fillRepeatedText(document, config, "txt_dia_cabecalho", formatHeader(parseMatchDate(match.date)), games);
+    this.fillRepeatedText(document, config, "txt_dia_cabecalho", formatHeader(parseMatchDate(match.date)), games, "middle");
 
     const competition = this.store.competitions.find((item) => item.id === match.competitionId);
     if (competition) {
-      this.fillRepeatedText(document, config, "txt_competicao", competition.name, games);
+      this.fillRepeatedText(document, config, "txt_competicao", competition.name.toUpperCase(), games, "middle");
     }
 
     if (document.getNode("img_rodada")) {

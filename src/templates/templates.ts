@@ -1,3 +1,5 @@
+import { publicPath } from "@/lib/publicPath";
+
 export const TEMPLATE_CATEGORIES = [
   "Matchday",
   "Resultado",
@@ -35,7 +37,7 @@ export const templates: TemplateItem[] = [
     id: "jogos-do-dia",
     name: "Jogos do Dia",
     folder: "jogos-do-dia",
-    preview: "/templates/jogos-do-dia/cover.png",
+    preview: publicPath("/templates/jogos-do-dia/cover.png"),
     category: "Matchday",
     tags: ["jogos", "rodada", "calendário"],
     scope: "matches",
@@ -44,7 +46,7 @@ export const templates: TemplateItem[] = [
     id: "resultados-do-dia",
     name: "Resultados do Dia",
     folder: "resultados-do-dia",
-    preview: "/templates/resultados-do-dia/cover.png",
+    preview: publicPath("/templates/resultados-do-dia/cover.png"),
     category: "Resultado",
     tags: ["resultado", "placar", "jogos"],
     scope: "matches",
@@ -53,7 +55,7 @@ export const templates: TemplateItem[] = [
     id: "thumb-faftv",
     name: "Thumbnail FAFTV",
     folder: "thumb-faftv",
-    preview: "/templates/thumb-faftv/cover.png",
+    preview: publicPath("/templates/thumb-faftv/cover.png"),
     category: "Thumbnail",
     tags: ["youtube", "faftv", "vídeo"],
     scope: "matches",
@@ -62,7 +64,7 @@ export const templates: TemplateItem[] = [
     id: "classificacao",
     name: "Classificação",
     folder: "classificacao",
-    preview: "/templates/classificacao/cover.png",
+    preview: publicPath("/templates/classificacao/cover.png"),
     category: "Classificação",
     tags: ["tabela", "classificação", "pontos"],
     scope: "competition",

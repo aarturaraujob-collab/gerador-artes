@@ -6,7 +6,8 @@ export type FaftvEscalaStatus = "a_acontecer" | "confirmado" | "cancelado";
 export interface MatchFaftvEscalaRecord {
   id: string;
   gameRef: string;
-  coordenadorStaffId: string | null;
+  /** More than one coordenador can be escalado for the same match when needed. */
+  coordenadorStaffIds: string[];
   produtorStaffId: string | null;
   cinegrafistaStaffId: string | null;
   transmitir: boolean;
@@ -22,7 +23,7 @@ export interface MatchFaftvEscalaRecord {
 interface MatchFaftvEscalaRow {
   id: string;
   game_ref: string;
-  coordenador_staff_id: string | null;
+  coordenador_staff_ids: string[] | null;
   produtor_staff_id: string | null;
   cinegrafista_staff_id: string | null;
   transmitir: boolean;
@@ -38,7 +39,7 @@ function fromRow(row: MatchFaftvEscalaRow): MatchFaftvEscalaRecord {
   return {
     id: row.id,
     gameRef: row.game_ref,
-    coordenadorStaffId: row.coordenador_staff_id,
+    coordenadorStaffIds: row.coordenador_staff_ids ?? [],
     produtorStaffId: row.produtor_staff_id,
     cinegrafistaStaffId: row.cinegrafista_staff_id,
     transmitir: row.transmitir,
@@ -55,7 +56,7 @@ function toRow(record: MatchFaftvEscalaRecord): MatchFaftvEscalaRow {
   return {
     id: record.id,
     game_ref: record.gameRef,
-    coordenador_staff_id: record.coordenadorStaffId,
+    coordenador_staff_ids: record.coordenadorStaffIds,
     produtor_staff_id: record.produtorStaffId,
     cinegrafista_staff_id: record.cinegrafistaStaffId,
     transmitir: record.transmitir,

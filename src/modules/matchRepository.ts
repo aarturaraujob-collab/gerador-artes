@@ -24,6 +24,8 @@ interface MatchRow {
   tv: string | null;
   phase: string | null;
   ref: string | null;
+  publico: number | null;
+  renda: number | null;
 }
 
 function fromRow(row: MatchRow): StoredMatch {
@@ -42,6 +44,8 @@ function fromRow(row: MatchRow): StoredMatch {
     tv: row.tv,
     phase: row.phase,
     ref: row.ref,
+    publico: row.publico,
+    renda: row.renda,
   };
 }
 
@@ -61,6 +65,8 @@ function toRow(match: StoredMatch): MatchRow {
     tv: match.tv,
     phase: match.phase ?? null,
     ref: match.ref ?? null,
+    publico: match.publico ?? null,
+    renda: match.renda ?? null,
   };
 }
 
