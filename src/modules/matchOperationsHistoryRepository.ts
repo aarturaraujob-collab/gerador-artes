@@ -61,4 +61,10 @@ export class MatchOperationsHistoryRepository {
     const { error } = await supabase.from("match_operations_history").insert(toRow(entry));
     if (error) throw error;
   }
+
+  /** Clears a match's audit trail — used when the match itself is being removed (reimport dropping it, or a hard delete). */
+  async removeByGameRef(gameRef: string): Promise<void> {
+    const { error } = await supabase.from("match_operations_history").delete().eq("game_ref", gameRef);
+    if (error) throw error;
+  }
 }

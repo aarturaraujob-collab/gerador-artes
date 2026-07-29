@@ -108,18 +108,39 @@ export class MatchRepository {
     if (error) throw error;
   }
 
+  /** Every match id currently stored for a competition — used to diff an import against what's already there. */
+  async listIdsForCompetition(competitionId: string): Promise<string[]> {
+    const { data, error } = await supabase.from("matches").select("id").eq("competition_id", competitionId);
+    if (error) throw error;
+    return (data ?? []).map((row) => row.id as string);
+  }
+
   /**
-   * Atomically replaces every match belonging to `competitionId` with
-   * `records` — matches an import wholesale-replacing a competition's
-   * schedule, not merging row by row.
+   * Replaces every match belonging to `competitionId` with `records` — an
+   * import wholesale-replacing a competition's schedule. Upserts instead of
+   * delete-then-insert so a match whose identity (round/date/time/clubs, and
+   * therefore id) didn't change keeps its row — and the FAFTV/Operação/
+   * Arbitragem/Escala/Histórico rows FK-referencing it — intact across a
+   * reimport. Only ids that genuinely disappear from the new import are
+   * deleted; the caller (dataStore.mergeMatches) is responsible for clearing
+   * those matches' operational rows first, the same way updateMatch does for
+   * a single reschedule — otherwise this delete violates their FKs.
    */
   async replaceForCompetition(competitionId: string, records: readonly Match[]): Promise<void> {
-    const { error: deleteError } = await supabase.from("matches").delete().eq("competition_id", competitionId);
-    if (deleteError) throw deleteError;
+    const stored = records.map((record) => toStored(record));
+    const keepIds = new Set(stored.map((record) => record.id));
 
-    if (records.length === 0) return;
-    const { error: insertError } = await supabase.from("matches").insert(records.map((record) => toRow(toStored(record))));
-    if (insertError) throw insertError;
+    const existingIds = await this.listIdsForCompetition(competitionId);
+    const idsToRemove = existingIds.filter((id) => !keepIds.has(id));
+
+    if (idsToRemove.length > 0) {
+      const { error: deleteError } = await supabase.from("matches").delete().in("id", idsToRemove);
+      if (deleteError) throw deleteError;
+    }
+
+    if (stored.length === 0) return;
+    const { error: upsertError } = await supabase.from("matches").upsert(stored.map(toRow));
+    if (upsertError) throw upsertError;
   }
 }
 

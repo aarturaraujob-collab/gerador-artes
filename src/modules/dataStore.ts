@@ -19,6 +19,9 @@ import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvReposit
 import { MatchOperacaoRepository, type MatchOperacaoRecord } from "./matchOperacaoRepository";
 import { MatchFaftvEscalaRepository } from "./matchFaftvEscalaRepository";
 import { MatchArbitragemRepository } from "./matchArbitragemRepository";
+import { imtRepository } from "../documents/repository/imtRepository";
+import { detailedTableRepository } from "../documents/repository/detailedTableRepository";
+import { playerStatsRepository } from "./playerStatsRepository";
 import {
   MatchOperationsHistoryRepository,
   type MatchHistoryEntry,
@@ -622,8 +625,30 @@ class DataStoreController implements DataStore {
     return all.filter((item) => item.deletedAt);
   }
 
-  /** Permanent delete — only reachable from the Lixeira screen. */
+  /**
+   * Permanent delete — only reachable from the Lixeira screen. None of a
+   * competition's dependents (matches and their FAFTV/Operação/Arbitragem/
+   * Escala/Histórico, IMTs, Tabela Detalhada versions, estatísticas de
+   * jogadores) cascade on delete, so they're torn down explicitly first —
+   * otherwise this throws an FK violation for any competition that ever had
+   * matches or documents generated.
+   */
   async purgeCompetition(id: string): Promise<void> {
+    const competitionMatches = this.snapshot.matches.filter((match) => match.competitionId === id);
+    for (const match of competitionMatches) {
+      const gameRef = buildGameRef(match);
+      await this.cleanupMatchOps(gameRef);
+      await this.matchRepo.remove(gameRef);
+    }
+
+    const [imts, detailedTables] = await Promise.all([
+      imtRepository.listByCompetition(id),
+      detailedTableRepository.listByCompetition(id),
+    ]);
+    await Promise.all(imts.map((imt) => imtRepository.remove(imt.id)));
+    await Promise.all(detailedTables.map((table) => detailedTableRepository.remove(table.id)));
+    await playerStatsRepository.replaceForCompetition(id, []);
+
     await this.competitionRepo.remove(id);
   }
 
@@ -747,6 +772,21 @@ class DataStoreController implements DataStore {
     await Promise.all(newClubs.map((club) => this.clubRepo.upsert(club)));
     await Promise.all(newCities.map((city) => this.cityRepo.upsert(city)));
     await Promise.all(newStadiums.map((stadium) => this.stadiumRepo.upsert(stadium)));
+
+    // A fixture that disappears from this reimport (round/date/time/clubs no
+    // longer match anything, so its old id isn't in the new set) still has
+    // its FAFTV/Operação/Arbitragem/Escala/Histórico rows FK-referencing that
+    // old id — clear those first, or replaceForCompetition's delete of the
+    // now-gone match rows fails/crashes the whole reimport.
+    const keptIds = new Set(importedMatches.map((match) => buildGameRef(match)));
+    const droppedIds = this.snapshot.matches
+      .filter((match) => match.competitionId === competitionId)
+      .map((match) => buildGameRef(match))
+      .filter((id) => !keptIds.has(id));
+    for (const id of droppedIds) {
+      await this.cleanupMatchOps(id);
+    }
+
     await this.matchRepo.replaceForCompetition(competitionId, importedMatches);
 
     const matches = [
@@ -859,6 +899,24 @@ class DataStoreController implements DataStore {
       await this.arbitragemRepo.upsert({ ...arbitragem, id: newGameRef, gameRef: newGameRef });
       await this.arbitragemRepo.remove(oldGameRef);
     }
+  }
+
+  /**
+   * Clears every FAFTV/Operação/Arbitragem/Escala/Histórico row FK-referencing
+   * a match that is genuinely going away (not being rescheduled — see
+   * migrateMatchOps for that case). Needed before the match row itself can be
+   * deleted, since none of those tables cascade on delete. Used when a
+   * reimport drops a fixture from the schedule and when a competition is
+   * purged from the Lixeira.
+   */
+  private async cleanupMatchOps(gameRef: string): Promise<void> {
+    await Promise.all([
+      this.faftvRepo.remove(gameRef),
+      this.operacaoRepo.remove(gameRef),
+      this.historyRepo.removeByGameRef(gameRef),
+      this.faftvEscalaRepo.remove(gameRef),
+      this.arbitragemRepo.remove(gameRef),
+    ]);
   }
 
   // ─── Match-scoped FAFTV/Operação (backs the match page's "Central Operacional") ───

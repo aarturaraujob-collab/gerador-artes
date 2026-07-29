@@ -92,4 +92,24 @@ describe("computeFaftvEarnings", () => {
     expect(row?.totalPaid).toBe(80);
     expect(row?.saldoAberto).toBe(120);
   });
+
+  it("keeps saldoAberto negative when paid more than currently owed, instead of hiding the overpayment as 0", () => {
+    const match = makeMatch();
+    const escalaByGameRef = new Map<string, MatchFaftvEscalaRecord>([
+      [buildGameRef(match), makeEscala(match, { cinegrafistaStaffId: "cinegrafista-1" })],
+    ]);
+    const payments: FaftvPaymentRecord[] = [
+      { id: "p1", staffId: "cinegrafista-1", date: "3/1/26", amount: 300, description: "" },
+    ];
+
+    const rows = computeFaftvEarnings([match], escalaByGameRef, payments, staffById, {
+      valorJogoCinegrafista: 200,
+      valorDiariaCoordenador: 200,
+    });
+
+    const row = rows.find((r) => r.staffId === "cinegrafista-1");
+    expect(row?.totalOwed).toBe(200);
+    expect(row?.totalPaid).toBe(300);
+    expect(row?.saldoAberto).toBe(-100);
+  });
 });

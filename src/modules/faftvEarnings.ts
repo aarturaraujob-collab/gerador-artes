@@ -73,7 +73,10 @@ export function computeFaftvEarnings(
   function buildRow(staffId: string, role: string, units: number, unitLabel: string, totalOwed: number, rowMatches: { gameRef: string; match: Match }[]): FaftvEarningsRow {
     const name = staffById.get(staffId)?.name ?? staffId;
     const totalPaid = paidByStaff.get(staffId) ?? 0;
-    const saldoAberto = Math.max(0, totalOwed - totalPaid);
+    // Negative here means overpago (pago mais do que o devido nos filtros
+    // atuais) — the caller shows that explicitly rather than have it clamped
+    // away and read as "quitado" with nothing left over.
+    const saldoAberto = totalOwed - totalPaid;
     return {
       staffId,
       name,

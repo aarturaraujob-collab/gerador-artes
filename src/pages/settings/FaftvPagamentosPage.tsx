@@ -226,7 +226,14 @@ export function FaftvPagamentosPage() {
                         <td className="px-4 py-2 text-right text-foreground-secondary">{currency.format(row.totalOwed)}</td>
                         <td className="px-4 py-2 text-right text-foreground-secondary">{currency.format(row.totalPaid)}</td>
                         <td className="px-4 py-2 text-right font-semibold text-foreground">
-                          {row.saldoAberto <= 0 ? (
+                          {row.saldoAberto < 0 ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <Status tone="success">Quitado</Status>
+                              <span className="text-xs font-normal text-foreground-muted">
+                                {currency.format(-row.saldoAberto)} pago a mais
+                              </span>
+                            </div>
+                          ) : row.saldoAberto === 0 ? (
                             <Status tone="success">Quitado</Status>
                           ) : (
                             currency.format(row.saldoAberto)
