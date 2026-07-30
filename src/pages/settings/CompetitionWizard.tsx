@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -28,9 +28,13 @@ import { assetRepository, spreadsheetImporter } from "@/engine";
 import {
   emptyBackground,
   emptyCompetitionFormat,
+  emptyPontosPhase,
+  emptyMataMataPhase,
   describeCompetitionFormat,
   type CompetitionFormat,
-  type KnockoutStageConfig,
+  type CompetitionPhaseConfig,
+  type CompetitionPhaseType,
+  type PhaseMatchup,
 } from "@/modules/competitionRepository";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
@@ -178,24 +182,57 @@ export function CompetitionWizard() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function updateFormat<K extends keyof CompetitionFormat>(key: K, value: CompetitionFormat[K]) {
-    setForm((current) => ({ ...current, format: { ...current.format, [key]: value } }));
+  function setPhases(phases: CompetitionPhaseConfig[]) {
+    setForm((current) => ({ ...current, format: { ...current.format, phases } }));
   }
 
-  function addKnockoutStage() {
-    const stage: KnockoutStageConfig = { id: crypto.randomUUID(), name: "", legs: 1 };
-    updateFormat("knockoutStages", [...form.format.knockoutStages, stage]);
+  function addPhase(type: CompetitionPhaseType) {
+    const phase = type === "pontos" ? emptyPontosPhase(`Fase ${form.format.phases.length + 1}`) : emptyMataMataPhase();
+    setPhases([...form.format.phases, phase]);
   }
 
-  function updateKnockoutStage(id: string, patch: Partial<KnockoutStageConfig>) {
-    updateFormat(
-      "knockoutStages",
-      form.format.knockoutStages.map((stage) => (stage.id === id ? { ...stage, ...patch } : stage)),
-    );
+  function updatePhase(id: string, patch: Partial<CompetitionPhaseConfig>) {
+    setPhases(form.format.phases.map((phase) => (phase.id === id ? { ...phase, ...patch } : phase)));
   }
 
-  function removeKnockoutStage(id: string) {
-    updateFormat("knockoutStages", form.format.knockoutStages.filter((stage) => stage.id !== id));
+  function changePhaseType(id: string, type: CompetitionPhaseType) {
+    const current = form.format.phases.find((phase) => phase.id === id);
+    const name = current?.name ?? "";
+    const replacement = type === "pontos" ? emptyPontosPhase(name) : emptyMataMataPhase(name);
+    setPhases(form.format.phases.map((phase) => (phase.id === id ? { ...replacement, id } : phase)));
+  }
+
+  function removePhase(id: string) {
+    setPhases(form.format.phases.filter((phase) => phase.id !== id));
+  }
+
+  function movePhase(id: string, direction: -1 | 1) {
+    const phases = [...form.format.phases];
+    const index = phases.findIndex((phase) => phase.id === id);
+    const targetIndex = index + direction;
+    if (index === -1 || targetIndex < 0 || targetIndex >= phases.length) return;
+    [phases[index], phases[targetIndex]] = [phases[targetIndex], phases[index]];
+    setPhases(phases);
+  }
+
+  function addMatchup(phaseId: string) {
+    const matchup: PhaseMatchup = { id: crypto.randomUUID(), home: "", away: "" };
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    updatePhase(phaseId, { matchups: [...(phase?.matchups ?? []), matchup] });
+  }
+
+  function updateMatchup(phaseId: string, matchupId: string, patch: Partial<PhaseMatchup>) {
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    if (!phase) return;
+    updatePhase(phaseId, {
+      matchups: (phase.matchups ?? []).map((matchup) => (matchup.id === matchupId ? { ...matchup, ...patch } : matchup)),
+    });
+  }
+
+  function removeMatchup(phaseId: string, matchupId: string) {
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    if (!phase) return;
+    updatePhase(phaseId, { matchups: (phase.matchups ?? []).filter((matchup) => matchup.id !== matchupId) });
   }
 
   function canAdvanceFromStep1(): boolean {
@@ -458,90 +495,170 @@ export function CompetitionWizard() {
           )}
 
           {step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-sm font-semibold text-foreground-secondary">Fase 1 — Pontos Corridos</p>
-                <p className="mt-1 text-xs text-foreground-muted">
-                  Quantos grupos disputam a primeira fase e quantos colocados de cada grupo avançam para o
-                  mata-mata (0 se a competição terminar na Fase 1, sem mata-mata).
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-foreground-secondary">
+                  Monte as fases na ordem em que são disputadas. Qualquer fase pode ser pontos corridos ou
+                  mata-mata — inclusive a primeira, para competições que já começam eliminando.
                 </p>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-semibold text-foreground-secondary">Grupos</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={form.format.groupCount}
-                      onChange={(event) => updateFormat("groupCount", Math.max(1, Number(event.target.value) || 1))}
-                      className="mt-2 h-11"
-                    />
-                    <p className="mt-1 text-xs text-foreground-muted">1 = grupo único (todos contra todos).</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-foreground-secondary">Classificados por grupo</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.format.advancePerGroup}
-                      onChange={(event) => updateFormat("advancePerGroup", Math.max(0, Number(event.target.value) || 0))}
-                      className="mt-2 h-11"
-                    />
-                  </div>
-                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground-secondary">Fases de Mata-Mata</p>
-                    <p className="mt-1 text-xs text-foreground-muted">
-                      Em ordem de disputa — ex.: Semifinal, depois Final.
-                    </p>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addKnockoutStage}>
-                    <Plus size={14} />
-                    Adicionar fase
-                  </Button>
-                </div>
+              {form.format.phases.length === 0 && (
+                <p className="rounded-xl bg-muted p-4 text-sm text-foreground-muted">
+                  Nenhuma fase definida ainda.
+                </p>
+              )}
 
-                {form.format.knockoutStages.length === 0 ? (
-                  <p className="mt-3 rounded-xl bg-muted p-4 text-sm text-foreground-muted">
-                    Nenhuma fase de mata-mata — a competição termina na classificação da Fase 1.
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-3">
-                    {form.format.knockoutStages.map((stage, index) => (
-                      <div key={stage.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
-                        <span className="w-6 shrink-0 text-center text-xs font-semibold text-foreground-muted">
-                          {index + 1}ª
-                        </span>
-                        <Input
-                          value={stage.name}
-                          onChange={(event) => updateKnockoutStage(stage.id, { name: event.target.value })}
-                          placeholder="Semifinal"
-                          className="h-10 flex-1"
-                        />
-                        <Select
-                          value={String(stage.legs)}
-                          onValueChange={(value) => updateKnockoutStage(stage.id, { legs: Number(value) as 1 | 2 })}
-                        >
-                          <SelectTrigger className="h-10 w-40"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">Jogo único</SelectItem>
-                            <SelectItem value="2">Ida e volta</SelectItem>
-                          </SelectContent>
-                        </Select>
+              <div className="space-y-3">
+                {form.format.phases.map((phase, index) => (
+                  <div key={phase.id} className="rounded-xl border border-border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex shrink-0 flex-col">
                         <IconButton
-                          aria-label="Remover fase"
-                          title="Remover fase"
-                          onClick={() => removeKnockoutStage(stage.id)}
+                          aria-label="Mover fase para cima"
+                          title="Mover fase para cima"
+                          onClick={() => movePhase(phase.id, -1)}
+                          disabled={index === 0}
                         >
-                          <Trash2 size={16} />
+                          <ChevronUp size={14} />
+                        </IconButton>
+                        <IconButton
+                          aria-label="Mover fase para baixo"
+                          title="Mover fase para baixo"
+                          onClick={() => movePhase(phase.id, 1)}
+                          disabled={index === form.format.phases.length - 1}
+                        >
+                          <ChevronDown size={14} />
                         </IconButton>
                       </div>
-                    ))}
+                      <span className="w-6 shrink-0 text-center text-xs font-semibold text-foreground-muted">
+                        {index + 1}ª
+                      </span>
+                      <Input
+                        value={phase.name}
+                        onChange={(event) => updatePhase(phase.id, { name: event.target.value })}
+                        placeholder="Nome da fase"
+                        className="h-10 min-w-[10rem] flex-1"
+                      />
+                      <Select value={phase.type} onValueChange={(value) => changePhaseType(phase.id, value as CompetitionPhaseType)}>
+                        <SelectTrigger className="h-10 w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pontos">Pontos corridos</SelectItem>
+                          <SelectItem value="mata-mata">Mata-mata</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <IconButton aria-label="Remover fase" title="Remover fase" onClick={() => removePhase(phase.id)}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </div>
+
+                    {phase.type === "pontos" ? (
+                      <div className="mt-3 grid gap-3 pl-9 sm:grid-cols-2">
+                        <div>
+                          <label className="text-xs font-semibold text-foreground-secondary">Grupos</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={phase.groupCount ?? 1}
+                            onChange={(event) =>
+                              updatePhase(phase.id, { groupCount: Math.max(1, Number(event.target.value) || 1) })
+                            }
+                            className="mt-1 h-10"
+                          />
+                          <p className="mt-1 text-xs text-foreground-muted">1 = grupo único (todos contra todos).</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground-secondary">Classificados por grupo</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={phase.advancePerGroup ?? 0}
+                            onChange={(event) =>
+                              updatePhase(phase.id, { advancePerGroup: Math.max(0, Number(event.target.value) || 0) })
+                            }
+                            className="mt-1 h-10"
+                          />
+                          <p className="mt-1 text-xs text-foreground-muted">0 se esta fase encerrar a competição.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-3 pl-9">
+                        <div className="w-40">
+                          <label className="text-xs font-semibold text-foreground-secondary">Formato</label>
+                          <Select
+                            value={String(phase.legs ?? 1)}
+                            onValueChange={(value) => updatePhase(phase.id, { legs: Number(value) as 1 | 2 })}
+                          >
+                            <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Jogo único</SelectItem>
+                              <SelectItem value="2">Ida e volta</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between gap-3">
+                            <label className="text-xs font-semibold text-foreground-secondary">
+                              Chaveamento — quem pega quem
+                            </label>
+                            <Button type="button" variant="outline" size="sm" onClick={() => addMatchup(phase.id)}>
+                              <Plus size={14} />
+                              Adicionar confronto
+                            </Button>
+                          </div>
+                          <p className="mt-1 text-xs text-foreground-muted">
+                            Use o clube (quando já souber) ou a posição ("1º Grupo A", "Vencedor Semifinal 1").
+                          </p>
+
+                          {(phase.matchups ?? []).length === 0 ? (
+                            <p className="mt-2 rounded-xl bg-muted p-3 text-sm text-foreground-muted">
+                              Nenhum confronto definido ainda.
+                            </p>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              {(phase.matchups ?? []).map((matchup) => (
+                                <div key={matchup.id} className="flex flex-wrap items-center gap-2">
+                                  <Input
+                                    value={matchup.home}
+                                    onChange={(event) => updateMatchup(phase.id, matchup.id, { home: event.target.value })}
+                                    placeholder="1º Grupo A"
+                                    className="h-10 min-w-[8rem] flex-1"
+                                  />
+                                  <span className="text-xs text-foreground-muted">×</span>
+                                  <Input
+                                    value={matchup.away}
+                                    onChange={(event) => updateMatchup(phase.id, matchup.id, { away: event.target.value })}
+                                    placeholder="2º Grupo B"
+                                    className="h-10 min-w-[8rem] flex-1"
+                                  />
+                                  <IconButton
+                                    aria-label="Remover confronto"
+                                    title="Remover confronto"
+                                    onClick={() => removeMatchup(phase.id, matchup.id)}
+                                  >
+                                    <Trash2 size={16} />
+                                  </IconButton>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => addPhase("pontos")}>
+                  <Plus size={14} />
+                  Adicionar fase de pontos corridos
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => addPhase("mata-mata")}>
+                  <Plus size={14} />
+                  Adicionar fase de mata-mata
+                </Button>
               </div>
             </div>
           )}

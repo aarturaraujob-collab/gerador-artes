@@ -52,52 +52,80 @@ export function emptyBackground(): BackgroundAssets {
 /** Ida e volta (agregado) ou jogo único — os únicos dois formatos usados pela FAF numa fase de mata-mata. */
 export type KnockoutStageLegs = 1 | 2;
 
-export interface KnockoutStageConfig {
+export type CompetitionPhaseType = "pontos" | "mata-mata";
+
+/**
+ * Um confronto já definido do chaveamento — "quem pega quem". Os lados são
+ * texto livre porque o que se sabe no momento de montar a fórmula varia:
+ * pode ser um clube já cadastrado (fase de mata-mata logo na largada, sem
+ * fase de grupos antes), uma posição de tabela ainda não decidida ("1º
+ * Grupo A", "2º Grupo B") ou o vencedor de outro confronto ("Vencedor SF1").
+ */
+export interface PhaseMatchup {
   id: string;
-  /** Ex.: "Semifinal", "Final", "Quartas de Final". Livre porque o número de fases de mata-mata varia por competição. */
+  home: string;
+  away: string;
+}
+
+export interface CompetitionPhaseConfig {
+  id: string;
+  /** Ex.: "Primeira Fase", "Fase de Grupos", "Semifinal", "Final". Livre — o número e a ordem das fases variam por competição. */
   name: string;
-  legs: KnockoutStageLegs;
+  type: CompetitionPhaseType;
+  /** Só para type "pontos". Quantos grupos disputam esta fase — 1 = grupo único (todos contra todos). */
+  groupCount?: number;
+  /** Só para type "pontos". Quantos colocados de cada grupo avançam para a próxima fase — 0 quando esta fase encerra a competição. */
+  advancePerGroup?: number;
+  /** Só para type "mata-mata". */
+  legs?: KnockoutStageLegs;
+  /** Só para type "mata-mata" — o chaveamento já montado para esta fase. */
+  matchups?: PhaseMatchup[];
 }
 
 /**
- * A fórmula de disputa de uma competição: uma Fase 1 de pontos corridos
- * (1 grupo = todos contra todos; 2+ grupos = grupos separados) seguida de
- * zero ou mais fases de mata-mata. Cobre tanto um campeonato só de pontos
- * corridos (knockoutStages vazio) quanto formatos mistos como o Alagoano
- * (1 grupo → semifinal e final de ida e volta) ou a Copa Alagoas (2 grupos
- * → semifinal e final em jogo único).
+ * A fórmula de disputa de uma competição: uma sequência ordenada de fases,
+ * cada uma de pontos corridos (com grupos e classificação) ou de mata-mata
+ * (jogo único ou ida e volta, com o chaveamento já montado) — em qualquer
+ * ordem, já que existem competições que começam direto em mata-mata. Cobre
+ * tanto um campeonato só de pontos corridos (uma única fase) quanto
+ * formatos mistos como o Alagoano (1 grupo → semifinal e final de ida e
+ * volta) ou a Copa Alagoas (2 grupos → semifinal e final em jogo único).
  */
 export interface CompetitionFormat {
-  /** Quantos grupos disputam a Fase 1. 1 = grupo único. */
-  groupCount: number;
-  /** Quantos colocados de cada grupo avançam para a primeira fase de mata-mata. 0 quando não há mata-mata. */
-  advancePerGroup: number;
-  knockoutStages: KnockoutStageConfig[];
+  phases: CompetitionPhaseConfig[];
+}
+
+export function emptyPontosPhase(name = "Fase 1"): CompetitionPhaseConfig {
+  return { id: crypto.randomUUID(), name, type: "pontos", groupCount: 1, advancePerGroup: 0 };
+}
+
+export function emptyMataMataPhase(name = ""): CompetitionPhaseConfig {
+  return { id: crypto.randomUUID(), name, type: "mata-mata", legs: 1, matchups: [] };
 }
 
 export function emptyCompetitionFormat(): CompetitionFormat {
-  return { groupCount: 1, advancePerGroup: 0, knockoutStages: [] };
+  return { phases: [emptyPontosPhase()] };
+}
+
+function describePhase(phase: CompetitionPhaseConfig): string {
+  if (phase.type === "mata-mata") {
+    const legsLabel = phase.legs === 2 ? "ida e volta" : "jogo único";
+    const matchupCount = phase.matchups?.length ?? 0;
+    const matchupsLabel = matchupCount > 0 ? `, ${matchupCount} confronto(s) definido(s)` : "";
+    return `${phase.name || "Mata-mata"} (${legsLabel}${matchupsLabel})`;
+  }
+  const groups = phase.groupCount ?? 1;
+  const groupsLabel = groups > 1 ? `${groups} grupos` : "grupo único";
+  const advance = phase.advancePerGroup ?? 0;
+  const advanceLabel = advance > 0 ? `, ${advance} classificado(s) por grupo` : "";
+  return `${phase.name || "Pontos corridos"} (${groupsLabel}${advanceLabel})`;
 }
 
 /** One-line, human-readable summary of a fórmula de disputa — shared by the wizard's Resumo step and the competition hub's Visão Geral. */
 export function describeCompetitionFormat(format: CompetitionFormat | undefined): string {
-  const groupsPart =
-    format && format.groupCount > 1
-      ? `Fase 1 em ${format.groupCount} grupos`
-      : "Fase 1 em pontos corridos (grupo único)";
-
-  const stages = format?.knockoutStages ?? [];
-  if (stages.length === 0) {
-    return `${groupsPart} — sem fase de mata-mata.`;
-  }
-
-  const advance = format?.advancePerGroup ?? 0;
-  const classificados = advance > 0 ? ` (${advance} classificado(s) por grupo)` : "";
-  const stagesPart = stages
-    .map((stage) => `${stage.name || "Fase"} (${stage.legs === 2 ? "ida e volta" : "jogo único"})`)
-    .join(" → ");
-
-  return `${groupsPart}${classificados} → ${stagesPart}.`;
+  const phases = format?.phases ?? [];
+  if (phases.length === 0) return "Fórmula de disputa não definida.";
+  return phases.map(describePhase).join(" → ") + ".";
 }
 
 /** The official FAF 2026 calendar, registered once so the app starts ready to use. */
