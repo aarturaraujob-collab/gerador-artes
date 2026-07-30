@@ -71,6 +71,9 @@ export interface Match {
   publico?: number | null;
   /** Gate revenue for this match (R$) — optional, same as `publico`. */
   renda?: number | null;
+  /** Penalty shootout score — only set when a knockout-phase match (bracketSlot != null) ends in a draw. */
+  penaltyHomeGoals?: number | null;
+  penaltyAwayGoals?: number | null;
 }
 
 /** One normalized row produced by the spreadsheet importer. */

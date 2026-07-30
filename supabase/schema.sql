@@ -563,6 +563,14 @@ alter table competitions add column if not exists format jsonb;
 alter table matches add column if not exists bracket_slot text;
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- Placar de pênaltis — só se aplica a um jogo de mata-mata (bracket_slot
+-- preenchido) que termina empatado, para decidir quem avança.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table matches add column if not exists penalty_home_goals integer;
+alter table matches add column if not exists penalty_away_goals integer;
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- Cachê por partida (FAFTV) — substitui o valor único global em
 -- faftv_settings: cada partida pode ter seu próprio valor de cinegrafista e
 -- de diária do coordenador (null = usa o padrão em faftv_settings), mais um

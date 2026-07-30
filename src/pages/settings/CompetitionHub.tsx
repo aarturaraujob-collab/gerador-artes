@@ -110,7 +110,7 @@ export function CompetitionHub() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [editingScoreRef, setEditingScoreRef] = useState<string | null>(null);
-  const [scoreDraft, setScoreDraft] = useState({ home: "", away: "" });
+  const [scoreDraft, setScoreDraft] = useState({ home: "", away: "", penaltyHome: "", penaltyAway: "" });
   const [savingScore, setSavingScore] = useState(false);
   const [report, setReport] = useState<CompetitionReport | null>(null);
   const [uploadingReport, setUploadingReport] = useState(false);
@@ -312,7 +312,12 @@ export function CompetitionHub() {
 
   function startEditScore(match: Match) {
     setEditingScoreRef(buildGameRef(match));
-    setScoreDraft({ home: match.homeGoals?.toString() ?? "", away: match.awayGoals?.toString() ?? "" });
+    setScoreDraft({
+      home: match.homeGoals?.toString() ?? "",
+      away: match.awayGoals?.toString() ?? "",
+      penaltyHome: match.penaltyHomeGoals?.toString() ?? "",
+      penaltyAway: match.penaltyAwayGoals?.toString() ?? "",
+    });
   }
 
   function cancelEditScore() {
@@ -327,6 +332,31 @@ export function CompetitionHub() {
     return parsed;
   }
 
+  /**
+   * True only when this match's confronto is actually decided by this
+   * scoreline — a single-match confronto (jogo único, e.g. CEO x MDO) ties on
+   * its own score; a two-leg confronto (ida/volta) only ties on the
+   * aggregate across both legs (mirrors resolveSlot in bracketResolution.ts),
+   * so editing just the ida never shows penalty inputs by itself.
+   */
+  function isPenaltyShootout(match: Match, homeGoals: number | null, awayGoals: number | null): boolean {
+    if (!match.bracketSlot || homeGoals === null || awayGoals === null) return false;
+    const legs = matches.filter((item) => item.bracketSlot === match.bracketSlot);
+    if (legs.length <= 1) return homeGoals === awayGoals;
+
+    const totals = new Map<string, number>();
+    for (const leg of legs) {
+      const isCurrentLeg = buildGameRef(leg) === buildGameRef(match);
+      const legHomeGoals = isCurrentLeg ? homeGoals : leg.homeGoals;
+      const legAwayGoals = isCurrentLeg ? awayGoals : leg.awayGoals;
+      if (legHomeGoals === null || legAwayGoals === null) return false; // outra perna ainda não jogada — agregado indefinido
+      totals.set(leg.homeClubId, (totals.get(leg.homeClubId) ?? 0) + legHomeGoals);
+      totals.set(leg.awayClubId, (totals.get(leg.awayClubId) ?? 0) + legAwayGoals);
+    }
+    const ids = [...totals.keys()];
+    return ids.length === 2 && totals.get(ids[0]) === totals.get(ids[1]);
+  }
+
   async function saveScore(match: Match) {
     const homeGoals = parseScoreInput(scoreDraft.home);
     const awayGoals = parseScoreInput(scoreDraft.away);
@@ -335,9 +365,28 @@ export function CompetitionHub() {
       return;
     }
 
+    let penaltyHomeGoals: number | null = null;
+    let penaltyAwayGoals: number | null = null;
+    if (isPenaltyShootout(match, homeGoals, awayGoals)) {
+      const rawPenaltyHome = parseScoreInput(scoreDraft.penaltyHome);
+      const rawPenaltyAway = parseScoreInput(scoreDraft.penaltyAway);
+      if (
+        rawPenaltyHome === INVALID_SCORE ||
+        rawPenaltyAway === INVALID_SCORE ||
+        rawPenaltyHome === null ||
+        rawPenaltyAway === null ||
+        rawPenaltyHome === rawPenaltyAway
+      ) {
+        toast.error("Empate na fase eliminatória — informe o placar dos pênaltis (sem empate).");
+        return;
+      }
+      penaltyHomeGoals = rawPenaltyHome;
+      penaltyAwayGoals = rawPenaltyAway;
+    }
+
     setSavingScore(true);
     try {
-      await dataStore.updateMatch(buildGameRef(match), { homeGoals, awayGoals });
+      await dataStore.updateMatch(buildGameRef(match), { homeGoals, awayGoals, penaltyHomeGoals, penaltyAwayGoals });
       toast.success("Placar atualizado — classificação e tabela já refletem o novo resultado.");
       setEditingScoreRef(null);
     } catch (error) {
@@ -594,39 +643,74 @@ export function CompetitionHub() {
                   const finished = match.homeGoals !== null && match.awayGoals !== null;
                   const gameRef = buildGameRef(match);
                   const isEditingScore = editingScoreRef === gameRef;
+                  const draftHomeGoals = parseScoreInput(scoreDraft.home);
+                  const draftAwayGoals = parseScoreInput(scoreDraft.away);
+                  const showPenaltyInputs =
+                    isEditingScore &&
+                    isPenaltyShootout(
+                      match,
+                      draftHomeGoals === INVALID_SCORE ? null : draftHomeGoals,
+                      draftAwayGoals === INVALID_SCORE ? null : draftAwayGoals,
+                    );
+                  const hasSavedPenalties = match.penaltyHomeGoals !== null && match.penaltyHomeGoals !== undefined;
                   return (
                     <div key={index} className="flex flex-wrap items-center gap-4 p-3">
                       <span className="w-16 shrink-0 text-xs text-foreground-muted">{match.round || "—"}</span>
-                      <div className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-foreground">
-                        <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 object-contain" />
-                        <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
-                        {isEditingScore ? (
-                          <div className="flex items-center gap-1">
+                      <div className="flex flex-1 flex-col items-center gap-1">
+                        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
+                          <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 object-contain" />
+                          <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
+                          {isEditingScore ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={scoreDraft.home}
+                                onChange={(event) => setScoreDraft((current) => ({ ...current, home: event.target.value }))}
+                                className="h-8 w-14 px-2 text-center"
+                                placeholder="-"
+                              />
+                              <span className="text-foreground-muted">×</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={scoreDraft.away}
+                                onChange={(event) => setScoreDraft((current) => ({ ...current, away: event.target.value }))}
+                                className="h-8 w-14 px-2 text-center"
+                                placeholder="-"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-foreground-muted">
+                              {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
+                              {finished && hasSavedPenalties ? ` (pên. ${match.penaltyHomeGoals} × ${match.penaltyAwayGoals})` : ""}
+                            </span>
+                          )}
+                          <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
+                          <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 object-contain" />
+                        </div>
+                        {showPenaltyInputs && (
+                          <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                            <span>Pênaltis:</span>
                             <Input
                               type="number"
                               min={0}
-                              value={scoreDraft.home}
-                              onChange={(event) => setScoreDraft((current) => ({ ...current, home: event.target.value }))}
-                              className="h-8 w-14 px-2 text-center"
+                              value={scoreDraft.penaltyHome}
+                              onChange={(event) => setScoreDraft((current) => ({ ...current, penaltyHome: event.target.value }))}
+                              className="h-7 w-12 px-2 text-center"
                               placeholder="-"
                             />
-                            <span className="text-foreground-muted">×</span>
+                            <span>×</span>
                             <Input
                               type="number"
                               min={0}
-                              value={scoreDraft.away}
-                              onChange={(event) => setScoreDraft((current) => ({ ...current, away: event.target.value }))}
-                              className="h-8 w-14 px-2 text-center"
+                              value={scoreDraft.penaltyAway}
+                              onChange={(event) => setScoreDraft((current) => ({ ...current, penaltyAway: event.target.value }))}
+                              className="h-7 w-12 px-2 text-center"
                               placeholder="-"
                             />
                           </div>
-                        ) : (
-                          <span className="text-foreground-muted">
-                            {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
-                          </span>
                         )}
-                        <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
-                        <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 object-contain" />
                       </div>
                       <span className="w-32 shrink-0 text-right text-xs text-foreground-muted">
                         {match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}

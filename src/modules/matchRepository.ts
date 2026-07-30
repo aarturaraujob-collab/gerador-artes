@@ -25,6 +25,8 @@ interface MatchRow {
   phase: string | null;
   ref: string | null;
   bracket_slot: string | null;
+  penalty_home_goals: number | null;
+  penalty_away_goals: number | null;
   // NOTE: `publico`/`renda` exist on the in-memory Match type (and are read
   // by the FAF Lab attendance dashboard) but the live "matches" table has no
   // such columns yet (see supabase/schema.sql) — sending them in an
@@ -51,6 +53,8 @@ function fromRow(row: MatchRow): StoredMatch {
     phase: row.phase,
     ref: row.ref,
     bracketSlot: row.bracket_slot,
+    penaltyHomeGoals: row.penalty_home_goals,
+    penaltyAwayGoals: row.penalty_away_goals,
   };
 }
 
@@ -71,6 +75,8 @@ function toRow(match: StoredMatch): MatchRow {
     phase: match.phase ?? null,
     ref: match.ref ?? null,
     bracket_slot: match.bracketSlot ?? null,
+    penalty_home_goals: match.penaltyHomeGoals ?? null,
+    penalty_away_goals: match.penaltyAwayGoals ?? null,
   };
 }
 
