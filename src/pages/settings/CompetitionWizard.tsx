@@ -31,11 +31,13 @@ import {
   emptyPontosPhase,
   emptyMataMataPhase,
   describeCompetitionFormat,
+  computeFormatSeeding,
   type CompetitionFormat,
   type CompetitionPhaseConfig,
   type CompetitionPhaseType,
   type PhaseMatchup,
 } from "@/modules/competitionRepository";
+import { clubDisplayName } from "@/modules/clubDisplay";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
@@ -177,6 +179,11 @@ export function CompetitionWizard() {
     label: group.name,
   }));
   const templateOptions = templateRegistry.map((template) => ({ value: template.id, label: template.name }));
+
+  const phaseSeeding = computeFormatSeeding(form.format.phases);
+  const registeredClubNames = [...new Set(store.clubs.map((club) => clubDisplayName(club.id, store.clubsById)))]
+    .filter((name) => name !== "A DEFINIR")
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -499,7 +506,8 @@ export function CompetitionWizard() {
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-foreground-secondary">
                   Monte as fases na ordem em que são disputadas. Qualquer fase pode ser pontos corridos ou
-                  mata-mata — inclusive a primeira, para competições que já começam eliminando.
+                  mata-mata — inclusive a primeira, para competições que já começam eliminando. Cada grupo e
+                  cada confronto recebe automaticamente uma letra (Grupo A, B, C…), na sequência oficial da FAF.
                 </p>
               </div>
 
@@ -510,7 +518,13 @@ export function CompetitionWizard() {
               )}
 
               <div className="space-y-3">
-                {form.format.phases.map((phase, index) => (
+                {form.format.phases.map((phase, index) => {
+                  const seeding = phaseSeeding[index];
+                  const matchupOptions = [...seeding.availableOptions, ...registeredClubNames].map((label) => ({
+                    value: label,
+                    label,
+                  }));
+                  return (
                   <div key={phase.id} className="rounded-xl border border-border p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex shrink-0 flex-col">
@@ -551,6 +565,13 @@ export function CompetitionWizard() {
                         <Trash2 size={16} />
                       </IconButton>
                     </div>
+
+                    {seeding.letters.length > 0 && (
+                      <p className="mt-2 pl-9 text-xs text-foreground-muted">
+                        {phase.type === "pontos" ? "Grupo(s): " : "Confronto(s): "}
+                        {seeding.letters.map((letter) => `Grupo ${letter}`).join(", ")}
+                      </p>
+                    )}
 
                     {phase.type === "pontos" ? (
                       <div className="mt-3 grid gap-3 pl-9 sm:grid-cols-2">
@@ -608,8 +629,16 @@ export function CompetitionWizard() {
                             </Button>
                           </div>
                           <p className="mt-1 text-xs text-foreground-muted">
-                            Use o clube (quando já souber) ou a posição ("1º Grupo A", "Vencedor Semifinal 1").
+                            Sempre por seleção — escolha uma posição definida por uma fase anterior (ex.: "1º Grupo
+                            A", "Vencedor Grupo C") ou um clube já cadastrado.
                           </p>
+
+                          {matchupOptions.length === 0 && (
+                            <p className="mt-2 rounded-xl bg-warning/10 p-3 text-xs text-warning-solid">
+                              Nenhuma opção disponível ainda — adicione uma fase de pontos corridos antes, ou
+                              cadastre clubes para escolher diretamente.
+                            </p>
+                          )}
 
                           {(phase.matchups ?? []).length === 0 ? (
                             <p className="mt-2 rounded-xl bg-muted p-3 text-sm text-foreground-muted">
@@ -619,18 +648,22 @@ export function CompetitionWizard() {
                             <div className="mt-2 space-y-2">
                               {(phase.matchups ?? []).map((matchup) => (
                                 <div key={matchup.id} className="flex flex-wrap items-center gap-2">
-                                  <Input
-                                    value={matchup.home}
-                                    onChange={(event) => updateMatchup(phase.id, matchup.id, { home: event.target.value })}
-                                    placeholder="1º Grupo A"
+                                  <Combobox
                                     className="h-10 min-w-[8rem] flex-1"
+                                    options={matchupOptions}
+                                    value={matchup.home || undefined}
+                                    onValueChange={(value) => updateMatchup(phase.id, matchup.id, { home: value })}
+                                    placeholder="Selecione"
+                                    searchPlaceholder="Buscar..."
                                   />
                                   <span className="text-xs text-foreground-muted">×</span>
-                                  <Input
-                                    value={matchup.away}
-                                    onChange={(event) => updateMatchup(phase.id, matchup.id, { away: event.target.value })}
-                                    placeholder="2º Grupo B"
+                                  <Combobox
                                     className="h-10 min-w-[8rem] flex-1"
+                                    options={matchupOptions}
+                                    value={matchup.away || undefined}
+                                    onValueChange={(value) => updateMatchup(phase.id, matchup.id, { away: value })}
+                                    placeholder="Selecione"
+                                    searchPlaceholder="Buscar..."
                                   />
                                   <IconButton
                                     aria-label="Remover confronto"
@@ -647,7 +680,8 @@ export function CompetitionWizard() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="flex flex-wrap gap-2">

@@ -107,6 +107,72 @@ export function emptyCompetitionFormat(): CompetitionFormat {
   return { phases: [emptyPontosPhase()] };
 }
 
+const GROUP_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function letterFor(index: number): string {
+  return GROUP_LETTERS[index] ?? `G${index + 1}`;
+}
+
+export interface PhaseSeeding {
+  /**
+   * Letter(s) this phase consumes — one per group (pontos) or one per
+   * confronto (mata-mata) — continuing the same alphabet the FAF uses across
+   * the whole fórmula (Fase 1 grupo único = Grupo A; a semifinal with two
+   * confrontos that follows takes Grupo B and Grupo C; a final that follows
+   * that takes Grupo D — exactly how the official tabela detalhada labels
+   * every group/confronto with a single running "GR" letter, group stage or
+   * knockout alike).
+   */
+  letters: string[];
+  /** "Quem pega quem" options this phase produces for a LATER phase's matchups to reference (classificação positions or vencedores de confronto). */
+  producedOptions: string[];
+  /** Options available to THIS phase's own matchups — every option produced by earlier phases. */
+  availableOptions: string[];
+}
+
+/**
+ * Walks the fórmula's phases in order, assigning the cyclic Grupo A/B/C...
+ * lettering and computing, for each phase, the fixed vocabulary of "quem
+ * pega quem" options its matchups may pick from (a Select's options are
+ * always exactly this list — never free text, since it's fully determined
+ * by the phases already defined above).
+ */
+export function computeFormatSeeding(phases: readonly CompetitionPhaseConfig[]): PhaseSeeding[] {
+  let letterCursor = 0;
+  let available: string[] = [];
+  const result: PhaseSeeding[] = [];
+
+  for (const phase of phases) {
+    const availableOptions = [...available];
+    const letters: string[] = [];
+    const producedOptions: string[] = [];
+
+    if (phase.type === "pontos") {
+      const groups = Math.max(1, phase.groupCount ?? 1);
+      const advance = Math.max(0, phase.advancePerGroup ?? 0);
+      for (let g = 0; g < groups; g++) {
+        const letter = letterFor(letterCursor++);
+        letters.push(letter);
+        for (let place = 1; place <= advance; place++) {
+          producedOptions.push(`${place}º Grupo ${letter}`);
+        }
+      }
+    } else {
+      const matchupCount = phase.matchups?.length ?? 0;
+      for (let i = 0; i < matchupCount; i++) {
+        const letter = letterFor(letterCursor++);
+        letters.push(letter);
+        producedOptions.push(`Vencedor Grupo ${letter}`);
+      }
+    }
+
+    result.push({ letters, producedOptions, availableOptions });
+    available = [...available, ...producedOptions];
+  }
+
+  return result;
+}
+
 function describePhase(phase: CompetitionPhaseConfig): string {
   if (phase.type === "mata-mata") {
     const legsLabel = phase.legs === 2 ? "ida e volta" : "jogo único";
