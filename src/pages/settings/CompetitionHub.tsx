@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import {
   Archive,
   ArchiveRestore,
-  ArrowDown,
-  ArrowUp,
   Check,
   ClipboardList,
   Download,
@@ -13,9 +11,6 @@ import {
   ImageDown,
   Pencil,
   Search,
-  Star,
-  Swords,
-  Trophy,
   Upload,
   X,
 } from "lucide-react";
@@ -25,11 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Status } from "@/components/ui/status";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/cards/StatCard";
-import { MetricCard } from "@/components/ui/cards/MetricCard";
+import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Select,
@@ -39,19 +33,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore } from "@/modules/dataStore";
 import { describeCompetitionFormat } from "@/modules/competitionRepository";
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
-import { resolveCompetitionStatus, STATUS_TONE, parseMatchDate } from "@/modules/competitionStatus";
+import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
 import { groupMatchesByRound } from "@/modules/rounds";
-import { calculateStandings, calculateStats } from "@/modules/standings";
+import { calculateStandings } from "@/modules/standings";
+import { computeSeasonProgress } from "@/modules/seasonProgress";
 import { templates as templateRegistry } from "@/templates/templates";
 import { assetRepository, readSvgDimensions, spreadsheetImporter, standingsTemplateRenderer } from "@/engine";
 import type { TemplateFormat } from "@/engine/core/TemplateConfig";
 import { exportToPng } from "@/engine/export/PngExporter";
-import { useFavoriteTemplates } from "@/hooks/useFavoriteTemplates";
-import { toggleFavoriteTemplate } from "@/modules/templateFavorites";
 import {
   STANDINGS_HIGHLIGHT_OPTIONS,
   getStandingsHighlightCount,
@@ -105,7 +99,6 @@ export function CompetitionHub() {
   const [standingsHighlightCount, setStandingsHighlightCountState] = useState<StandingsHighlightCount>(getStandingsHighlightCount);
   const [generatingStandings, setGeneratingStandings] = useState(false);
 
-  const [selectedRound, setSelectedRound] = useState<string | null>(null);
   const [roundFilter, setRoundFilter] = useState(ALL);
   const [homeFilter, setHomeFilter] = useState(ALL);
   const [awayFilter, setAwayFilter] = useState(ALL);
@@ -133,7 +126,7 @@ export function CompetitionHub() {
   );
   const rounds = useMemo(() => groupMatchesByRound(matches), [matches]);
   const standings = useMemo(() => calculateStandings(matches), [matches]);
-  const stats = useMemo(() => calculateStats(matches), [matches]);
+  const seasonProgress = useMemo(() => computeSeasonProgress(matches, new Date()), [matches]);
 
   const detailedTableStandings = useMemo(
     () =>
@@ -166,7 +159,6 @@ export function CompetitionHub() {
       })),
     [rounds, store.clubsById, store.stadiumsById],
   );
-  const favoriteTemplateIds = useFavoriteTemplates();
   const finishedMatches = matches.filter((match) => match.homeGoals !== null && match.awayGoals !== null);
   const pendingMatches = matches.length - finishedMatches.length;
   const period = useMemo(
@@ -298,24 +290,6 @@ export function CompetitionHub() {
     navigate(`/artes/${folder}?competicao=${competition.id}`);
   }
 
-  async function handleTemplatesChange(templateIds: string[]) {
-    if (!competition) return;
-    try {
-      await dataStore.updateCompetition(competition.id, { templates: templateIds });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao atualizar templates.");
-    }
-  }
-
-  async function moveTemplate(index: number, direction: -1 | 1) {
-    if (!competition) return;
-    const next = [...competition.templates];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    await handleTemplatesChange(next);
-  }
-
   function startEditScore(match: Match) {
     setEditingScoreRef(buildGameRef(match));
     setScoreDraft({ home: match.homeGoals?.toString() ?? "", away: match.awayGoals?.toString() ?? "" });
@@ -399,21 +373,26 @@ export function CompetitionHub() {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {competition.logo && (
-              <img
-                src={competition.logo}
-                alt=""
-                className="h-16 w-16 shrink-0 rounded-xl border border-border object-contain"
-              />
-            )}
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-foreground">{competition.name}</h1>
-                <Status tone={STATUS_TONE[status]}>{status}</Status>
-              </div>
-              <p className="mt-1 text-sm text-foreground-secondary">
+        <div
+          className="relative -mx-4 space-y-4 overflow-hidden border border-black/5 bg-gray-100 px-4 py-6 text-foreground sm:mx-0 sm:rounded-2xl sm:px-8"
+          style={{
+            backgroundImage:
+              "radial-gradient(120% 140% at 10% 10%, rgba(255,255,255,0.9), transparent 55%)," +
+              "radial-gradient(100% 120% at 90% 90%, rgba(0,0,0,0.06), transparent 55%)," +
+              "linear-gradient(135deg, #ffffff 0%, #e9eaec 100%)",
+          }}
+        >
+          <div className="relative flex flex-wrap items-center gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5c5c5c] via-[#454545] to-[#2e2e2e] p-[3px] shadow-md">
+              {competition.logo && (
+                <img src={assetRepository.logoPath(competition.logo)} alt="" className="h-full w-full rounded-lg bg-white object-contain" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="font-display text-3xl font-black uppercase tracking-tight text-foreground sm:text-4xl">
+                {competition.name}
+              </h1>
+              <p className="font-display text-sm font-medium text-foreground-secondary">
                 Temporada {competition.season}
                 {competition.category ? ` · ${competition.category}` : ""}
                 {" · "}
@@ -422,59 +401,72 @@ export function CompetitionHub() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/editar`)}>
-              <Pencil size={16} />
-              Editar
-            </Button>
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? <Spinner /> : <Upload size={16} />}
-              Importar CSV
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx"
-              className="hidden"
-              onChange={(event) => void handleImport(event)}
-            />
-            <Button variant="success" onClick={handleExport}>
-              <Download size={16} />
-              Exportar
-            </Button>
-            <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/escala-oficiais`)}>
-              <Flag size={16} />
-              Escala de Oficiais
-            </Button>
-            <Button variant="outline" onClick={() => void handleArchiveToggle()}>
-              {competition.active ? <Archive size={16} /> : <ArchiveRestore size={16} />}
-              {competition.active ? "Arquivar" : "Reativar"}
-            </Button>
-            {report ? (
-              <Button variant="outline" onClick={handleDownloadReport} title={report.fileName}>
-                <Download size={16} />
-                Baixar relatório
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => reportInputRef.current?.click()} disabled={uploadingReport}>
-                {uploadingReport ? <Spinner /> : <Upload size={16} />}
-                Enviar relatório
-              </Button>
-            )}
-            <input
-              ref={reportInputRef}
-              type="file"
-              accept=".pdf"
-              className="hidden"
-              onChange={(event) => void handleUploadReport(event)}
-            />
-          </div>
+          {seasonProgress && (
+            <div className="relative">
+              <Progress value={seasonProgress.percent} className="h-2 bg-black/10" indicatorClassName="bg-success-solid" />
+              <div className="mt-1.5 flex justify-between font-mono text-xs text-foreground-secondary">
+                <span>{seasonProgress.start.toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
+                <span>{seasonProgress.end.toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <StatCard label="Clubes" value={clubIds.size} />
-          <StatCard label="Rodadas" value={rounds.length} />
-          <StatCard label="Jogos" value={matches.length} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/editar`)}>
+            <Pencil size={16} />
+            Editar
+          </Button>
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            {importing ? <Spinner /> : <Upload size={16} />}
+            Importar CSV
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => void handleImport(event)}
+          />
+          <Button variant="success" onClick={handleExport}>
+            <Download size={16} />
+            Exportar
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/escala-oficiais`)}>
+            <Flag size={16} />
+            Escala de Oficiais
+          </Button>
+          <Button variant="outline" onClick={() => void handleArchiveToggle()}>
+            {competition.active ? <Archive size={16} /> : <ArchiveRestore size={16} />}
+            {competition.active ? "Arquivar" : "Reativar"}
+          </Button>
+          {report ? (
+            <Button variant="outline" onClick={handleDownloadReport} title={report.fileName}>
+              <Download size={16} />
+              Baixar relatório
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => reportInputRef.current?.click()} disabled={uploadingReport}>
+              {uploadingReport ? <Spinner /> : <Upload size={16} />}
+              Enviar relatório
+            </Button>
+          )}
+          <input
+            ref={reportInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={(event) => void handleUploadReport(event)}
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <StatCard label="Clubes" value={clubIds.size} accentClassName="border-t-chart-1" />
+          <StatCard label="Jogos" value={matches.length} accentClassName="border-t-chart-2" />
+          <StatCard label="Rodadas" value={rounds.length} accentClassName="border-t-chart-3" />
+          <StatCard label="Jogos finalizados" value={finishedMatches.length} accentClassName="border-t-chart-2" />
+          <StatCard label="Jogos pendentes" value={pendingMatches} accentClassName="border-t-chart-4" />
+          <StatCard label="Última atualização" value={store.lastUpdated} accentClassName="border-t-chart-5" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -482,28 +474,40 @@ export function CompetitionHub() {
             <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
             <TabsTrigger value="jogos">Jogos</TabsTrigger>
             <TabsTrigger value="classificacao">Classificação</TabsTrigger>
-            <TabsTrigger value="rodadas">Rodadas</TabsTrigger>
-            <TabsTrigger value="clubes">Clubes</TabsTrigger>
-            <TabsTrigger value="estatisticas">Estatísticas</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="assets">Assets</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
 
           <TabsContent value="visao-geral" className="mt-6 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Clubes" value={clubIds.size} tone="info" />
-              <MetricCard label="Jogos" value={matches.length} tone="info" />
-              <MetricCard label="Rodadas" value={rounds.length} tone="info" />
-              <MetricCard label="Jogos finalizados" value={finishedMatches.length} tone="success" />
-              <MetricCard label="Jogos pendentes" value={pendingMatches} tone="warning" />
-              <MetricCard label="Última atualização" value={store.lastUpdated} tone="info" />
-            </div>
             <Card className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Fórmula de disputa</p>
               <p className="mt-1 text-sm text-foreground-secondary">{describeCompetitionFormat(competition.format)}</p>
             </Card>
+
+            <div>
+              <p className="mb-2 text-sm font-semibold text-foreground-secondary">Clubes participantes</p>
+              {clubOptions.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>Nenhum clube ainda</EmptyTitle>
+                    <EmptyDescription>Os clubes aparecem aqui assim que houver jogos importados.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {clubOptions.map((club) => (
+                    <Link
+                      key={club.id}
+                      href={`/cadastros/clubes/${club.id}/editar`}
+                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors duration-150 hover:border-brand/30 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      <img src={assetRepository.clubShieldPath(club.id)} alt="" className="h-9 w-9 shrink-0 object-contain" />
+                      <span className="font-medium text-foreground">{club.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="jogos" className="mt-6 space-y-4">
@@ -732,8 +736,16 @@ export function CompetitionHub() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {standings.map((row, index) => (
-                      <tr key={row.clubId}>
-                        <td className="px-4 py-2 text-foreground-muted">{index + 1}</td>
+                      <tr key={row.clubId} className="relative">
+                        <td className="relative px-4 py-2 text-foreground-muted">
+                          <span
+                            className={cn(
+                              "absolute inset-y-0 left-0 w-1 rounded-r",
+                              index === 0 ? "bg-chart-5" : index < 4 ? "bg-chart-2" : "bg-transparent",
+                            )}
+                          />
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-2 font-medium text-foreground">
                           {clubDisplayName(row.clubId, store.clubsById)}
                         </td>
@@ -754,230 +766,15 @@ export function CompetitionHub() {
             )}
           </TabsContent>
 
-          <TabsContent value="rodadas" className="mt-6">
-            {rounds.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Nenhuma rodada ainda</EmptyTitle>
-                  <EmptyDescription>Importe uma planilha para esta competição.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : selectedRound === null ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {rounds.map((round) => (
-                  <button
-                    key={round.round}
-                    type="button"
-                    onClick={() => setSelectedRound(round.round)}
-                    className="rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors duration-150 hover:border-brand/30 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <p className="font-semibold text-foreground">{round.round}</p>
-                    <p className="mt-1 text-xs text-foreground-muted">
-                      {round.finishedCount}/{round.totalCount} jogo(s) finalizado(s)
-                    </p>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <Button variant="outline" size="sm" onClick={() => setSelectedRound(null)}>
-                  ← Todas as rodadas
-                </Button>
-                <Card className="divide-y divide-border p-0">
-                  {(rounds.find((round) => round.round === selectedRound)?.matches ?? []).map((match, index) => {
-                    const finished = match.homeGoals !== null && match.awayGoals !== null;
-                    return (
-                      <div key={index} className="flex flex-wrap items-center gap-4 p-3">
-                        <div className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-foreground">
-                          <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
-                          <span className="text-foreground-muted">
-                            {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
-                          </span>
-                          <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
-                        </div>
-                        <span className="text-xs text-foreground-muted">
-                          {match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() => navigate(`/cadastros/competicoes/${id}/jogos/${encodeGameRefParam(buildGameRef(match))}`)}
-                        >
-                          <ClipboardList size={14} />
-                          Operação
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="clubes" className="mt-6">
-            {clubOptions.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Nenhum clube ainda</EmptyTitle>
-                  <EmptyDescription>Os clubes aparecem aqui assim que houver jogos importados.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {clubOptions.map((club) => (
-                  <Link
-                    key={club.id}
-                    href={`/cadastros/clubes/${club.id}/editar`}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors duration-150 hover:border-brand/30 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <img src={assetRepository.clubShieldPath(club.id)} alt="" className="h-9 w-9 shrink-0 object-contain" />
-                    <span className="font-medium text-foreground">{club.name}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="estatisticas" className="mt-6">
-            {finishedMatches.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Sem estatísticas ainda</EmptyTitle>
-                  <EmptyDescription>Aparecem assim que houver jogos finalizados.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <MetricCard
-                  label="Maior ataque"
-                  value={stats.topAttack ? clubDisplayName(stats.topAttack.clubId, store.clubsById) : "—"}
-                  trend={stats.topAttack ? { label: `${stats.topAttack.value} gols pró`, direction: "up" } : undefined}
-                  tone="info"
-                />
-                <MetricCard
-                  label="Melhor defesa"
-                  value={stats.bestDefense ? clubDisplayName(stats.bestDefense.clubId, store.clubsById) : "—"}
-                  trend={stats.bestDefense ? { label: `${stats.bestDefense.value} gols sofridos`, direction: "neutral" } : undefined}
-                  tone="success"
-                />
-                <MetricCard
-                  label="Mais vitórias"
-                  value={stats.mostWins ? clubDisplayName(stats.mostWins.clubId, store.clubsById) : "—"}
-                  trend={stats.mostWins ? { label: `${stats.mostWins.value} vitórias`, direction: "up" } : undefined}
-                  tone="success"
-                />
-                <MetricCard
-                  label="Mais empates"
-                  value={stats.mostDraws ? clubDisplayName(stats.mostDraws.clubId, store.clubsById) : "—"}
-                  trend={stats.mostDraws ? { label: `${stats.mostDraws.value} empates`, direction: "neutral" } : undefined}
-                  tone="info"
-                />
-                <MetricCard
-                  label="Mais derrotas"
-                  value={stats.mostLosses ? clubDisplayName(stats.mostLosses.clubId, store.clubsById) : "—"}
-                  trend={stats.mostLosses ? { label: `${stats.mostLosses.value} derrotas`, direction: "down" } : undefined}
-                  tone="warning"
-                />
-                <MetricCard
-                  label="Mandante × Visitante"
-                  value={`${stats.homeWinRate ?? 0}% × ${stats.awayWinRate ?? 0}%`}
-                  icon={<Swords size={20} />}
-                  tone="info"
-                />
-                <Card className="p-5 sm:col-span-2 xl:col-span-3">
-                  <div className="flex items-center gap-2">
-                    <Trophy size={18} className="text-foreground-muted" />
-                    <p className="text-sm font-semibold text-foreground-secondary">Artilharia</p>
-                  </div>
-                  <p className="mt-2 text-sm text-foreground-muted">
-                    Estrutura preparada — a base ainda não registra gols por jogador, só o placar do jogo.
-                  </p>
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="templates" className="mt-6 space-y-4">
+          <TabsContent value="documentos" className="mt-6 space-y-6">
             <div>
-              <label className="text-sm font-semibold text-foreground-secondary">Templates habilitados</label>
-              <MultiSelect
-                className="mt-2"
-                options={templateRegistry.map((template) => ({ value: template.id, label: template.name }))}
-                value={competition.templates}
-                onValueChange={(value) => void handleTemplatesChange(value)}
-                placeholder="Nenhum template vinculado"
-              />
-            </div>
-
-            {competition.templates.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Nenhum template vinculado</EmptyTitle>
-                  <EmptyDescription>Adicione acima para liberar a geração de artes desta competição.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <Card className="divide-y divide-border p-0">
-                {competition.templates.map((templateId, index) => {
-                  const template = templateRegistry.find((item) => item.id === templateId);
-                  const isFavorite = favoriteTemplateIds.has(templateId);
-                  return (
-                    <div key={templateId} className="flex items-center gap-3 p-3">
-                      <div className="flex flex-col">
-                        <IconButton
-                          aria-label="Mover para cima"
-                          variant="ghost"
-                          size="sm"
-                          disabled={index === 0}
-                          onClick={() => void moveTemplate(index, -1)}
-                        >
-                          <ArrowUp size={14} />
-                        </IconButton>
-                        <IconButton
-                          aria-label="Mover para baixo"
-                          variant="ghost"
-                          size="sm"
-                          disabled={index === competition.templates.length - 1}
-                          onClick={() => void moveTemplate(index, 1)}
-                        >
-                          <ArrowDown size={14} />
-                        </IconButton>
-                      </div>
-                      <p className="flex-1 text-sm font-medium text-foreground">{template?.name ?? templateId}</p>
-                      <IconButton
-                        aria-label={isFavorite ? "Remover dos favoritos" : "Favoritar"}
-                        variant="ghost"
-                        onClick={() => toggleFavoriteTemplate(templateId)}
-                      >
-                        <Star size={16} className={isFavorite ? "fill-warning-solid text-warning-solid" : ""} />
-                      </IconButton>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (template?.scope === "competition") {
-                            setActiveTab("classificacao");
-                            return;
-                          }
-                          navigate(`/artes/${template?.folder ?? templateId}?competicao=${competition.id}`);
-                        }}
-                      >
-                        Abrir
-                      </Button>
-                    </div>
-                  );
-                })}
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="assets" className="mt-6 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <AssetPreview label="Logo" src={competition.logo} />
-              <AssetPreview label="Background (thumb)" src={competition.background.thumb} />
-              <AssetPreview label="Background (story)" src={competition.background.story} />
-              <AssetPreview label="Background (feed)" src={competition.background.feed} />
+              <p className="mb-2 text-sm font-semibold text-foreground-secondary">Assets da competição</p>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <AssetPreview label="Logo" src={competition.logo} />
+                <AssetPreview label="Background (thumb)" src={competition.background.thumb} />
+                <AssetPreview label="Background (story)" src={competition.background.story} />
+                <AssetPreview label="Background (feed)" src={competition.background.feed} />
+              </div>
             </div>
 
             <div>
@@ -1010,10 +807,11 @@ export function CompetitionHub() {
                 </EmptyHeader>
               </Empty>
             </div>
-          </TabsContent>
 
-          <TabsContent value="documentos" className="mt-6">
-            <DocumentsTab competitionId={competition.id} refreshToken={documentsRefreshToken} />
+            <div>
+              <p className="mb-2 text-sm font-semibold text-foreground-secondary">Documentos oficiais</p>
+              <DocumentsTab competitionId={competition.id} refreshToken={documentsRefreshToken} />
+            </div>
           </TabsContent>
 
           <TabsContent value="configuracoes" className="mt-6 space-y-4">
