@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "wouter";
-import { AlertTriangle, ArrowLeft, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -32,6 +32,7 @@ import {
   type MatchFaftvEscalaRecord,
 } from "@/modules/matchFaftvEscalaRepository";
 import { FAFTV_ESCALA_CHECKLIST_ITEMS, FAFTV_ESCALA_CHECKLIST_GATES, checklistProgress } from "@/modules/matchOperationsChecklists";
+import { faftvSettingsRepository, DEFAULT_FAFTV_SETTINGS, type FaftvSettings } from "@/modules/faftvSettingsRepository";
 import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
 
 const ALL = "__all__";
@@ -78,12 +79,16 @@ function emptyRecord(gameRef: string): MatchFaftvEscalaRecord {
     coordenadorStaffIds: [],
     produtorStaffId: null,
     cinegrafistaStaffId: null,
-    transmitir: true,
+    transmitir: false,
     motivoNaoTransmitido: "",
+    motivoFalhaLive: "",
     broadcastLink: "",
     observacoes: "",
     checklist: {},
     status: "a_acontecer",
+    valorCinegrafista: null,
+    valorCoordenadorDiaria: null,
+    valorExtra: 0,
     updatedAt: Date.now(),
   };
 }
@@ -100,7 +105,9 @@ export function FaftvOperacoesPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [attentionOnly, setAttentionOnly] = useState(false);
-  const [drafts, setDrafts] = useState<Map<string, { broadcastLink: string; observacoes: string; motivoNaoTransmitido: string }>>(new Map());
+  const [drafts, setDrafts] = useState<Map<string, { broadcastLink: string; observacoes: string; motivoNaoTransmitido: string; motivoFalhaLive: string }>>(new Map());
+  const [settings, setSettings] = useState<FaftvSettings>(DEFAULT_FAFTV_SETTINGS);
+  const [extraOpenFor, setExtraOpenFor] = useState<Set<string>>(new Set());
 
   // Chegando de um widget da Home FAFTV (?periodo=hoje|7dias&atencao=1) — aplica
   // o período e o filtro de atenção uma vez, na carga da página.
@@ -129,9 +136,10 @@ export function FaftvOperacoesPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void matchFaftvEscalaRepository.listAll().then((rows) => {
+    void Promise.all([matchFaftvEscalaRepository.listAll(), faftvSettingsRepository.get()]).then(([rows, faftvSettings]) => {
       if (cancelled) return;
       setRecords(new Map(rows.map((row) => [row.gameRef, row])));
+      setSettings(faftvSettings);
       setLoading(false);
     });
     return () => {
@@ -150,12 +158,19 @@ export function FaftvOperacoesPage() {
     return recordsRef.current.get(gameRef) ?? emptyRecord(gameRef);
   }
 
-  function draftFor(gameRef: string): { broadcastLink: string; observacoes: string; motivoNaoTransmitido: string } {
+  function draftFor(gameRef: string): { broadcastLink: string; observacoes: string; motivoNaoTransmitido: string; motivoFalhaLive: string } {
     const record = recordFor(gameRef);
-    return drafts.get(gameRef) ?? { broadcastLink: record.broadcastLink, observacoes: record.observacoes, motivoNaoTransmitido: record.motivoNaoTransmitido };
+    return (
+      drafts.get(gameRef) ?? {
+        broadcastLink: record.broadcastLink,
+        observacoes: record.observacoes,
+        motivoNaoTransmitido: record.motivoNaoTransmitido,
+        motivoFalhaLive: record.motivoFalhaLive,
+      }
+    );
   }
 
-  function setDraft(gameRef: string, patch: Partial<{ broadcastLink: string; observacoes: string; motivoNaoTransmitido: string }>) {
+  function setDraft(gameRef: string, patch: Partial<{ broadcastLink: string; observacoes: string; motivoNaoTransmitido: string; motivoFalhaLive: string }>) {
     setDrafts((prev) => new Map(prev).set(gameRef, { ...draftFor(gameRef), ...patch }));
   }
 
@@ -252,6 +267,7 @@ export function FaftvOperacoesPage() {
         </Link>
 
         <PageHeader
+          hero
           title="Operações"
           description="Gerencie a escala de Coordenador, Produtor e Cinegrafista de todas as partidas."
         />
@@ -423,6 +439,61 @@ export function FaftvOperacoesPage() {
                     </div>
                   </div>
 
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <label className="text-xs font-semibold text-foreground-secondary">Cachê cinegrafista</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="mt-1 h-10"
+                        placeholder={String(settings.valorJogoCinegrafista)}
+                        value={record.valorCinegrafista ?? ""}
+                        onChange={(event) =>
+                          void updateRecord(gameRef, { valorCinegrafista: event.target.value === "" ? null : Number(event.target.value) })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-foreground-secondary">Diária coordenador</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="mt-1 h-10"
+                        placeholder={String(settings.valorDiariaCoordenador)}
+                        value={record.valorCoordenadorDiaria ?? ""}
+                        onChange={(event) =>
+                          void updateRecord(gameRef, { valorCoordenadorDiaria: event.target.value === "" ? null : Number(event.target.value) })
+                        }
+                      />
+                    </div>
+                    <div>
+                      {extraOpenFor.has(gameRef) || record.valorExtra > 0 ? (
+                        <>
+                          <label className="text-xs font-semibold text-foreground-secondary">Valor extra</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="mt-1 h-10"
+                            value={record.valorExtra}
+                            onChange={(event) => void updateRecord(gameRef, { valorExtra: Number(event.target.value) || 0 })}
+                          />
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setExtraOpenFor((prev) => new Set(prev).add(gameRef))}
+                          className="mt-6 flex h-10 items-center gap-1.5 text-xs font-semibold text-foreground-muted hover:text-foreground"
+                        >
+                          <Plus size={14} />
+                          Valor extra
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-xs font-semibold text-foreground-secondary">Link da Live</label>
@@ -460,6 +531,19 @@ export function FaftvOperacoesPage() {
                       ))}
                     </div>
                   </div>
+
+                  {record.checklist["falha-live"] && (
+                    <div>
+                      <label className="text-xs font-semibold text-danger">Motivo da falha na Live (obrigatório)</label>
+                      <Textarea
+                        className="mt-1 border-danger/40"
+                        placeholder="Explique o que deu errado na transmissão..."
+                        value={draft.motivoFalhaLive}
+                        onChange={(event) => setDraft(gameRef, { motivoFalhaLive: event.target.value })}
+                        onBlur={(event) => void updateRecord(gameRef, { motivoFalhaLive: event.target.value })}
+                      />
+                    </div>
+                  )}
 
                   <p className="text-xs text-foreground-muted">
                     {record.coordenadorStaffIds.length > 0 && (

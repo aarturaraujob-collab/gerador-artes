@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Route, Router, Switch } from "wouter";
 
 import { Spinner } from "@/components/ui/spinner";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { WelcomeSplash } from "@/pages/auth/WelcomeSplash";
+import { consumeJustSignedIn } from "@/modules/auth";
 import { Home } from "@/pages/dashboard/Home";
 
 import { Templates } from "@/pages/templates/Templates";
@@ -36,6 +38,17 @@ import NotFound from "@/pages/NotFound";
 /** Gate everything behind a Supabase Auth session (Fase 1 da migração — contas individuais). */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { session, loading } = useAuthSession();
+  const [welcoming, setWelcoming] = useState(false);
+  const announced = useRef(false);
+
+  useEffect(() => {
+    if (session && !announced.current && consumeJustSignedIn()) {
+      announced.current = true;
+      setWelcoming(true);
+      const timer = setTimeout(() => setWelcoming(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [session]);
 
   if (loading) {
     return (
@@ -47,7 +60,12 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!session) return <LoginPage />;
 
-  return <>{children}</>;
+  return (
+    <>
+      <WelcomeSplash show={welcoming} />
+      {children}
+    </>
+  );
 }
 
 export default function App() {

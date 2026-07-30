@@ -42,9 +42,13 @@ export function computeFaftvEarnings(
     paymentsByStaff.set(payment.staffId, list);
   }
 
-  const cinegrafistaMatches = new Map<string, { gameRef: string; match: Match }[]>();
+  const cinegrafistaMatches = new Map<string, { gameRef: string; match: Match; record: MatchFaftvEscalaRecord }[]>();
   const coordenadorMatches = new Map<string, { gameRef: string; match: Match }[]>();
   const coordenadorDates = new Map<string, Set<string>>();
+  // Coordenador é pago por diária, não por partida — quando há mais de um jogo
+  // no mesmo dia, o valor da diária (+ extra) é o da primeira partida daquele
+  // dia encontrada, não a soma de todas.
+  const coordenadorDayValue = new Map<string, Map<string, number>>();
 
   for (const match of matches) {
     const gameRef = buildGameRef(match);
@@ -53,7 +57,7 @@ export function computeFaftvEarnings(
 
     if (record.cinegrafistaStaffId) {
       const list = cinegrafistaMatches.get(record.cinegrafistaStaffId) ?? [];
-      list.push({ gameRef, match });
+      list.push({ gameRef, match, record });
       cinegrafistaMatches.set(record.cinegrafistaStaffId, list);
     }
 
@@ -66,6 +70,12 @@ export function computeFaftvEarnings(
         const list = coordenadorMatches.get(coordenadorStaffId) ?? [];
         list.push({ gameRef, match });
         coordenadorMatches.set(coordenadorStaffId, list);
+
+        const dayValues = coordenadorDayValue.get(coordenadorStaffId) ?? new Map<string, number>();
+        if (!dayValues.has(match.date)) {
+          dayValues.set(match.date, (record.valorCoordenadorDiaria ?? settings.valorDiariaCoordenador) + record.valorExtra);
+        }
+        coordenadorDayValue.set(coordenadorStaffId, dayValues);
       }
     }
   }
@@ -96,11 +106,14 @@ export function computeFaftvEarnings(
 
   for (const [staffId, staffMatches] of cinegrafistaMatches) {
     seenStaffIds.add(staffId);
-    result.push(buildRow(staffId, "Cinegrafista", staffMatches.length, staffMatches.length === 1 ? "jogo" : "jogos", staffMatches.length * settings.valorJogoCinegrafista, staffMatches));
+    const totalOwed = staffMatches.reduce((sum, item) => sum + (item.record.valorCinegrafista ?? settings.valorJogoCinegrafista) + item.record.valorExtra, 0);
+    result.push(buildRow(staffId, "Cinegrafista", staffMatches.length, staffMatches.length === 1 ? "jogo" : "jogos", totalOwed, staffMatches));
   }
   for (const [staffId, dates] of coordenadorDates) {
     seenStaffIds.add(staffId);
-    result.push(buildRow(staffId, "Coordenador", dates.size, dates.size === 1 ? "diária" : "diárias", dates.size * settings.valorDiariaCoordenador, coordenadorMatches.get(staffId) ?? []));
+    const dayValues = coordenadorDayValue.get(staffId);
+    const totalOwed = dayValues ? [...dayValues.values()].reduce((sum, value) => sum + value, 0) : 0;
+    result.push(buildRow(staffId, "Coordenador", dates.size, dates.size === 1 ? "diária" : "diárias", totalOwed, coordenadorMatches.get(staffId) ?? []));
   }
 
   // Pessoas que já receberam algo mas não têm nenhum jogo/diária registrado no

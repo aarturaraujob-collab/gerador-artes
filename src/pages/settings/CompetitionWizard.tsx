@@ -368,6 +368,7 @@ export function CompetitionWizard() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
+          hero
           title={isEditing ? "Editar Competição" : "Nova Competição"}
           description="Cadastro guiado em 5 etapas — nada precisa ser editado por fora daqui."
         />

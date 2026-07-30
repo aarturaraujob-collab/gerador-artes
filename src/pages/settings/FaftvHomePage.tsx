@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { AlertTriangle, CalendarClock, CalendarDays, Settings2, Users, Video, Wallet } from "lucide-react";
-import { toast } from "sonner";
+import { AlertTriangle, CalendarClock, CalendarDays, Users, Video, Wallet } from "lucide-react";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useDataStore } from "@/hooks/useDataStore";
 import { buildGameRef } from "@/modules/gameRef";
@@ -105,19 +103,11 @@ export function FaftvHomePage() {
     navigate(`/cadastros/faftv/operacoes${search ? `?${search}` : ""}`);
   }
 
-  async function handleSaveSettings() {
-    try {
-      await faftvSettingsRepository.update(settings);
-      toast.success("Cachês atualizados.");
-    } catch {
-      toast.error("Não foi possível salvar os cachês. Confirme que sua conta tem papel de admin.");
-    }
-  }
-
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl space-y-6">
         <PageHeader
+          hero
           title="FAFTV"
           description="Central de transmissões — escala, pagamentos e equipe."
           actions={
@@ -205,44 +195,6 @@ export function FaftvHomePage() {
                 )}
               </Card>
             </div>
-
-            <Card className="space-y-3 p-5">
-              <div className="flex items-center gap-2 text-foreground-muted">
-                <Settings2 size={18} />
-                <p className="text-xs font-semibold uppercase tracking-wide">Cachês</p>
-              </div>
-              <div className="flex flex-wrap items-end gap-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Por jogo (cinegrafista)</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className="mt-1 h-10 w-36"
-                    value={settings.valorJogoCinegrafista}
-                    onChange={(event) =>
-                      setSettings((prev) => ({ ...prev, valorJogoCinegrafista: Number(event.target.value) }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Por diária (coordenador)</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className="mt-1 h-10 w-36"
-                    value={settings.valorDiariaCoordenador}
-                    onChange={(event) =>
-                      setSettings((prev) => ({ ...prev, valorDiariaCoordenador: Number(event.target.value) }))
-                    }
-                  />
-                </div>
-                <Button type="button" onClick={() => void handleSaveSettings()}>
-                  Salvar
-                </Button>
-              </div>
-            </Card>
           </div>
         )}
       </div>

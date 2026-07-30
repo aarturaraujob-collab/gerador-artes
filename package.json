@@ -15,8 +15,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/prompt": "^5.2.8",
     "@fontsource/space-grotesk": "^5.3.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.4",

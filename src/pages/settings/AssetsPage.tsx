@@ -181,6 +181,7 @@ export function AssetsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Gerenciador de Assets"
           description="Escudos, logos, backgrounds e demais arquivos usados na geração de artes — tudo pela interface, sem precisar abrir a pasta do projeto."
         />

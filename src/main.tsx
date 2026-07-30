@@ -5,12 +5,6 @@ import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/500.css";
 import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
-import "@fontsource/prompt/400.css";
-import "@fontsource/prompt/400-italic.css";
-import "@fontsource/prompt/600.css";
-import "@fontsource/prompt/700.css";
-import "@fontsource/prompt/800.css";
-import "@fontsource/prompt/900.css";
 
 import App from './App';
 
@@ -22,13 +16,3 @@ createRoot(document.getElementById('root')!).render(
     <Toaster position="top-right" richColors closeButton />
   </ThemeProvider>
 );
-
-import "@fontsource/inter/400.css";
-
-import "@fontsource/inter/600.css";
-
-import "@fontsource/inter/700.css";
-
-import "@fontsource/inter/800.css";
-
-import "@fontsource/inter/900.css";

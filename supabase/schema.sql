@@ -561,3 +561,16 @@ alter table competitions add column if not exists format jsonb;
 -- ─────────────────────────────────────────────────────────────────────────
 
 alter table matches add column if not exists bracket_slot text;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Cachê por partida (FAFTV) — substitui o valor único global em
+-- faftv_settings: cada partida pode ter seu próprio valor de cinegrafista e
+-- de diária do coordenador (null = usa o padrão em faftv_settings), mais um
+-- valor_extra pontual somado por cima quando necessário. Ver
+-- src/modules/faftvEarnings.ts.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table match_faftv_escala add column if not exists valor_cinegrafista numeric;
+alter table match_faftv_escala add column if not exists valor_coordenador_diaria numeric;
+alter table match_faftv_escala add column if not exists valor_extra numeric not null default 0;
+alter table match_faftv_escala add column if not exists motivo_falha_live text;

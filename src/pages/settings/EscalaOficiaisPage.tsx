@@ -189,6 +189,7 @@ export function EscalaOficiaisPage() {
         </Link>
 
         <PageHeader
+          hero
           title="Escala de Oficiais"
           description={`${competition.name} — árbitros, assistentes, 4º árbitro, delegado e observador por partida.`}
           actions={

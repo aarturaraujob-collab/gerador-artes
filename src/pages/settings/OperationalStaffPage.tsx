@@ -77,6 +77,7 @@ export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
         )}
 
         <PageHeader
+          hero
           title={pageTitle(area)}
           description={pageDescription(area)}
           actions={

@@ -37,9 +37,19 @@ export function subscribeAuth(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+let justSignedIn = false;
+
 export async function signIn(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  justSignedIn = true;
+}
+
+/** True once, right after a successful signIn() — false on a page reload that merely restores a session. */
+export function consumeJustSignedIn(): boolean {
+  const value = justSignedIn;
+  justSignedIn = false;
+  return value;
 }
 
 export async function signOut(): Promise<void> {

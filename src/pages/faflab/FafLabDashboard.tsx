@@ -512,7 +512,7 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
     return (
       <Shell publicMode={publicMode}>
         <div className="mx-auto max-w-3xl">
-          <PageHeader title="FAF Lab" description="Estatísticas por jogador de todos os campeonatos da Federação." />
+          <PageHeader hero title="FAF Lab" description="O laboratório do futebol alagoano." />
           <p className="mt-4 text-sm text-foreground-muted">
             Nenhuma competição cadastrada ainda — cadastre uma em "Competições" para começar.
           </p>

@@ -152,7 +152,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <PageHeader title={isEditing ? "Editar Pessoa" : "Nova Pessoa"} />
+        <PageHeader hero title={isEditing ? "Editar Pessoa" : "Nova Pessoa"} />
 
         <Card className="space-y-4 p-6">
           <div className="grid gap-4 sm:grid-cols-2">

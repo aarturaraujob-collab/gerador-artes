@@ -33,7 +33,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm space-y-6 p-8">
         <div className="text-center">
-          <img src={publicPath("/assets/logos/faf.png")} alt="FAF" className="mx-auto h-14 w-14 object-contain" />
+          <img src={publicPath("/assets/logos/logo_urano_verde.png")} alt="Urano" className="mx-auto h-14 w-auto object-contain" />
           <h1 className="mt-4 text-xl font-bold text-foreground">Urano FAF</h1>
           <p className="mt-1 text-sm text-foreground-muted">Entre com sua conta pra continuar.</p>
         </div>

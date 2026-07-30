@@ -116,6 +116,7 @@ export function MatchPage() {
         </Link>
 
         <PageHeader
+          hero
           title="Central Operacional da Partida"
           description={`${match.round || "Rodada a definir"} · ${match.date || "Data a definir"}${match.time ? ` · ${match.time}` : ""}${stadium ? ` · ${stadium.name}` : ""}`}
         />

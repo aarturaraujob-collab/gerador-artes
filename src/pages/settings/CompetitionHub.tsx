@@ -12,7 +12,6 @@ import {
   ChevronDown,
   Pencil,
   Plus,
-  Search,
   Upload,
   X,
 } from "lucide-react";
@@ -42,6 +41,7 @@ import { describeCompetitionFormat, type CompetitionFormat } from "@/modules/com
 import { computeFormatBracket, hasKnockoutPhase } from "@/modules/formatBracket";
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
+import { toIsoDate } from "@/pages/templates/matchDateFilter";
 import { groupMatchesByRound } from "@/modules/rounds";
 import { calculateStandings } from "@/modules/standings";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
@@ -104,11 +104,10 @@ export function CompetitionHub() {
   const [standingsHighlightCount, setStandingsHighlightCountState] = useState<StandingsHighlightCount>(getStandingsHighlightCount);
   const [generatingStandings, setGeneratingStandings] = useState(false);
 
-  const [roundFilter, setRoundFilter] = useState(ALL);
-  const [homeFilter, setHomeFilter] = useState(ALL);
-  const [awayFilter, setAwayFilter] = useState(ALL);
+  const [clubFilter, setClubFilter] = useState(ALL);
   const [statusFilter, setStatusFilter] = useState(ALL);
-  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [editingScoreRef, setEditingScoreRef] = useState<string | null>(null);
   const [scoreDraft, setScoreDraft] = useState({ home: "", away: "" });
   const [savingScore, setSavingScore] = useState(false);
@@ -172,20 +171,20 @@ export function CompetitionHub() {
   );
 
   const visibleMatches = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("pt-BR");
     return matches.filter((match) => {
-      if (roundFilter !== ALL && match.round !== roundFilter) return false;
-      if (homeFilter !== ALL && match.homeClubId !== homeFilter) return false;
-      if (awayFilter !== ALL && match.awayClubId !== awayFilter) return false;
+      if (clubFilter !== ALL && match.homeClubId !== clubFilter && match.awayClubId !== clubFilter) return false;
       const finished = match.homeGoals !== null && match.awayGoals !== null;
       if (statusFilter === "finished" && !finished) return false;
       if (statusFilter === "pending" && finished) return false;
-      if (!query) return true;
-      const home = clubDisplayName(match.homeClubId, store.clubsById);
-      const away = clubDisplayName(match.awayClubId, store.clubsById);
-      return `${home} ${away}`.toLocaleLowerCase("pt-BR").includes(query);
+      if (startDate || endDate) {
+        const iso = toIsoDate(match.date);
+        if (!iso) return false;
+        if (startDate && iso < startDate) return false;
+        if (endDate && iso > endDate) return false;
+      }
+      return true;
     });
-  }, [matches, roundFilter, homeFilter, awayFilter, statusFilter, search, store]);
+  }, [matches, clubFilter, statusFilter, startDate, endDate]);
 
   useEffect(() => {
     if (!competition) {
@@ -532,63 +531,37 @@ export function CompetitionHub() {
           </TabsContent>
 
           <TabsContent value="jogos" className="mt-6 space-y-4">
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-wrap gap-3">
               <div className="w-40">
-                <label className="text-xs font-semibold text-foreground-secondary">Rodada</label>
-                <Select value={roundFilter} onValueChange={setRoundFilter}>
-                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>Todas</SelectItem>
-                    {rounds.map((round) => (
-                      <SelectItem key={round.round} value={round.round}>{round.round}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-44">
-                <label className="text-xs font-semibold text-foreground-secondary">Mandante</label>
-                <Select value={homeFilter} onValueChange={setHomeFilter}>
-                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>Todos</SelectItem>
-                    {clubOptions.map((club) => (
-                      <SelectItem key={club.id} value={club.id}>{club.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-44">
-                <label className="text-xs font-semibold text-foreground-secondary">Visitante</label>
-                <Select value={awayFilter} onValueChange={setAwayFilter}>
-                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>Todos</SelectItem>
-                    {clubOptions.map((club) => (
-                      <SelectItem key={club.id} value={club.id}>{club.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-semibold text-foreground-secondary">Período — de</label>
+                <Input type="date" className="mt-1 h-10" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
               </div>
               <div className="w-40">
+                <label className="text-xs font-semibold text-foreground-secondary">Período — até</label>
+                <Input type="date" className="mt-1 h-10" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+              </div>
+              <div className="w-48">
                 <label className="text-xs font-semibold text-foreground-secondary">Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL}>Todos</SelectItem>
+                    <SelectItem value={ALL}>Todos os status</SelectItem>
                     <SelectItem value="finished">Finalizado</SelectItem>
                     <SelectItem value="pending">Pendente</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="relative w-56">
-                <label className="text-xs font-semibold text-foreground-secondary">Buscar</label>
-                <Search className="pointer-events-none absolute left-3 top-[calc(50%+4px)] -translate-y-1/2 text-foreground-muted" size={15} />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Clube..."
-                  className="mt-1 h-10 pl-8"
-                />
+              <div className="w-56">
+                <label className="text-xs font-semibold text-foreground-secondary">Clube</label>
+                <Select value={clubFilter} onValueChange={setClubFilter}>
+                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL}>Todos os clubes</SelectItem>
+                    {clubOptions.map((club) => (
+                      <SelectItem key={club.id} value={club.id}>{club.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

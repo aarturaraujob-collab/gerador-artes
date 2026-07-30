@@ -29,6 +29,11 @@ function resolveAssetValue(value: string, dir: string): string {
   return `${dir}/${value}`;
 }
 
+/** Same resolution as clubShieldPath, but for a raw shield value not yet saved to a club — e.g. a live form preview. */
+export function resolveClubShieldValue(shield: string): string {
+  return resolveAssetValue(shield, ESCUDOS_DIR);
+}
+
 /**
  * Single source of truth for every visual asset (shields, backgrounds,
  * round images). No React component or renderer builds asset paths on its own —

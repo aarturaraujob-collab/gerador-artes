@@ -324,6 +324,7 @@ export function TemplateCollection() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Central de Geração"
           description="Encontre jogos por data, competição e formato para gerar as artes em lote."
           actions={

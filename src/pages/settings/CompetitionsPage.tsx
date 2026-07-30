@@ -190,8 +190,9 @@ export function CompetitionsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Competições"
-          description="Cadastre, edite e organize as competições — nenhuma alteração aqui exige mexer em arquivos do projeto."
+          description="Cadastre, edite e organize as competições da FAF."
           actions={
             <Button onClick={() => navigate("/cadastros/competicoes/nova")}>
               <Plus size={16} />

@@ -208,7 +208,7 @@
   --chart-4: #B45309;
   --chart-5: #6E56CF;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'Space Grotesk', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --app-font-display: 'Space Grotesk', sans-serif;
@@ -383,6 +383,15 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+/* iOS-style jiggle for widgets in edit mode (dailyActionWidgets.tsx) */
+@keyframes wobble {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+.animate-wobble {
+  animation: wobble 0.22s ease-in-out infinite;
 }
 
 /**

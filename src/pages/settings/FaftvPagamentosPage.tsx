@@ -130,6 +130,7 @@ export function FaftvPagamentosPage() {
         </Link>
 
         <PageHeader
+          hero
           title="Pagamentos"
           description="Cinegrafista: R$ 200 por jogo confirmado. Coordenador: R$ 200 por diária trabalhada (data com ao menos uma operação confirmada)."
         />

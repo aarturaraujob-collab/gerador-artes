@@ -131,7 +131,7 @@ export function StadiumForm() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <PageHeader title={isEditing ? "Editar Estádio" : "Novo Estádio"} />
+        <PageHeader hero title={isEditing ? "Editar Estádio" : "Novo Estádio"} />
 
         <Card className="space-y-4 p-6">
           <div>
