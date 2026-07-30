@@ -4,23 +4,23 @@
 <g id="grp_jogo_1">
 <rect id="img_escudo_mandante" x="105" y="627" width="227.939" height="227.937" fill="url(#pattern1_31_28)"/>
 <rect id="img_escudo_visitante" x="746" y="626" width="229.045" height="229.044" fill="url(#pattern2_31_28)"/>
-<text id="txt_placar_home" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="801.44">0</tspan></text>
-<text id="txt_placar_away" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="801.44">0</tspan></text>
+<text id="txt_placar_home" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="801.44">0</tspan></text>
+<text id="txt_placar_away" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="801.44">0</tspan></text>
 </g>
 <g id="grp_jogo_2">
 <rect id="img_escudo_mandante_2" x="105" y="915" width="227.939" height="227.937" fill="url(#pattern3_31_28)"/>
 <rect id="img_escudo_visitante_2" x="746" y="914" width="229.045" height="229.044" fill="url(#pattern4_31_28)"/>
-<text id="txt_placar_home_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="1089.44">0</tspan></text>
-<text id="txt_placar_away_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="1089.44">0</tspan></text>
+<text id="txt_placar_home_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="1089.44">0</tspan></text>
+<text id="txt_placar_away_2" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="1089.44">0</tspan></text>
 </g>
 <g id="grp_jogo_3">
 <rect id="img_escudo_mandante_3" x="105" y="1208" width="227.939" height="227.937" fill="url(#pattern5_31_28)"/>
 <rect id="img_escudo_visitante_3" x="746" y="1207" width="229.045" height="229.044" fill="url(#pattern6_31_28)"/>
-<text id="txt_placar_home_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="1382.44">0</tspan></text>
-<text id="txt_placar_away_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="1382.44">0</tspan></text>
+<text id="txt_placar_home_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="376.047" y="1382.44">0</tspan></text>
+<text id="txt_placar_away_3" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="160" font-weight="900" letter-spacing="0em"><tspan x="586.047" y="1382.44">0</tspan></text>
 </g>
-<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="360.87">ALAGOANO SUB-20 (A1)</tspan></text>
-<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="443.87">S&#xc1;BADO (01/JAN)</tspan></text>
+<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="360.87">ALAGOANO SUB-20 (A1)</tspan></text>
+<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="443.87">S&#xc1;BADO (01/JAN)</tspan></text>
 </g>
 <defs>
 <pattern id="pattern0_31_28" patternContentUnits="objectBoundingBox" width="1" height="1">

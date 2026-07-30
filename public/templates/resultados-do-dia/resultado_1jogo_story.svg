@@ -4,11 +4,11 @@
 <g id="grp_jogo_1">
 <rect id="img_escudo_mandante" x="312" y="846.108" width="227.939" height="227.937" fill="url(#pattern1_31_29)"/>
 <rect id="img_escudo_visitante" x="540" y="845" width="229.045" height="229.044" fill="url(#pattern2_31_29)"/>
-<text id="txt_placar_home" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="220" font-weight="900" letter-spacing="0em"><tspan x="347.189" y="820.98">0</tspan></text>
-<text id="txt_placar_away" fill="white" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="220" font-weight="900" letter-spacing="0em"><tspan x="585.189" y="820.98">0</tspan></text>
+<text id="txt_placar_home" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="220" font-weight="900" letter-spacing="0em"><tspan x="347.189" y="820.98">0</tspan></text>
+<text id="txt_placar_away" fill="white" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="220" font-weight="900" letter-spacing="0em"><tspan x="585.189" y="820.98">0</tspan></text>
 </g>
-<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="450.87">ALAGOANO SUB-20 (A1)</tspan></text>
-<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="533.87">S&#xc1;BADO (01/JAN)</tspan></text>
+<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="450.87">ALAGOANO SUB-20 (A1)</tspan></text>
+<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="533.87">S&#xc1;BADO (01/JAN)</tspan></text>
 </g>
 <defs>
 <pattern id="pattern0_31_29" patternContentUnits="objectBoundingBox" width="1" height="1">

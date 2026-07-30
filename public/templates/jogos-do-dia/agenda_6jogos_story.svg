@@ -4,49 +4,49 @@
 <g id="grp_jogo_6">
 <rect id="img_escudo_mandante" x="201" y="1400.13" width="111" height="111" fill="url(#pattern1_42_133)"/>
 <rect id="img_escudo_visitante" x="336" y="1400.13" width="111" height="111" fill="url(#pattern2_42_133)"/>
-<text id="txt_cidade" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="1505.16">PENEDO</tspan></text>
-<text id="txt_estadio" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="478.672" y="1449.03">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="1507">15:00</tspan></text>
+<text id="txt_cidade" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="1505.16">PENEDO</tspan></text>
+<text id="txt_estadio" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="478.672" y="1449.03">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="1507">15:00</tspan></text>
 </g>
 <g id="grp_jogo_5">
 <rect id="img_escudo_mandante_2" x="633" y="1216.13" width="111" height="111" fill="url(#pattern3_42_133)"/>
 <rect id="img_escudo_visitante_2" x="767" y="1216.13" width="111" height="111" fill="url(#pattern4_42_133)"/>
-<text id="txt_cidade_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="1321.16">PENEDO</tspan></text>
-<text id="txt_estadio_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="210" y="1265.03">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="1323">15:00</tspan></text>
+<text id="txt_cidade_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="1321.16">PENEDO</tspan></text>
+<text id="txt_estadio_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="210" y="1265.03">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="1323">15:00</tspan></text>
 </g>
 <g id="grp_jogo_4">
 <rect id="img_escudo_mandante_3" x="201" y="1036.13" width="111" height="111" fill="url(#pattern5_42_133)"/>
 <rect id="img_escudo_visitante_3" x="336" y="1036.13" width="111" height="111" fill="url(#pattern6_42_133)"/>
-<text id="txt_cidade_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="1141.16">PENEDO</tspan></text>
-<text id="txt_estadio_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="478.672" y="1085.03">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="1143">15:00</tspan></text>
+<text id="txt_cidade_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="1141.16">PENEDO</tspan></text>
+<text id="txt_estadio_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="478.672" y="1085.03">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora_3" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="1143">15:00</tspan></text>
 </g>
 <g id="grp_jogo_3">
 <rect id="img_escudo_mandante_4" x="633" y="855.135" width="111" height="111" fill="url(#pattern7_42_133)"/>
 <rect id="img_escudo_visitante_4" x="767" y="855.135" width="111" height="111" fill="url(#pattern8_42_133)"/>
-<text id="txt_cidade_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="960.165">PENEDO</tspan></text>
-<text id="txt_estadio_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="210" y="904.03">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="962.005">15:00</tspan></text>
+<text id="txt_cidade_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="960.165">PENEDO</tspan></text>
+<text id="txt_estadio_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="210" y="904.03">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora_4" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="962.005">15:00</tspan></text>
 </g>
 <g id="grp_jogo_2">
 <rect id="img_escudo_mandante_5" x="201" y="675" width="111" height="111" fill="url(#pattern9_42_133)"/>
 <rect id="img_escudo_visitante_5" x="336" y="675" width="111" height="111" fill="url(#pattern10_42_133)"/>
-<text id="txt_cidade_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="780.03">PENEDO</tspan></text>
-<text id="txt_estadio_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="478.672" y="723.895">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="781.87">15:00</tspan></text>
+<text id="txt_cidade_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="478.672" y="780.03">PENEDO</tspan></text>
+<text id="txt_estadio_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="478.672" y="723.895">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora_5" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="684" y="781.87">15:00</tspan></text>
 </g>
 <g id="grp_jogo_1">
 <rect id="img_escudo_mandante_6" x="633" y="491.135" width="111" height="111" fill="url(#pattern11_42_133)"/>
 <rect id="img_escudo_visitante_6" x="767" y="491.135" width="111" height="111" fill="url(#pattern12_42_133)"/>
-<text id="txt_cidade_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="596.165">PENEDO</tspan></text>
-<text id="txt_estadio_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="45" letter-spacing="0em"><tspan x="210" y="540.03">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="598.005">15:00</tspan></text>
+<text id="txt_cidade_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" font-weight="600" letter-spacing="0em"><tspan x="210" y="596.165">PENEDO</tspan></text>
+<text id="txt_estadio_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="45" letter-spacing="0em"><tspan x="210" y="540.03">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora_6" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="900" letter-spacing="0em"><tspan x="415.328" y="598.005">15:00</tspan></text>
 </g>
-<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
-<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
-<text id="txt_competicao_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
-<text id="txt_dia_cabecalho_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
+<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
+<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
+<text id="txt_competicao_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
+<text id="txt_dia_cabecalho_2" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
 </g>
 <defs>
 <pattern id="pattern0_42_133" patternContentUnits="objectBoundingBox" width="1" height="1">

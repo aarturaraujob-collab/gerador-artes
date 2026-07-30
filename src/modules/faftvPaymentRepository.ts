@@ -8,6 +8,8 @@ export interface FaftvPaymentRecord {
   date: string;
   amount: number;
   description: string;
+  /** Which games this lump-sum payment settles — optional, so old rows (and payments not tied to specific games) stay valid. */
+  gameRefs: string[];
 }
 
 interface FaftvPaymentRow {
@@ -16,6 +18,7 @@ interface FaftvPaymentRow {
   date: string;
   amount: number;
   description: string | null;
+  game_refs: string[] | null;
 }
 
 function fromRow(row: FaftvPaymentRow): FaftvPaymentRecord {
@@ -25,6 +28,7 @@ function fromRow(row: FaftvPaymentRow): FaftvPaymentRecord {
     date: row.date,
     amount: row.amount,
     description: row.description ?? "",
+    gameRefs: row.game_refs ?? [],
   };
 }
 
@@ -35,6 +39,7 @@ function toRow(record: FaftvPaymentRecord): FaftvPaymentRow {
     date: record.date,
     amount: record.amount,
     description: record.description || null,
+    game_refs: record.gameRefs.length > 0 ? record.gameRefs : null,
   };
 }
 

@@ -83,7 +83,7 @@ describe("computeFaftvEarnings", () => {
       [buildGameRef(match), makeEscala(match, { cinegrafistaStaffId: "cinegrafista-1" })],
     ]);
     const payments: FaftvPaymentRecord[] = [
-      { id: "p1", staffId: "cinegrafista-1", date: "3/1/26", amount: 80, description: "" },
+      { id: "p1", staffId: "cinegrafista-1", date: "3/1/26", amount: 80, description: "", gameRefs: [] },
     ];
 
     const rows = computeFaftvEarnings([match], escalaByGameRef, payments, staffById, {
@@ -103,7 +103,7 @@ describe("computeFaftvEarnings", () => {
       [buildGameRef(match), makeEscala(match, { cinegrafistaStaffId: "cinegrafista-1" })],
     ]);
     const payments: FaftvPaymentRecord[] = [
-      { id: "p1", staffId: "cinegrafista-1", date: "3/1/26", amount: 300, description: "" },
+      { id: "p1", staffId: "cinegrafista-1", date: "3/1/26", amount: 300, description: "", gameRefs: [] },
     ];
 
     const rows = computeFaftvEarnings([match], escalaByGameRef, payments, staffById, {

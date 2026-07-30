@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { Section } from "@/components/ui/section";
 import type { DataStore } from "@/modules/dataStore";
 import { useDataStore } from "@/hooks/useDataStore";
-import { clubDisplayName } from "@/modules/clubDisplay";
+import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
+import { buildGameRef } from "@/modules/gameRef";
+import { matchFaftvEscalaRepository, type MatchFaftvEscalaRecord } from "@/modules/matchFaftvEscalaRepository";
 import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
 
 type Tone = "brand" | "success" | "info" | "danger";
@@ -18,12 +20,16 @@ interface WidgetContent {
   actionLabel: string;
 }
 
+interface WidgetContext {
+  faftvRecords: Map<string, MatchFaftvEscalaRecord>;
+}
+
 interface WidgetDef {
   id: string;
   title: string;
   icon: LucideIcon;
   tone: Tone;
-  compute: (store: DataStore) => WidgetContent;
+  compute: (store: DataStore, context: WidgetContext) => WidgetContent;
 }
 
 const toneClass: Record<Tone, string> = {
@@ -46,7 +52,7 @@ const WIDGET_CATALOG: WidgetDef[] = [
       return {
         value: `${finished.length}/${todayMatches.length}`,
         subtitle: todayMatches.length === 0 ? "Nenhum jogo hoje" : "jogos com placar hoje",
-        href: "/artes/resultados-do-dia",
+        href: "/artes/resultados-do-dia?data=hoje",
         actionLabel: "Criar arte",
       };
     },
@@ -67,7 +73,7 @@ const WIDGET_CATALOG: WidgetDef[] = [
         subtitle: first
           ? `${clubDisplayName(first.homeClubId, store.clubsById)} x ${clubDisplayName(first.awayClubId, store.clubsById)}`
           : "Nenhum jogo pendente hoje",
-        href: first ? `/cadastros/competicoes/${first.competitionId}` : "/cadastros/competicoes",
+        href: first ? `/cadastros/competicoes/${first.competitionId}?editarPlacar=hoje` : "/cadastros/competicoes",
         actionLabel: "Editar placar",
       };
     },
@@ -97,13 +103,22 @@ const WIDGET_CATALOG: WidgetDef[] = [
     title: "FAFTV hoje",
     icon: Tv2,
     tone: "success",
-    compute: (store) => {
+    compute: (store, { faftvRecords }) => {
       const today = todayIso();
-      const todayTv = store.matches.filter((match) => toIsoDate(match.date) === today && Boolean(match.tv));
+      const todayMatches = store.matches.filter(
+        (match) =>
+          toIsoDate(match.date) === today &&
+          !isPlaceholderClubId(match.homeClubId) &&
+          !isPlaceholderClubId(match.awayClubId),
+      );
+      const needsAttention = todayMatches.filter((match) => !faftvRecords.get(buildGameRef(match))?.cinegrafistaStaffId);
       return {
-        value: String(todayTv.length),
-        subtitle: todayTv.length === 0 ? "Nenhuma transmissão hoje" : "jogos hoje na FAFTV",
-        href: "/cadastros/faftv/operacoes",
+        value: String(todayMatches.length),
+        subtitle:
+          todayMatches.length === 0
+            ? "Nenhuma transmissão hoje"
+            : `${needsAttention.length} jogo(s) precisam de atenção`,
+        href: "/cadastros/faftv/operacoes?periodo=hoje&atencao=1",
         actionLabel: "Ver pendências",
       };
     },
@@ -137,6 +152,17 @@ export function DailyActionsSection() {
   const [editing, setEditing] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [faftvRecords, setFaftvRecords] = useState<Map<string, MatchFaftvEscalaRecord>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    void matchFaftvEscalaRepository.listAll().then((rows) => {
+      if (!cancelled) setFaftvRecords(new Map(rows.map((row) => [row.gameRef, row])));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Reconcile against the live catalog in case a widget id was ever removed from code.
   useEffect(() => {
@@ -198,7 +224,7 @@ export function DailyActionsSection() {
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {visibleWidgets.map((widget) => {
-          const content = widget.compute(store);
+          const content = widget.compute(store, { faftvRecords });
           const Icon = widget.icon;
           return (
             <div

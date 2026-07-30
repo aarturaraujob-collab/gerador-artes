@@ -77,11 +77,12 @@ export function TemplateCollection() {
     if (deepLinked) return [deepLinked];
     return initialPreferences.competitionIds ?? [];
   });
-  const [dateFilter, setDateFilter] = useState<DateFilterState>(() =>
-    initialPreferences.dateMode
+  const [dateFilter, setDateFilter] = useState<DateFilterState>(() => {
+    if (searchParams.get("data") === "hoje") return { mode: "today" };
+    return initialPreferences.dateMode
       ? { mode: initialPreferences.dateMode, customIso: initialPreferences.customIso }
-      : DEFAULT_DATE_FILTER,
-  );
+      : DEFAULT_DATE_FILTER;
+  });
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [round, setRound] = useState("");
   const [search, setSearch] = useState("");

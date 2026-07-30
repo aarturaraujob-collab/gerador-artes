@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Status } from "@/components/ui/status";
@@ -16,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { useDataStore } from "@/hooks/useDataStore";
 import { buildGameRef } from "@/modules/gameRef";
 import { clubDisplayName } from "@/modules/clubDisplay";
@@ -51,6 +54,42 @@ export function FaftvPagamentosPage() {
   const [endDate, setEndDate] = useState("");
   const [bucketFilter, setBucketFilter] = useState<Bucket>("aberto");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [newPayment, setNewPayment] = useState({ staffId: "", date: "", amount: "", description: "", gameRefs: [] as string[] });
+  const [savingPayment, setSavingPayment] = useState(false);
+
+  const faftvStaff = useMemo(() => store.staff.filter((person) => person.area === "FAFTV"), [store.staff]);
+
+  async function handleAddPayment() {
+    const amount = Number(newPayment.amount.replace(",", "."));
+    if (!newPayment.staffId || !newPayment.date || !amount) {
+      toast.error("Selecione a pessoa, a data e o valor do pagamento.");
+      return;
+    }
+    setSavingPayment(true);
+    try {
+      const record: FaftvPaymentRecord = {
+        id: crypto.randomUUID(),
+        staffId: newPayment.staffId,
+        date: newPayment.date,
+        amount,
+        description: newPayment.description,
+        gameRefs: newPayment.gameRefs,
+      };
+      await faftvPaymentRepository.upsert(record);
+      setPayments((prev) => [...prev, record]);
+      setNewPayment({ staffId: "", date: "", amount: "", description: "", gameRefs: [] });
+      toast.success("Pagamento registrado.");
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "42501") {
+        toast.error("Apenas administradores podem registrar pagamentos. Peça para atualizar seu perfil para admin.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Falha ao registrar o pagamento.");
+      }
+    } finally {
+      setSavingPayment(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +111,24 @@ export function FaftvPagamentosPage() {
   }, []);
 
   const recordsByGameRef = useMemo(() => new Map(records.map((row) => [row.gameRef, row])), [records]);
+
+  // Jogos/diárias que a pessoa selecionada no formulário efetivamente escalou —
+  // pra poder marcar quais este pagamento em lote está quitando.
+  const staffGameOptions = useMemo(() => {
+    if (!newPayment.staffId) return [];
+    return store.matches
+      .map((match) => ({ match, gameRef: buildGameRef(match), record: recordsByGameRef.get(buildGameRef(match)) }))
+      .filter(
+        ({ record }) =>
+          record &&
+          (record.cinegrafistaStaffId === newPayment.staffId || record.coordenadorStaffIds.includes(newPayment.staffId)),
+      )
+      .sort((a, b) => (toIsoDate(a.match.date) ?? "").localeCompare(toIsoDate(b.match.date) ?? ""))
+      .map(({ match, gameRef }) => ({
+        value: gameRef,
+        label: `${match.date || "Data a definir"} · ${clubDisplayName(match.homeClubId, store.clubsById)} x ${clubDisplayName(match.awayClubId, store.clubsById)}`,
+      }));
+  }, [newPayment.staffId, store.matches, store.clubsById, recordsByGameRef]);
 
   const filteredMatches = useMemo(() => {
     return store.matches
@@ -134,6 +191,72 @@ export function FaftvPagamentosPage() {
           title="Pagamentos"
           description="Cinegrafista: R$ 200 por jogo confirmado. Coordenador: R$ 200 por diária trabalhada (data com ao menos uma operação confirmada)."
         />
+
+        <Card className="space-y-3 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Registrar pagamento já feito</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-56">
+              <label className="text-xs font-semibold text-foreground-secondary">Pessoa</label>
+              <Select
+                value={newPayment.staffId}
+                onValueChange={(value) => setNewPayment((prev) => ({ ...prev, staffId: value, gameRefs: [] }))}
+              >
+                <SelectTrigger className="mt-1 h-10"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {faftvStaff.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>{person.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-36">
+              <label className="text-xs font-semibold text-foreground-secondary">Data</label>
+              <Input
+                className="mt-1 h-10"
+                placeholder="DD/MM/AAAA"
+                value={newPayment.date}
+                onChange={(event) => setNewPayment((prev) => ({ ...prev, date: event.target.value }))}
+              />
+            </div>
+            <div className="w-32">
+              <label className="text-xs font-semibold text-foreground-secondary">Valor</label>
+              <Input
+                className="mt-1 h-10"
+                placeholder="200,00"
+                value={newPayment.amount}
+                onChange={(event) => setNewPayment((prev) => ({ ...prev, amount: event.target.value }))}
+              />
+            </div>
+            <div className="w-56 flex-1">
+              <label className="text-xs font-semibold text-foreground-secondary">Descrição</label>
+              <Input
+                className="mt-1 h-10"
+                placeholder="PIX enviado"
+                value={newPayment.description}
+                onChange={(event) => setNewPayment((prev) => ({ ...prev, description: event.target.value }))}
+              />
+            </div>
+            <Button type="button" onClick={handleAddPayment} disabled={savingPayment}>
+              {savingPayment ? <Spinner /> : <Plus size={16} />}
+              Adicionar
+            </Button>
+          </div>
+          {newPayment.staffId && (
+            <div className="w-full max-w-xl">
+              <label className="text-xs font-semibold text-foreground-secondary">
+                Jogos cobertos por este pagamento (opcional)
+              </label>
+              <MultiSelect
+                className="mt-1"
+                options={staffGameOptions}
+                value={newPayment.gameRefs}
+                onValueChange={(gameRefs) => setNewPayment((prev) => ({ ...prev, gameRefs }))}
+                placeholder="Nenhum jogo vinculado"
+                emptyText="Esta pessoa não tem jogos escalados."
+              />
+            </div>
+          )}
+        </Card>
 
         <div className="flex flex-wrap gap-3">
           <div className="w-56">
@@ -256,6 +379,19 @@ export function FaftvPagamentosPage() {
                                   {row.payments.map((payment) => (
                                     <li key={payment.id}>
                                       {currency.format(payment.amount)} - pago em {formatLedgerDate(payment.date)}
+                                      {payment.gameRefs.length > 0 && (
+                                        <span className="text-foreground-muted">
+                                          {" "}
+                                          · jogos: {payment.gameRefs
+                                            .map((gameRef) => {
+                                              const match = store.matches.find((m) => buildGameRef(m) === gameRef);
+                                              return match
+                                                ? `${clubDisplayName(match.homeClubId, store.clubsById)} x ${clubDisplayName(match.awayClubId, store.clubsById)} (${match.date})`
+                                                : gameRef;
+                                            })
+                                            .join(", ")}
+                                        </span>
+                                      )}
                                     </li>
                                   ))}
                                 </ul>

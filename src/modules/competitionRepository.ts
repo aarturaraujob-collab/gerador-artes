@@ -226,6 +226,7 @@ export const OFFICIAL_COMPETITIONS_2026: CompetitionRecord[] = [
 const KNOWN_BACKGROUNDS: Record<string, string> = {
   ALAGOANO20A1: "bg_thumbnail_20a1.png",
   ALAGOANO20A2: "bg_thumbnail_20a2.png",
+  COPAALAGOAS17: "bg_thumbnail_copa_17.png",
 };
 for (const competition of OFFICIAL_COMPETITIONS_2026) {
   const thumb = KNOWN_BACKGROUNDS[competition.id];

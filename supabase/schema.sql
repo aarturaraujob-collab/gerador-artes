@@ -574,3 +574,11 @@ alter table match_faftv_escala add column if not exists valor_cinegrafista numer
 alter table match_faftv_escala add column if not exists valor_coordenador_diaria numeric;
 alter table match_faftv_escala add column if not exists valor_extra numeric not null default 0;
 alter table match_faftv_escala add column if not exists motivo_falha_live text;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Rastreia quais jogos um pagamento em lote (PIX único cobrindo vários
+-- jogos/diárias acumulados) efetivamente quita — sem isso não dá pra saber
+-- "esse pagamento X é de qual jogo Y" ao olhar o extrato meses depois.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table faftv_payment_records add column if not exists game_refs text[];

@@ -2,15 +2,15 @@
 <g id="agenda_1jogo_story">
 <rect id="img_background" y="240" width="1080" height="1440" fill="url(#pattern0_23_355)"/>
 <rect id="1 2" width="1080" height="1920" fill="url(#pattern1_23_355)"/>
-<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
-<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
+<text id="txt_competicao" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="210.396" y="347.87">ALAGOANO SUB-20 (A1)</tspan></text>
+<text id="txt_dia_cabecalho" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-style="italic" letter-spacing="0em"><tspan x="339.14" y="430.87">S&#xc1;BADO (01/JAN)</tspan></text>
 <line id="Line 1" x1="381" y1="479.5" x2="759" y2="479.5" stroke="#221E1F"/>
 <g id="grp_jogo_1">
 <rect id="img_escudo_mandante" x="288" y="696" width="226" height="226" fill="url(#pattern2_23_355)"/>
 <rect id="img_escudo_visitante" x="565" y="696" width="226" height="226" fill="url(#pattern3_23_355)"/>
-<text id="txt_cidade" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" font-weight="600" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="990.87">PENEDO</tspan></text>
-<text id="txt_estadio" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="55" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="1131.87">ALFREDO LEAHY</tspan></text>
-<text id="txt_hora" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Prompt" font-size="90" font-weight="900" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="1071.56">15:00</tspan></text>
+<text id="txt_cidade" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" font-weight="600" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="990.87">PENEDO</tspan></text>
+<text id="txt_estadio" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="55" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="1131.87">ALFREDO LEAHY</tspan></text>
+<text id="txt_hora" fill="#221E1F" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="90" font-weight="900" letter-spacing="0em" text-anchor="middle"><tspan x="540" y="1071.56">15:00</tspan></text>
 </g>
 </g>
 <defs>

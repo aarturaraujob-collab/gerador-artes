@@ -5,6 +5,10 @@ import type { MatchFaftvEscalaRecord } from "./matchFaftvEscalaRepository";
 import type { FaftvPaymentRecord } from "./faftvPaymentRepository";
 import { DEFAULT_FAFTV_SETTINGS, type FaftvSettings } from "./faftvSettingsRepository";
 
+// FAF vende o direito de imagem destas competições em vez de pagar pela
+// transmissão — não geram cachê de cinegrafista/coordenador.
+const NO_PAY_COMPETITIONS = new Set(["ALAGOANOA1", "ALAGOANOB", "COPAALAGOAS"]);
+
 export interface FaftvEarningsRow {
   staffId: string;
   name: string;
@@ -51,6 +55,7 @@ export function computeFaftvEarnings(
   const coordenadorDayValue = new Map<string, Map<string, number>>();
 
   for (const match of matches) {
+    if (NO_PAY_COMPETITIONS.has(match.competitionId)) continue;
     const gameRef = buildGameRef(match);
     const record = escalaByGameRef.get(gameRef);
     if (!record) continue;

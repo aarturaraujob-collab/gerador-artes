@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "wouter";
+import { Link, useLocation, useParams, useSearchParams } from "wouter";
 import { toast } from "sonner";
 import {
   Archive,
@@ -41,7 +41,7 @@ import { describeCompetitionFormat, type CompetitionFormat } from "@/modules/com
 import { computeFormatBracket, hasKnockoutPhase } from "@/modules/formatBracket";
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
-import { toIsoDate } from "@/pages/templates/matchDateFilter";
+import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
 import { groupMatchesByRound } from "@/modules/rounds";
 import { calculateStandings } from "@/modules/standings";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
@@ -91,6 +91,7 @@ function formatPeriod(dates: Date[]): string {
 export function CompetitionHub() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
+  const [searchParams] = useSearchParams();
   const store = useDataStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -185,6 +186,21 @@ export function CompetitionHub() {
       return true;
     });
   }, [matches, clubFilter, statusFilter, startDate, endDate]);
+
+  // Chegando do widget "Editar resultado do dia" da Home (?editarPlacar=hoje) —
+  // abre direto na aba Jogos, filtrado em hoje, já com o placar em edição.
+  useEffect(() => {
+    if (searchParams.get("editarPlacar") !== "hoje") return;
+    const today = todayIso();
+    setActiveTab("jogos");
+    setStartDate(today);
+    setEndDate(today);
+    const pending = matches.find(
+      (match) => toIsoDate(match.date) === today && (match.homeGoals === null || match.awayGoals === null),
+    );
+    if (pending) startEditScore(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, matches]);
 
   useEffect(() => {
     if (!competition) {
