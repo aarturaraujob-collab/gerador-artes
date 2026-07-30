@@ -389,16 +389,17 @@ export function CompetitionHub() {
         >
           <div className="relative flex flex-wrap items-center gap-4">
             <div
-              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 p-[3px] shadow-md ring-1 ring-white/50"
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl p-[3px]"
               style={{
+                boxShadow: "0 0 0 2px rgba(148,163,184,0.4), 0 8px 24px -8px rgba(148,163,184,0.25)",
                 backgroundImage:
-                  "radial-gradient(120% 120% at 15% 10%, rgba(255,255,255,0.9), transparent 50%)," +
-                  "radial-gradient(100% 100% at 90% 100%, rgba(0,0,0,0.15), transparent 60%)," +
-                  "linear-gradient(135deg, #e5e7eb 0%, #9ca3af 100%)",
+                  "radial-gradient(120% 120% at 12% 8%, rgba(255,255,255,0.12), transparent 55%)," +
+                  "radial-gradient(110% 110% at 90% 95%, rgba(0,0,0,0.35), transparent 55%)," +
+                  "linear-gradient(135deg, #4b5057 0%, #23262b 100%)",
               }}
             >
               {competition.logo && (
-                <img src={assetRepository.logoPath(competition.logo)} alt="" className="relative h-full w-full rounded-lg bg-white object-contain" />
+                <img src={assetRepository.logoPath(competition.logo)} alt="" className="relative h-full w-full object-contain" />
               )}
             </div>
             <div className="min-w-0 flex-1">
