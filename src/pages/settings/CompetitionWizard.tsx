@@ -37,7 +37,6 @@ import {
   type CompetitionPhaseType,
   type PhaseMatchup,
 } from "@/modules/competitionRepository";
-import { clubDisplayName } from "@/modules/clubDisplay";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
@@ -181,9 +180,6 @@ export function CompetitionWizard() {
   const templateOptions = templateRegistry.map((template) => ({ value: template.id, label: template.name }));
 
   const phaseSeeding = computeFormatSeeding(form.format.phases);
-  const registeredClubNames = [...new Set(store.clubs.map((club) => clubDisplayName(club.id, store.clubsById)))]
-    .filter((name) => name !== "A DEFINIR")
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -520,10 +516,7 @@ export function CompetitionWizard() {
               <div className="space-y-3">
                 {form.format.phases.map((phase, index) => {
                   const seeding = phaseSeeding[index];
-                  const matchupOptions = [...seeding.availableOptions, ...registeredClubNames].map((label) => ({
-                    value: label,
-                    label,
-                  }));
+                  const matchupOptions = seeding.availableOptions.map((label) => ({ value: label, label }));
                   return (
                   <div key={phase.id} className="rounded-xl border border-border p-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -629,14 +622,15 @@ export function CompetitionWizard() {
                             </Button>
                           </div>
                           <p className="mt-1 text-xs text-foreground-muted">
-                            Sempre por seleção — escolha uma posição definida por uma fase anterior (ex.: "1º Grupo
-                            A", "Vencedor Grupo C") ou um clube já cadastrado.
+                            Sempre por seleção — só posições definidas por uma fase anterior (ex.: "1º Grupo A",
+                            "Vencedor Grupo C"). Um clube nunca entra direto: só chega a uma fase sendo
+                            classificado na fase anterior.
                           </p>
 
                           {matchupOptions.length === 0 && (
                             <p className="mt-2 rounded-xl bg-warning/10 p-3 text-xs text-warning-solid">
-                              Nenhuma opção disponível ainda — adicione uma fase de pontos corridos antes, ou
-                              cadastre clubes para escolher diretamente.
+                              Nenhuma opção disponível ainda — esta fase precisa de uma fase anterior (de pontos
+                              corridos ou mata-mata) para gerar as posições que os confrontos podem usar.
                             </p>
                           )}
 
