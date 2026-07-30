@@ -41,6 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore } from "@/modules/dataStore";
+import { describeCompetitionFormat } from "@/modules/competitionRepository";
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, STATUS_TONE, parseMatchDate } from "@/modules/competitionStatus";
 import { groupMatchesByRound } from "@/modules/rounds";
@@ -490,7 +491,7 @@ export function CompetitionHub() {
             <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visao-geral" className="mt-6">
+          <TabsContent value="visao-geral" className="mt-6 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <MetricCard label="Clubes" value={clubIds.size} tone="info" />
               <MetricCard label="Jogos" value={matches.length} tone="info" />
@@ -499,6 +500,10 @@ export function CompetitionHub() {
               <MetricCard label="Jogos pendentes" value={pendingMatches} tone="warning" />
               <MetricCard label="Última atualização" value={store.lastUpdated} tone="info" />
             </div>
+            <Card className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Fórmula de disputa</p>
+              <p className="mt-1 text-sm text-foreground-secondary">{describeCompetitionFormat(competition.format)}</p>
+            </Card>
           </TabsContent>
 
           <TabsContent value="jogos" className="mt-6 space-y-4">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Check } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -24,13 +25,20 @@ import { templates as templateRegistry } from "@/templates/templates";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type BackgroundAssets, type CompetitionRecord, type ExtractedRow } from "@/modules/dataStore";
 import { assetRepository, spreadsheetImporter } from "@/engine";
-import { emptyBackground } from "@/modules/competitionRepository";
+import {
+  emptyBackground,
+  emptyCompetitionFormat,
+  describeCompetitionFormat,
+  type CompetitionFormat,
+  type KnockoutStageConfig,
+} from "@/modules/competitionRepository";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 import { backgroundRepository, type BackgroundAsset } from "@/modules/backgroundRepository";
 
-const STEP_LABELS = ["Dados", "Assets", "Importação", "Templates", "Resumo"];
+const STEP_LABELS = ["Dados", "Fórmula", "Assets", "Importação", "Templates", "Resumo"];
+const LAST_STEP = STEP_LABELS.length;
 
 const CATEGORY_OPTIONS = ["Profissional", "Base", "Amador", "Universitário"] as const;
 const AGE_GROUP_OPTIONS = ["Livre", "Sub-13", "Sub-15", "Sub-17", "Sub-20", "Máster"] as const;
@@ -54,6 +62,7 @@ interface FormState {
   logo: string;
   background: BackgroundAssets;
   templates: string[];
+  format: CompetitionFormat;
 }
 
 function emptyForm(): FormState {
@@ -68,6 +77,7 @@ function emptyForm(): FormState {
     logo: "",
     background: emptyBackground(),
     templates: [],
+    format: emptyCompetitionFormat(),
   };
 }
 
@@ -150,6 +160,7 @@ export function CompetitionWizard() {
         logo: existing.logo,
         background: existing.background,
         templates: existing.templates,
+        format: existing.format ?? emptyCompetitionFormat(),
       });
       setLoaded(true);
     }
@@ -167,6 +178,26 @@ export function CompetitionWizard() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateFormat<K extends keyof CompetitionFormat>(key: K, value: CompetitionFormat[K]) {
+    setForm((current) => ({ ...current, format: { ...current.format, [key]: value } }));
+  }
+
+  function addKnockoutStage() {
+    const stage: KnockoutStageConfig = { id: crypto.randomUUID(), name: "", legs: 1 };
+    updateFormat("knockoutStages", [...form.format.knockoutStages, stage]);
+  }
+
+  function updateKnockoutStage(id: string, patch: Partial<KnockoutStageConfig>) {
+    updateFormat(
+      "knockoutStages",
+      form.format.knockoutStages.map((stage) => (stage.id === id ? { ...stage, ...patch } : stage)),
+    );
+  }
+
+  function removeKnockoutStage(id: string) {
+    updateFormat("knockoutStages", form.format.knockoutStages.filter((stage) => stage.id !== id));
+  }
+
   function canAdvanceFromStep1(): boolean {
     return form.name.trim().length > 0 && /^[A-Za-z0-9_-]+$/.test(form.id.trim());
   }
@@ -180,7 +211,7 @@ export function CompetitionWizard() {
       );
       return;
     }
-    setStep((current) => Math.min(5, current + 1));
+    setStep((current) => Math.min(LAST_STEP, current + 1));
   }
 
   function goBack() {
@@ -249,6 +280,7 @@ export function CompetitionWizard() {
         logo: form.logo,
         background: form.background,
         templates: form.templates,
+        format: form.format,
         active: true,
       };
 
@@ -427,6 +459,95 @@ export function CompetitionWizard() {
 
           {step === 2 && (
             <div className="space-y-6">
+              <div>
+                <p className="text-sm font-semibold text-foreground-secondary">Fase 1 — Pontos Corridos</p>
+                <p className="mt-1 text-xs text-foreground-muted">
+                  Quantos grupos disputam a primeira fase e quantos colocados de cada grupo avançam para o
+                  mata-mata (0 se a competição terminar na Fase 1, sem mata-mata).
+                </p>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-semibold text-foreground-secondary">Grupos</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={form.format.groupCount}
+                      onChange={(event) => updateFormat("groupCount", Math.max(1, Number(event.target.value) || 1))}
+                      className="mt-2 h-11"
+                    />
+                    <p className="mt-1 text-xs text-foreground-muted">1 = grupo único (todos contra todos).</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-foreground-secondary">Classificados por grupo</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.format.advancePerGroup}
+                      onChange={(event) => updateFormat("advancePerGroup", Math.max(0, Number(event.target.value) || 0))}
+                      className="mt-2 h-11"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground-secondary">Fases de Mata-Mata</p>
+                    <p className="mt-1 text-xs text-foreground-muted">
+                      Em ordem de disputa — ex.: Semifinal, depois Final.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addKnockoutStage}>
+                    <Plus size={14} />
+                    Adicionar fase
+                  </Button>
+                </div>
+
+                {form.format.knockoutStages.length === 0 ? (
+                  <p className="mt-3 rounded-xl bg-muted p-4 text-sm text-foreground-muted">
+                    Nenhuma fase de mata-mata — a competição termina na classificação da Fase 1.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    {form.format.knockoutStages.map((stage, index) => (
+                      <div key={stage.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
+                        <span className="w-6 shrink-0 text-center text-xs font-semibold text-foreground-muted">
+                          {index + 1}ª
+                        </span>
+                        <Input
+                          value={stage.name}
+                          onChange={(event) => updateKnockoutStage(stage.id, { name: event.target.value })}
+                          placeholder="Semifinal"
+                          className="h-10 flex-1"
+                        />
+                        <Select
+                          value={String(stage.legs)}
+                          onValueChange={(value) => updateKnockoutStage(stage.id, { legs: Number(value) as 1 | 2 })}
+                        >
+                          <SelectTrigger className="h-10 w-40"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Jogo único</SelectItem>
+                            <SelectItem value="2">Ida e volta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <IconButton
+                          aria-label="Remover fase"
+                          title="Remover fase"
+                          onClick={() => removeKnockoutStage(stage.id)}
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <AssetUploadField
                   label="Logo"
@@ -472,7 +593,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-semibold text-foreground-secondary">Planilha (CSV ou XLSX)</label>
@@ -528,7 +649,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="space-y-3">
               <p className="text-sm text-foreground-secondary">Escolha os templates disponíveis para esta competição.</p>
               <MultiSelect
@@ -541,7 +662,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <SummaryPreview label="Logo" src={form.logo} />
@@ -561,6 +682,11 @@ export function CompetitionWizard() {
                   <p className="text-2xl font-bold text-foreground">{summaryRounds.size}</p>
                   <p className="text-xs text-foreground-muted">rodadas</p>
                 </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-foreground-secondary">Fórmula de disputa</p>
+                <p className="mt-1 text-sm text-foreground-secondary">{describeCompetitionFormat(form.format)}</p>
               </div>
 
               <div>
@@ -590,7 +716,7 @@ export function CompetitionWizard() {
           <Button type="button" variant="outline" onClick={goBack} disabled={step === 1}>
             Voltar
           </Button>
-          {step < 5 && (
+          {step < LAST_STEP && (
             <Button type="button" onClick={goNext}>
               Avançar
             </Button>

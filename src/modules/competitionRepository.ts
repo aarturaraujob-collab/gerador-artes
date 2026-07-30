@@ -41,10 +41,63 @@ export interface CompetitionRecord {
   status?: "A acontecer" | "Em andamento" | "Finalizada" | "Arquivada";
   /** Soft-delete marker (ms epoch) — set by "Excluir" (moves to trash), cleared by "Restaurar". Never removed until purged. */
   deletedAt?: number | null;
+  /** Optional — competitions registered before this field existed simply don't have one (treated as "não definida" in the UI). */
+  format?: CompetitionFormat;
 }
 
 export function emptyBackground(): BackgroundAssets {
   return { thumb: "", story: "", feed: "" };
+}
+
+/** Ida e volta (agregado) ou jogo único — os únicos dois formatos usados pela FAF numa fase de mata-mata. */
+export type KnockoutStageLegs = 1 | 2;
+
+export interface KnockoutStageConfig {
+  id: string;
+  /** Ex.: "Semifinal", "Final", "Quartas de Final". Livre porque o número de fases de mata-mata varia por competição. */
+  name: string;
+  legs: KnockoutStageLegs;
+}
+
+/**
+ * A fórmula de disputa de uma competição: uma Fase 1 de pontos corridos
+ * (1 grupo = todos contra todos; 2+ grupos = grupos separados) seguida de
+ * zero ou mais fases de mata-mata. Cobre tanto um campeonato só de pontos
+ * corridos (knockoutStages vazio) quanto formatos mistos como o Alagoano
+ * (1 grupo → semifinal e final de ida e volta) ou a Copa Alagoas (2 grupos
+ * → semifinal e final em jogo único).
+ */
+export interface CompetitionFormat {
+  /** Quantos grupos disputam a Fase 1. 1 = grupo único. */
+  groupCount: number;
+  /** Quantos colocados de cada grupo avançam para a primeira fase de mata-mata. 0 quando não há mata-mata. */
+  advancePerGroup: number;
+  knockoutStages: KnockoutStageConfig[];
+}
+
+export function emptyCompetitionFormat(): CompetitionFormat {
+  return { groupCount: 1, advancePerGroup: 0, knockoutStages: [] };
+}
+
+/** One-line, human-readable summary of a fórmula de disputa — shared by the wizard's Resumo step and the competition hub's Visão Geral. */
+export function describeCompetitionFormat(format: CompetitionFormat | undefined): string {
+  const groupsPart =
+    format && format.groupCount > 1
+      ? `Fase 1 em ${format.groupCount} grupos`
+      : "Fase 1 em pontos corridos (grupo único)";
+
+  const stages = format?.knockoutStages ?? [];
+  if (stages.length === 0) {
+    return `${groupsPart} — sem fase de mata-mata.`;
+  }
+
+  const advance = format?.advancePerGroup ?? 0;
+  const classificados = advance > 0 ? ` (${advance} classificado(s) por grupo)` : "";
+  const stagesPart = stages
+    .map((stage) => `${stage.name || "Fase"} (${stage.legs === 2 ? "ida e volta" : "jogo único"})`)
+    .join(" → ");
+
+  return `${groupsPart}${classificados} → ${stagesPart}.`;
 }
 
 /** The official FAF 2026 calendar, registered once so the app starts ready to use. */
@@ -99,6 +152,7 @@ interface CompetitionRow {
   active: boolean;
   status: string | null;
   deleted_at: string | null;
+  format: CompetitionFormat | null;
 }
 
 function fromRow(row: CompetitionRow): CompetitionRecord {
@@ -116,6 +170,11 @@ function fromRow(row: CompetitionRow): CompetitionRecord {
     active: row.active,
     status: (row.status as CompetitionRecord["status"]) ?? undefined,
     deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : null,
+    // Absent both when the row predates this field AND when the "format"
+    // column migration (see supabase/schema.sql) hasn't been applied yet —
+    // `select("*")` simply omits an unknown column instead of erroring, so
+    // this is safe to read either way.
+    format: row.format ?? undefined,
   };
 }
 
@@ -134,6 +193,7 @@ function toRow(record: CompetitionRecord): CompetitionRow {
     active: record.active,
     status: record.status ?? null,
     deleted_at: record.deletedAt ? new Date(record.deletedAt).toISOString() : null,
+    format: record.format ?? null,
   };
 }
 
@@ -150,14 +210,41 @@ export class CompetitionRepository {
     const existing = await this.list();
     if (existing.length > 0) return existing;
 
-    const { error } = await supabase.from("competitions").insert(OFFICIAL_COMPETITIONS_2026.map(toRow));
-    if (error) throw error;
-    return OFFICIAL_COMPETITIONS_2026;
+    const rows = OFFICIAL_COMPETITIONS_2026.map(toRow);
+    const { error } = await supabase.from("competitions").insert(rows);
+    if (!error) return OFFICIAL_COMPETITIONS_2026;
+
+    // Same "format" column not migrated yet fallback as upsert() below.
+    if (error.message.includes("'format' column")) {
+      const rowsWithoutFormat = rows.map(({ format: _omitted, ...rest }) => rest);
+      const { error: retryError } = await supabase.from("competitions").insert(rowsWithoutFormat);
+      if (retryError) throw retryError;
+      return OFFICIAL_COMPETITIONS_2026;
+    }
+    throw error;
   }
 
   async upsert(record: CompetitionRecord): Promise<void> {
-    const { error } = await supabase.from("competitions").upsert(toRow(record));
-    if (error) throw error;
+    const row = toRow(record);
+    const { error } = await supabase.from("competitions").upsert(row);
+    if (!error) return;
+
+    // "format" is a newer column (migration at the bottom of schema.sql) —
+    // until it's actually applied to this Supabase project, PostgREST
+    // rejects the *entire* write for referencing a column it doesn't know
+    // about (the same failure mode that broke every match write when
+    // matches.publico/renda were sent without existing in the live schema).
+    // Retry without it so the rest of the competition still saves, instead
+    // of silently breaking every competition edit until someone notices.
+    if (error.message.includes("'format' column")) {
+      const { format: _omitted, ...rowWithoutFormat } = row;
+      const { error: retryError } = await supabase.from("competitions").upsert(rowWithoutFormat);
+      if (retryError) throw retryError;
+      throw new Error(
+        "Competição salva, mas a fórmula de disputa não foi — falta rodar a migração pendente (coluna 'format' em competitions) no Supabase.",
+      );
+    }
+    throw error;
   }
 
   async remove(id: string): Promise<void> {

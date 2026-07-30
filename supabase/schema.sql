@@ -544,3 +544,10 @@ grant select on public.faflab_media to anon;
 
 alter table matches add column if not exists publico integer;
 alter table matches add column if not exists renda numeric;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Fórmula de disputa da competição (Fase 1 de pontos corridos + fases de
+-- mata-mata opcionais) — ver CompetitionFormat em src/modules/competitionRepository.ts.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table competitions add column if not exists format jsonb;
