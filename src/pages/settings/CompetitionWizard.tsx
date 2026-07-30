@@ -559,10 +559,9 @@ export function CompetitionWizard() {
                       </IconButton>
                     </div>
 
-                    {seeding.letters.length > 0 && (
+                    {phase.type === "pontos" && seeding.letters.length > 0 && (
                       <p className="mt-2 pl-9 text-xs text-foreground-muted">
-                        {phase.type === "pontos" ? "Grupo(s): " : "Confronto(s): "}
-                        {seeding.letters.map((letter) => `Grupo ${letter}`).join(", ")}
+                        Grupo(s): {seeding.letters.map((letter) => `Grupo ${letter}`).join(", ")}
                       </p>
                     )}
 
@@ -640,8 +639,11 @@ export function CompetitionWizard() {
                             </p>
                           ) : (
                             <div className="mt-2 space-y-2">
-                              {(phase.matchups ?? []).map((matchup) => (
+                              {(phase.matchups ?? []).map((matchup, matchupIndex) => (
                                 <div key={matchup.id} className="flex flex-wrap items-center gap-2">
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground-secondary">
+                                    {seeding.letters[matchupIndex] ?? "?"}
+                                  </span>
                                   <Combobox
                                     className="h-10 min-w-[8rem] flex-1"
                                     options={matchupOptions}
