@@ -13,6 +13,7 @@ import { CityRepository, type City } from "./cityRepository";
 import { MatchRepository } from "./matchRepository";
 import { buildGameRef } from "./gameRef";
 import { clubDisplayName } from "./clubDisplay";
+import { computeBracketResolutionPatches } from "./bracketResolution";
 import { logActivity } from "./activityLog";
 import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
 import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
@@ -62,6 +63,8 @@ export interface Match {
   tv: string | null;
   /** Competition phase (e.g. "Fase de Grupos", "Mata-mata") — optional, informational, from the FASE column. */
   phase?: string | null;
+  /** Which mata-mata confronto (CompetitionPhaseConfig.matchups[].id) this match settles — see bracketResolution.ts. Null for pontos-phase matches. */
+  bracketSlot?: string | null;
   /** External match reference from the REF column — optional, informational only, not used as a dedup key. */
   ref?: string | null;
   /** Attendance for this match — optional, filled in manually or by a future import; null until then. */
@@ -826,6 +829,49 @@ class DataStoreController implements DataStore {
    * drops operational planning already done for that match.
    */
   async updateMatch(gameRef: string, patch: Partial<Match>): Promise<void> {
+    const match = this.snapshot.matches.find((item) => buildGameRef(item) === gameRef);
+    await this.applyMatchUpdate(gameRef, patch);
+    if (match) await this.runBracketResolution(match.competitionId);
+  }
+
+  /** Creates a brand-new match row — backs the "Criar Partida" dialog. Triggers the same bracket resolution pass as a score edit. */
+  async createMatch(match: Match): Promise<void> {
+    await this.matchRepo.update(match, match);
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      [...this.snapshot.matches, match],
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
+    );
+    this.listeners.forEach((listener) => listener());
+    await this.runBracketResolution(match.competitionId);
+
+    const home = clubDisplayName(match.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(match.awayClubId, this.snapshot.clubsById);
+    logActivity("match.created", `${home} × ${away} criado(a).`);
+  }
+
+  /**
+   * Replaces every "vencedor-<matchupId>" placeholder that just became
+   * resolvable (see bracketResolution.ts) across the competition's matches —
+   * called after every score edit and every new match so the fase
+   * eliminatória's later rounds fill in on their own as results come in.
+   */
+  private async runBracketResolution(competitionId: string): Promise<void> {
+    const competition = this.snapshot.competitions.find((item) => item.id === competitionId);
+    if (!competition?.format) return;
+    const matches = this.snapshot.matches.filter((item) => item.competitionId === competitionId);
+    const patches = computeBracketResolutionPatches(competition.format, matches);
+    for (const { gameRef, patch } of patches) {
+      await this.applyMatchUpdate(gameRef, patch);
+    }
+  }
+
+  private async applyMatchUpdate(gameRef: string, patch: Partial<Match>): Promise<void> {
     const index = this.snapshot.matches.findIndex((item) => buildGameRef(item) === gameRef);
     if (index === -1) throw new Error("Partida não encontrada.");
 

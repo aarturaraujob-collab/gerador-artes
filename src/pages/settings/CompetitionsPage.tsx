@@ -1,19 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Archive, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,28 +19,132 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { templates as templateRegistry } from "@/templates/templates";
+import { assetRepository } from "@/engine";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type CompetitionRecord, type Match } from "@/modules/dataStore";
-import { resolveCompetitionStatus, COMPETITION_STATUSES, type CompetitionStatus } from "@/modules/competitionStatus";
+import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
 
-function templateNames(ids: string[]): string {
-  if (ids.length === 0) return "—";
-  return ids
-    .map((id) => templateRegistry.find((template) => template.id === id)?.name ?? id)
-    .join(", ");
+const ORDER_STORAGE_KEY = "competicoes.widgetOrder";
+const FINAL_PHASE_ROUNDS = new Set(["Semifinal", "Final"]);
+const UPCOMING_WINDOW_DAYS = 15;
+
+type WidgetTone = "green" | "yellow" | "gray" | "red";
+
+const TONE_STYLES: Record<WidgetTone, { border: string; glow: string; dot: string; label: string }> = {
+  green: {
+    border: "rgba(34,197,94,0.55)",
+    glow: "rgba(34,197,94,0.35)",
+    dot: "bg-emerald-500",
+    label: "Em andamento",
+  },
+  yellow: {
+    border: "rgba(234,179,8,0.55)",
+    glow: "rgba(234,179,8,0.35)",
+    dot: "bg-amber-400",
+    label: "Próxima",
+  },
+  gray: {
+    border: "rgba(148,163,184,0.4)",
+    glow: "rgba(148,163,184,0.25)",
+    dot: "bg-gray-400",
+    label: "Finalizada",
+  },
+  red: {
+    border: "rgba(239,68,68,0.6)",
+    glow: "rgba(239,68,68,0.4)",
+    dot: "bg-red-500",
+    label: "Fases finais",
+  },
+};
+
+function classifyTone(competition: CompetitionRecord, matches: Match[]): WidgetTone {
+  const status = resolveCompetitionStatus(competition, matches);
+
+  if (status === "Em andamento") {
+    const finalPhasePending = matches.some(
+      (match) => FINAL_PHASE_ROUNDS.has(match.round) && (match.homeGoals === null || match.awayGoals === null),
+    );
+    if (finalPhasePending) return "red";
+    return "green";
+  }
+
+  if (status === "A acontecer") {
+    const dates = matches.map((match) => parseMatchDate(match.date)).filter((date): date is Date => date !== null);
+    if (dates.length > 0) {
+      const earliest = dates.reduce((min, date) => (date < min ? date : min));
+      const daysUntil = (earliest.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      if (daysUntil <= UPCOMING_WINDOW_DAYS) return "yellow";
+    }
+    return "yellow";
+  }
+
+  return "gray";
+}
+
+function loadOrder(): string[] {
+  try {
+    const raw = window.localStorage.getItem(ORDER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrder(order: string[]) {
+  window.localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order));
+}
+
+function sortByOrder(competitions: readonly CompetitionRecord[], order: string[]): CompetitionRecord[] {
+  const index = new Map(order.map((id, i) => [id, i]));
+  return [...competitions].sort((a, b) => {
+    const ai = index.has(a.id) ? index.get(a.id)! : Number.MAX_SAFE_INTEGER;
+    const bi = index.has(b.id) ? index.get(b.id)! : Number.MAX_SAFE_INTEGER;
+    return ai - bi;
+  });
 }
 
 export function CompetitionsPage() {
   const store = useDataStore();
   const [, navigate] = useLocation();
   const [pendingDelete, setPendingDelete] = useState<CompetitionRecord | null>(null);
+  const [order, setOrder] = useState<string[]>(loadOrder);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const matchesByCompetition = new Map<string, Match[]>();
   for (const match of store.matches) {
     const list = matchesByCompetition.get(match.competitionId);
     if (list) list.push(match);
     else matchesByCompetition.set(match.competitionId, [match]);
+  }
+
+  const orderedCompetitions = sortByOrder(store.competitions, order);
+
+  useEffect(() => {
+    if (store.competitions.length === 0) return;
+    const knownIds = store.competitions.map((c) => c.id);
+    const missingFromOrder = knownIds.some((id) => !order.includes(id));
+    const staleInOrder = order.some((id) => !knownIds.includes(id));
+    if (missingFromOrder || staleInOrder) {
+      const next = [...order.filter((id) => knownIds.includes(id)), ...knownIds.filter((id) => !order.includes(id))];
+      setOrder(next);
+      saveOrder(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.competitions]);
+
+  function handleDrop(targetId: string) {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    const current = orderedCompetitions.map((c) => c.id);
+    const from = current.indexOf(draggedId);
+    const to = current.indexOf(targetId);
+    current.splice(from, 1);
+    current.splice(to, 0, draggedId);
+    setOrder(current);
+    saveOrder(current);
+    setDraggedId(null);
   }
 
   async function handleDuplicate(competition: CompetitionRecord) {
@@ -65,17 +162,6 @@ export function CompetitionsPage() {
       navigate(`/cadastros/competicoes/${newId}/editar`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao duplicar competição.");
-    }
-  }
-
-  async function handleStatusChange(competition: CompetitionRecord, value: string) {
-    try {
-      await dataStore.updateCompetition(competition.id, {
-        status: value === "auto" ? undefined : (value as CompetitionStatus),
-      });
-      toast.success("Status atualizado.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao atualizar status.");
     }
   }
 
@@ -114,112 +200,101 @@ export function CompetitionsPage() {
           }
         />
 
-        <div className="overflow-x-auto rounded-2xl border border-card-border bg-card shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-              <tr>
-                <th className="px-5 py-3">Nome</th>
-                <th className="px-5 py-3">ID</th>
-                <th className="px-5 py-3">Categoria</th>
-                <th className="px-5 py-3">Temporada</th>
-                <th className="px-5 py-3">Templates habilitados</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {store.competitions.map((competition) => {
-                const matches = matchesByCompetition.get(competition.id) ?? [];
-                const status = resolveCompetitionStatus(competition, matches);
-                return (
-                <tr
+        {orderedCompetitions.length === 0 ? (
+          <div className="rounded-2xl border border-card-border bg-card px-5 py-8 text-center text-sm text-foreground-muted shadow-sm">
+            Nenhuma competição cadastrada ainda.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {orderedCompetitions.map((competition) => {
+              const matches = matchesByCompetition.get(competition.id) ?? [];
+              const status = resolveCompetitionStatus(competition, matches);
+              const tone = TONE_STYLES[classifyTone(competition, matches)];
+              return (
+                <div
                   key={competition.id}
+                  draggable
+                  onDragStart={() => setDraggedId(competition.id)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => handleDrop(competition.id)}
+                  onClick={() => navigate(`/cadastros/competicoes/${competition.id}`)}
                   className={cn(
-                    "transition-colors duration-150 hover:bg-surface-hover",
+                    "group relative aspect-square cursor-grab overflow-hidden rounded-2xl shadow-md transition-transform duration-150 active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-lg",
                     !competition.active && "opacity-60",
                   )}
+                  style={{
+                    boxShadow: `0 0 0 2px ${tone.border}, 0 8px 24px -8px ${tone.glow}`,
+                    backgroundImage:
+                      `radial-gradient(120% 120% at 12% 8%, rgba(255,255,255,0.12), transparent 55%),` +
+                      `radial-gradient(110% 110% at 90% 95%, rgba(0,0,0,0.35), transparent 55%),` +
+                      `linear-gradient(135deg, #4b5057 0%, #23262b 100%)`,
+                  }}
                 >
-                  <td className="px-5 py-3 font-medium text-foreground">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/cadastros/competicoes/${competition.id}`)}
-                      className="rounded text-left hover:text-brand-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      {competition.name}
-                    </button>
-                  </td>
-                  <td className="px-5 py-3 font-mono text-xs text-foreground-muted">{competition.id}</td>
-                  <td className="px-5 py-3 text-foreground-secondary">
-                    {[competition.category, competition.gender, competition.ageGroup].filter(Boolean).join(" · ") || "—"}
-                  </td>
-                  <td className="px-5 py-3 text-foreground-secondary">{competition.season}</td>
-                  <td className="px-5 py-3 text-foreground-secondary">{templateNames(competition.templates)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={competition.status ?? "auto"}
-                        onValueChange={(value) => void handleStatusChange(competition, value)}
-                      >
-                        <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Automático ({status})</SelectItem>
-                          {COMPETITION_STATUSES.map((option) => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-xs text-foreground-muted">
-                        {matches.length} jogo(s)
+                  <div className="absolute inset-0 flex items-center justify-center p-[1%]">
+                    {competition.logo ? (
+                      <img
+                        src={assetRepository.logoPath(competition.logo)}
+                        alt={competition.name}
+                        className="h-full w-full object-contain drop-shadow"
+                      />
+                    ) : (
+                      <span className="px-3 text-center text-sm font-semibold text-white">
+                        {competition.name}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
+                    )}
+                  </div>
+
+                  <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-0.5 backdrop-blur-sm">
+                    <span className={cn("h-2 w-2 rounded-full", tone.dot)} />
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-white">{tone.label}</span>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/60 to-transparent px-2 pb-2 pt-6 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    <span className="truncate text-[11px] font-medium text-white" title={competition.name}>
+                      {competition.name}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
                       <IconButton
                         aria-label="Editar"
                         title="Editar"
+                        className="h-7 w-7 text-white hover:bg-white/20 hover:text-white"
                         onClick={() => navigate(`/cadastros/competicoes/${competition.id}/editar`)}
                       >
-                        <Pencil size={16} />
+                        <Pencil size={13} />
                       </IconButton>
                       <IconButton
                         aria-label="Duplicar"
                         title="Duplicar"
+                        className="h-7 w-7 text-white hover:bg-white/20 hover:text-white"
                         onClick={() => void handleDuplicate(competition)}
                       >
-                        <Copy size={16} />
+                        <Copy size={13} />
                       </IconButton>
                       <IconButton
                         aria-label={competition.active ? "Arquivar" : "Reativar"}
                         title={competition.active ? "Arquivar" : "Reativar"}
+                        className="h-7 w-7 text-white hover:bg-white/20 hover:text-white"
                         onClick={() => void handleArchiveToggle(competition)}
                       >
-                        <Archive size={16} />
+                        {competition.active ? <Archive size={13} /> : <ArchiveRestore size={13} />}
                       </IconButton>
                       <IconButton
                         aria-label="Excluir"
                         title="Excluir"
+                        className="h-7 w-7 text-white hover:bg-white/20 hover:text-danger"
                         onClick={() => setPendingDelete(competition)}
-                        className="hover:text-danger"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={13} />
                       </IconButton>
                     </div>
-                  </td>
-                </tr>
-                );
-              })}
+                  </div>
 
-              {store.competitions.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-foreground-muted">
-                    Nenhuma competição cadastrada ainda.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                  <span className="sr-only">{status} · {matches.length} jogo(s)</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>

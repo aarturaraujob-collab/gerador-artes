@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import {
@@ -9,7 +9,9 @@ import {
   Download,
   Flag,
   ImageDown,
+  ChevronDown,
   Pencil,
+  Plus,
   Search,
   Upload,
   X,
@@ -36,7 +38,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore } from "@/modules/dataStore";
-import { describeCompetitionFormat } from "@/modules/competitionRepository";
+import { describeCompetitionFormat, type CompetitionFormat } from "@/modules/competitionRepository";
+import { computeFormatBracket, hasKnockoutPhase } from "@/modules/formatBracket";
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
 import { groupMatchesByRound } from "@/modules/rounds";
@@ -55,8 +58,9 @@ import {
 import { logActivity } from "@/modules/activityLog";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
 import { EditMatchDialog } from "./EditMatchDialog";
+import { CreateMatchDialog } from "./CreateMatchDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
-import type { Match, ExtractedRow } from "@/modules/dataStore";
+import type { Match, ExtractedRow, Club } from "@/modules/dataStore";
 import { buildGameRef, encodeGameRefParam } from "@/modules/gameRef";
 import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
@@ -92,6 +96,7 @@ export function CompetitionHub() {
   const [importing, setImporting] = useState(false);
   const [imtMatch, setImtMatch] = useState<Match | null>(null);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [creatingMatch, setCreatingMatch] = useState(false);
   const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
@@ -383,9 +388,17 @@ export function CompetitionHub() {
           }}
         >
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5c5c5c] via-[#454545] to-[#2e2e2e] p-[3px] shadow-md">
+            <div
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 p-[3px] shadow-md ring-1 ring-white/50"
+              style={{
+                backgroundImage:
+                  "radial-gradient(120% 120% at 15% 10%, rgba(255,255,255,0.9), transparent 50%)," +
+                  "radial-gradient(100% 100% at 90% 100%, rgba(0,0,0,0.15), transparent 60%)," +
+                  "linear-gradient(135deg, #e5e7eb 0%, #9ca3af 100%)",
+              }}
+            >
               {competition.logo && (
-                <img src={assetRepository.logoPath(competition.logo)} alt="" className="h-full w-full rounded-lg bg-white object-contain" />
+                <img src={assetRepository.logoPath(competition.logo)} alt="" className="relative h-full w-full rounded-lg bg-white object-contain" />
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -420,6 +433,10 @@ export function CompetitionHub() {
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
             {importing ? <Spinner /> : <Upload size={16} />}
             Importar CSV
+          </Button>
+          <Button variant="outline" onClick={() => setCreatingMatch(true)}>
+            <Plus size={16} />
+            Criar Partida
           </Button>
           <input
             ref={fileInputRef}
@@ -474,6 +491,9 @@ export function CompetitionHub() {
             <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
             <TabsTrigger value="jogos">Jogos</TabsTrigger>
             <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+            <TabsTrigger value="fase-eliminatoria" disabled={!hasKnockoutPhase(competition.format)}>
+              Fase Eliminatória
+            </TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
@@ -766,6 +786,10 @@ export function CompetitionHub() {
             )}
           </TabsContent>
 
+          <TabsContent value="fase-eliminatoria" className="mt-6 space-y-4">
+            <EliminationFlowchart format={competition.format} matches={matches} clubsById={store.clubsById} />
+          </TabsContent>
+
           <TabsContent value="documentos" className="mt-6 space-y-6">
             <div>
               <p className="mb-2 text-sm font-semibold text-foreground-secondary">Assets da competição</p>
@@ -876,6 +900,16 @@ export function CompetitionHub() {
         />
       )}
 
+      <CreateMatchDialog
+        open={creatingMatch}
+        onOpenChange={setCreatingMatch}
+        competitionId={competition.id}
+        format={competition.format}
+        clubs={store.clubs}
+        clubsById={store.clubsById}
+        stadiumOptions={stadiumOptions}
+      />
+
       <UnmatchedEntitiesDialog
         open={pendingUnmatched !== null}
         entities={pendingUnmatched?.entities ?? null}
@@ -887,6 +921,245 @@ export function CompetitionHub() {
         }}
       />
     </AppShell>
+  );
+}
+
+interface ConfrontoSummary {
+  sideAId: string;
+  sideBId: string;
+  aggregateA: number;
+  aggregateB: number;
+  decided: boolean;
+  winnerId: string | null;
+}
+
+/** Aggregates a confronto's legs by real clubId (oriented off the first leg, so a Volta's swapped mando de campo still adds to the right side). */
+function summarizeConfronto(legs: Match[]): ConfrontoSummary | null {
+  if (legs.length === 0) return null;
+  const sideAId = legs[0].homeClubId;
+  const sideBId = legs[0].awayClubId;
+  let aggregateA = 0;
+  let aggregateB = 0;
+  let anyScored = false;
+
+  for (const leg of legs) {
+    if (leg.homeGoals === null || leg.awayGoals === null) continue;
+    anyScored = true;
+    if (leg.homeClubId === sideAId) {
+      aggregateA += leg.homeGoals;
+      aggregateB += leg.awayGoals;
+    } else {
+      aggregateA += leg.awayGoals;
+      aggregateB += leg.homeGoals;
+    }
+  }
+
+  const decided = anyScored && aggregateA !== aggregateB;
+  return { sideAId, sideBId, aggregateA, aggregateB, decided, winnerId: decided ? (aggregateA > aggregateB ? sideAId : sideBId) : null };
+}
+
+function ConfrontoSide({
+  label,
+  clubId,
+  aggregate,
+  winner,
+  clubsById,
+}: {
+  label: string;
+  clubId: string | undefined;
+  aggregate: number | undefined;
+  winner: boolean | undefined;
+  clubsById: ReadonlyMap<string, Club>;
+}) {
+  const displayName = clubId ? clubDisplayName(clubId, clubsById) : label || "A definir";
+  return (
+    <div className="flex items-center justify-between gap-1.5">
+      <span className="flex min-w-0 items-center gap-1.5">
+        {clubId && <img src={assetRepository.clubShieldPath(clubId)} alt="" className="h-4 w-4 shrink-0 object-contain" />}
+        <span className={cn("truncate text-sm", winner ? "font-bold text-foreground" : "font-medium text-foreground")}>
+          {displayName}
+        </span>
+        {winner && <Check size={12} className="shrink-0 text-success-solid" />}
+      </span>
+      {aggregate !== undefined && <span className="shrink-0 font-display text-xl font-bold text-foreground-muted">{aggregate}</span>}
+    </div>
+  );
+}
+
+function EliminationFlowchart({
+  format,
+  matches,
+  clubsById,
+}: {
+  format: CompetitionFormat | undefined;
+  matches: Match[];
+  clubsById: ReadonlyMap<string, Club>;
+}) {
+  const bracket = useMemo(() => computeFormatBracket(format), [format]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const nodeRefs = useRef(new Map<string, HTMLDivElement>());
+  const [paths, setPaths] = useState<{ id: string; d: string }[]>([]);
+  const [draggedGameRef, setDraggedGameRef] = useState<string | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  const matchesBySlot = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const match of matches) {
+      if (!match.bracketSlot) continue;
+      const list = map.get(match.bracketSlot);
+      if (list) list.push(match);
+      else map.set(match.bracketSlot, [match]);
+    }
+    return map;
+  }, [matches]);
+
+  async function handleDropOnNode(matchupId: string, phaseName: string) {
+    if (!draggedGameRef) return;
+    const match = matches.find((item) => buildGameRef(item) === draggedGameRef);
+    setDraggedGameRef(null);
+    if (!match || match.bracketSlot === matchupId) return;
+    try {
+      await dataStore.updateMatch(draggedGameRef, { bracketSlot: matchupId, phase: phaseName });
+      toast.success("Partida movida para o confronto.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao mover a partida.");
+    }
+  }
+
+  useLayoutEffect(() => {
+    function recompute() {
+      const container = containerRef.current;
+      if (!container) return;
+      const containerRect = container.getBoundingClientRect();
+      const next: { id: string; d: string }[] = [];
+      for (const conn of bracket.connections) {
+        const fromEl = nodeRefs.current.get(conn.fromNodeId);
+        const toEl = nodeRefs.current.get(conn.toNodeId);
+        if (!fromEl || !toEl) continue;
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        const x1 = fromRect.right - containerRect.left + container.scrollLeft;
+        const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + container.scrollTop;
+        const x2 = toRect.left - containerRect.left + container.scrollLeft;
+        const y2 =
+          (conn.toSide === "home" ? toRect.top + toRect.height * 0.3 : toRect.top + toRect.height * 0.7) -
+          containerRect.top +
+          container.scrollTop;
+        const midX = (x1 + x2) / 2;
+        next.push({ id: `${conn.fromNodeId}-${conn.toNodeId}-${conn.toSide}`, d: `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}` });
+      }
+      setPaths(next);
+    }
+    recompute();
+    window.addEventListener("resize", recompute);
+    return () => window.removeEventListener("resize", recompute);
+  }, [bracket]);
+
+  if (bracket.phases.length === 0) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>Sem fase eliminatória configurada</EmptyTitle>
+          <EmptyDescription>
+            Defina uma fase de mata-mata com o chaveamento na edição da competição para ver o fluxograma aqui.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative overflow-x-auto rounded-2xl border border-border bg-card p-6">
+      <svg className="pointer-events-none absolute left-0 top-0 h-full w-full" style={{ overflow: "visible" }}>
+        {paths.map((path) => (
+          <path key={path.id} d={path.d} fill="none" stroke="currentColor" className="text-border" strokeWidth={2} />
+        ))}
+      </svg>
+      <div className="relative flex items-stretch gap-16">
+        {bracket.phases.map((phase) => (
+          <div key={phase.id} className="flex min-w-[220px] flex-col justify-around gap-6">
+            <p className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">{phase.name}</p>
+            {phase.nodes.map((node) => {
+              const legs = matchesBySlot.get(node.id) ?? [];
+              const summary = summarizeConfronto(legs);
+              const expanded = expandedNodes.has(node.id);
+              return (
+                <div
+                  key={node.id}
+                  ref={(el) => {
+                    if (el) nodeRefs.current.set(node.id, el);
+                    else nodeRefs.current.delete(node.id);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => void handleDropOnNode(node.id, phase.name)}
+                  className="rounded-xl border border-card-border bg-background p-3 shadow-sm"
+                >
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
+                    Confronto {node.groupLetter}
+                  </p>
+                  <ConfrontoSide
+                    label={node.home}
+                    clubId={summary?.sideAId}
+                    aggregate={summary?.sideAId ? summary?.aggregateA : undefined}
+                    winner={summary?.decided && summary.winnerId === summary.sideAId}
+                    clubsById={clubsById}
+                  />
+                  <p className="my-1 text-center text-[10px] text-foreground-muted">×</p>
+                  <ConfrontoSide
+                    label={node.away}
+                    clubId={summary?.sideBId}
+                    aggregate={summary?.sideBId ? summary?.aggregateB : undefined}
+                    winner={summary?.decided && summary.winnerId === summary.sideBId}
+                    clubsById={clubsById}
+                  />
+
+                  {legs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedNodes((current) => {
+                          const next = new Set(current);
+                          if (next.has(node.id)) next.delete(node.id);
+                          else next.add(node.id);
+                          return next;
+                        })
+                      }
+                      className="mt-2 flex w-full items-center justify-center gap-1 border-t border-border pt-2 text-[10px] font-semibold uppercase tracking-wide text-foreground-muted hover:text-foreground"
+                    >
+                      {expanded ? "Ver menos" : "Ver mais"}
+                      <ChevronDown size={12} className={cn("transition-transform", expanded && "rotate-180")} />
+                    </button>
+                  )}
+
+                  {expanded && (
+                    <div className="mt-2 space-y-1 border-t border-border pt-2">
+                      {legs.map((match) => {
+                        const gameRef = buildGameRef(match);
+                        return (
+                          <div
+                            key={gameRef}
+                            draggable
+                            onDragStart={() => setDraggedGameRef(gameRef)}
+                            onDragEnd={() => setDraggedGameRef(null)}
+                            title="Arraste para outro confronto para reatribuir"
+                            className="flex cursor-grab items-center justify-between gap-2 rounded bg-muted px-2 py-1 text-[11px] text-foreground-secondary active:cursor-grabbing"
+                          >
+                            <span className="truncate">{match.round || "—"}{match.date ? ` · ${match.date}` : ""}</span>
+                            <span className="shrink-0 font-mono font-semibold text-foreground">
+                              {match.homeGoals !== null && match.awayGoals !== null ? `${match.homeGoals}-${match.awayGoals}` : "—"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -26,6 +26,7 @@ export type ActivityAction =
   | "import.playerStats"
   | "import.faflabReport"
   | "match.updated"
+  | "match.created"
   | "export.png"
   | "imt.generated"
   | "detailedTable.updated";

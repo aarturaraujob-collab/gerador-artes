@@ -551,3 +551,13 @@ alter table matches add column if not exists renda numeric;
 -- ─────────────────────────────────────────────────────────────────────────
 
 alter table competitions add column if not exists format jsonb;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Vínculo entre uma partida e o confronto do chaveamento que ela decide (a
+-- letra do Grupo/Confronto — ver CompetitionPhaseConfig.matchups em
+-- src/modules/competitionRepository.ts). Permite resolver automaticamente o
+-- "Vencedor Grupo X" de um confronto para as partidas futuras que o
+-- referenciam assim que o resultado sai — ver src/modules/bracketResolution.ts.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table matches add column if not exists bracket_slot text;

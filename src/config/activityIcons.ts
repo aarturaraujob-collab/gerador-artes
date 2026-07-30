@@ -27,6 +27,7 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "import.playerStats": { icon: Upload, tone: "text-info" },
   "import.faflabReport": { icon: FileText, tone: "text-info" },
   "match.updated": { icon: Pencil, tone: "text-info" },
+  "match.created": { icon: Plus, tone: "text-success" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },
   "detailedTable.updated": { icon: Table2, tone: "text-info" },
