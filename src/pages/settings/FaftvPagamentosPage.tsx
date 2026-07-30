@@ -103,7 +103,11 @@ export function FaftvPagamentosPage() {
   // card "Pago" ficaria artificialmente pequeno só por causa de quem ainda
   // deve algo.
   const pagoTotal = allRows.reduce((sum, row) => sum + row.totalPaid, 0);
-  const abertoTotal = allRows.reduce((sum, row) => sum + row.saldoAberto, 0);
+  // Someone else's overpayment (saldoAberto < 0) is their own reconciliation
+  // problem, not a credit against what the FAF still owes everyone else —
+  // netting it in here made the "Em aberto" card swing negative and read as
+  // nonsense. Only the money still genuinely owed counts toward this total.
+  const abertoTotal = allRows.reduce((sum, row) => sum + Math.max(0, row.saldoAberto), 0);
 
   function toggleExpanded(key: string) {
     setExpanded((prev) => {

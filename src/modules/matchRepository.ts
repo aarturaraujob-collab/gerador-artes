@@ -24,8 +24,13 @@ interface MatchRow {
   tv: string | null;
   phase: string | null;
   ref: string | null;
-  publico: number | null;
-  renda: number | null;
+  // NOTE: `publico`/`renda` exist on the in-memory Match type (and are read
+  // by the FAF Lab attendance dashboard) but the live "matches" table has no
+  // such columns yet (see supabase/schema.sql) — sending them in an
+  // insert/upsert payload makes PostgREST reject the *entire* write with
+  // "Could not find the '...' column ... in the schema cache", breaking
+  // every score edit, reschedule and reimport. Omitted here until that
+  // migration is applied; do not add them back without it.
 }
 
 function fromRow(row: MatchRow): StoredMatch {
@@ -44,8 +49,6 @@ function fromRow(row: MatchRow): StoredMatch {
     tv: row.tv,
     phase: row.phase,
     ref: row.ref,
-    publico: row.publico,
-    renda: row.renda,
   };
 }
 
@@ -65,8 +68,6 @@ function toRow(match: StoredMatch): MatchRow {
     tv: match.tv,
     phase: match.phase ?? null,
     ref: match.ref ?? null,
-    publico: match.publico ?? null,
-    renda: match.renda ?? null,
   };
 }
 

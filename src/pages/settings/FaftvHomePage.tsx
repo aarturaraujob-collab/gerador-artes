@@ -95,7 +95,9 @@ export function FaftvHomePage() {
       return record?.status === "confirmado";
     });
     const rows = computeFaftvEarnings(confirmedMatches, recordsByGameRef, payments, store.staffById, settings);
-    return rows.reduce((sum, row) => sum + row.saldoAberto, 0);
+    // A staff member paid more than currently owed shouldn't offset what's
+    // still owed to everyone else — only the genuinely open balances count.
+    return rows.reduce((sum, row) => sum + Math.max(0, row.saldoAberto), 0);
   }, [realMatches, recordsByGameRef, payments, store.staffById, settings]);
 
   function goToOperacoes(params: Record<string, string>) {
