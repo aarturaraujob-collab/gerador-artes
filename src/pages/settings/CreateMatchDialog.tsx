@@ -80,10 +80,6 @@ export function CreateMatchDialog(props: CreateMatchDialogProps) {
   }
 
   async function handleSave() {
-    if (!date.trim() || !time.trim()) {
-      toast.error("Informe a data e o horário.");
-      return;
-    }
     if (phaseId !== PONTOS_PHASE_VALUE && !matchupId) {
       toast.error("Selecione o confronto.");
       return;
@@ -215,11 +211,11 @@ export function CreateMatchDialog(props: CreateMatchDialogProps) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-semibold text-foreground-secondary">Data</label>
-              <Input value={date} onChange={(event) => setDate(event.target.value)} placeholder="DD/MM/AAAA" className="mt-1 h-10" />
+              <Input value={date} onChange={(event) => setDate(event.target.value)} placeholder="A definir" className="mt-1 h-10" />
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground-secondary">Horário</label>
-              <Input value={time} onChange={(event) => setTime(event.target.value)} placeholder="HH:MM" className="mt-1 h-10" />
+              <Input value={time} onChange={(event) => setTime(event.target.value)} placeholder="A definir" className="mt-1 h-10" />
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground-secondary">Estádio</label>
@@ -228,7 +224,7 @@ export function CreateMatchDialog(props: CreateMatchDialogProps) {
                 options={stadiumOptions}
                 value={stadiumId || undefined}
                 onValueChange={setStadiumId}
-                placeholder="Selecione"
+                placeholder="A definir"
                 searchPlaceholder="Buscar estádio..."
               />
             </div>
