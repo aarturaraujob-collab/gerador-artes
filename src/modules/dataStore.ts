@@ -940,6 +940,13 @@ class DataStoreController implements DataStore {
     for (const entry of history) {
       await this.historyRepo.append({ ...entry, gameRef: newGameRef });
     }
+    if (history.length > 0) {
+      // Copies land under newGameRef above — without this, the old rows keep
+      // FK-referencing the old match id and the remove() below (which deletes
+      // that row) fails with a foreign-key violation, silently leaving a
+      // duplicate fixture behind under the old date/time.
+      await this.historyRepo.removeByGameRef(oldGameRef);
+    }
     if (faftvEscala[0]) {
       await this.faftvEscalaRepo.upsert({ ...faftvEscala[0], id: newGameRef, gameRef: newGameRef });
       await this.faftvEscalaRepo.remove(oldGameRef);
