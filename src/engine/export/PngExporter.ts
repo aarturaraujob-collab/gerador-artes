@@ -1,4 +1,5 @@
 import { svgAsPngUri } from "save-svg-as-png";
+import { triggerBlobDownload } from "@/documents/utils/downloadBlob";
 
 export async function exportToPng(
   svgString: string,
@@ -33,10 +34,8 @@ export async function exportToPng(
       backgroundColor: "transparent",
     });
 
-    const a = document.createElement("a");
-    a.href = png;
-    a.download = filename;
-    a.click();
+    const blob = await (await fetch(png)).blob();
+    await triggerBlobDownload(blob, filename);
   } finally {
     document.body.removeChild(div);
   }
