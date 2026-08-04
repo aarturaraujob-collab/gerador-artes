@@ -10,8 +10,6 @@
     { "games": 6, "file": "resultado_6jogos_story.svg", "format": "story" }
   ],
   "fields": {
-    "txt_cidade": { "maxWidth": 225 },
-    "txt_estadio": { "maxWidth": 225 },
     "txt_competicao": { "maxWidth": 830 }
   }
 }
