@@ -600,18 +600,21 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
           <div className="relative mx-auto grid w-full max-w-7xl gap-8 md:grid-cols-2 md:items-center md:gap-10">
             <div className="flex flex-col gap-3 sm:gap-4">
               <span className="w-fit rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/90">
-                Observatório Oficial do Futebol Alagoano
+                Observatório Oficial do Futebol <strong className="font-black">Alagoano</strong>
               </span>
               <span className="font-display text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl">FAF LAB</span>
-              <p className="text-base font-medium text-white/85 sm:text-xl">O laboratório do futebol alagoano.</p>
+              <p className="text-base font-medium text-white/85 sm:text-xl">
+                O laboratório do futebol <strong className="font-black">alagoano</strong>.
+              </p>
               <div className="h-px w-16 bg-white/30" />
               <p className="max-w-md text-sm text-white/70 sm:text-base">
-                Transformando dados, competições, clubes e atletas em inteligência para o desenvolvimento do futebol de Alagoas.
+                Transformando dados, competições, clubes e atletas em inteligência para o desenvolvimento do futebol de{" "}
+                <strong className="font-black">Alagoas</strong>.
               </p>
               <div className="mt-1 flex items-center gap-4 sm:mt-2">
-                <img src={publicPath("/assets/logos/faf_branco.png")} alt="FAF" className="h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12" />
+                <img src={publicPath("/assets/logos/faf_branco.png")} alt="FAF" className="h-40 w-40 shrink-0 object-contain sm:h-48 sm:w-48" />
                 <span className="h-8 w-px shrink-0 bg-white/25 sm:h-10" />
-                <img src={publicPath("/assets/logos/ifpp.svg")} alt="IFPP" className="h-14 w-14 shrink-0 object-contain sm:h-16 sm:w-16" />
+                <img src={publicPath("/assets/logos/ifpp.svg")} alt="IFPP" className="h-56 w-56 shrink-0 object-contain sm:h-64 sm:w-64" />
               </div>
             </div>
 
