@@ -43,6 +43,8 @@ export interface CompetitionRecord {
   deletedAt?: number | null;
   /** Optional — competitions registered before this field existed simply don't have one (treated as "não definida" in the UI). */
   format?: CompetitionFormat;
+  /** Whether this competition tracks borderô (match financial reports). Defaults to true — some competitions (base categories, amistosos) don't require it. */
+  borderoEnabled?: boolean;
 }
 
 export function emptyBackground(): BackgroundAssets {
@@ -248,6 +250,7 @@ interface CompetitionRow {
   status: string | null;
   deleted_at: string | null;
   format: CompetitionFormat | null;
+  bordero_enabled: boolean | null;
 }
 
 function fromRow(row: CompetitionRow): CompetitionRecord {
@@ -270,6 +273,10 @@ function fromRow(row: CompetitionRow): CompetitionRecord {
     // `select("*")` simply omits an unknown column instead of erroring, so
     // this is safe to read either way.
     format: row.format ?? undefined,
+    // Same "column doesn't exist yet in this Supabase project" story as
+    // `format` above — absent both when the row predates this field and
+    // when the migration hasn't run, so default to true (borderô on) either way.
+    borderoEnabled: row.bordero_enabled ?? true,
   };
 }
 
@@ -289,6 +296,7 @@ function toRow(record: CompetitionRecord): CompetitionRow {
     status: record.status ?? null,
     deleted_at: record.deletedAt ? new Date(record.deletedAt).toISOString() : null,
     format: record.format ?? null,
+    bordero_enabled: record.borderoEnabled ?? true,
   };
 }
 
@@ -316,6 +324,12 @@ export class CompetitionRepository {
       if (retryError) throw retryError;
       return OFFICIAL_COMPETITIONS_2026;
     }
+    if (error.message.includes("'bordero_enabled' column")) {
+      const rowsWithoutBordero = rows.map(({ bordero_enabled: _omitted, ...rest }) => rest);
+      const { error: retryError } = await supabase.from("competitions").insert(rowsWithoutBordero);
+      if (retryError) throw retryError;
+      return OFFICIAL_COMPETITIONS_2026;
+    }
     throw error;
   }
 
@@ -337,6 +351,14 @@ export class CompetitionRepository {
       if (retryError) throw retryError;
       throw new Error(
         "Competição salva, mas a fórmula de disputa não foi — falta rodar a migração pendente (coluna 'format' em competitions) no Supabase.",
+      );
+    }
+    if (error.message.includes("'bordero_enabled' column")) {
+      const { bordero_enabled: _omitted, ...rowWithoutBordero } = row;
+      const { error: retryError } = await supabase.from("competitions").upsert(rowWithoutBordero);
+      if (retryError) throw retryError;
+      throw new Error(
+        "Competição salva, mas a preferência de borderô não foi — falta rodar a migração pendente (coluna 'bordero_enabled' em competitions) no Supabase.",
       );
     }
     throw error;

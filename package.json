@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:faflab": "vite --config vite.faflab.config.ts",
     "build": "tsc --noEmit && vite build",
+    "build:faflab": "tsc --noEmit && vite build --config vite.faflab.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

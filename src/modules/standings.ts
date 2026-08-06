@@ -11,6 +11,15 @@ export interface StandingsRow {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  /**
+   * Same as goalsFor/goalsAgainst, but excluding W.O. matches (see
+   * Match.wo) — used for "ataque mais positivo"/"defesa mais sólida"
+   * rankings, which shouldn't credit a club with goals nobody actually
+   * scored. goalsFor/goalsAgainst (and the goalDifference tiebreak in the
+   * classificação table) still count W.O. goals normally.
+   */
+  goalsForOfficial: number;
+  goalsAgainstOfficial: number;
 }
 
 interface ClubTopStat {
@@ -49,7 +58,19 @@ export function calculateStandings(matches: readonly Match[]): StandingsRow[] {
   function ensure(clubId: string): StandingsRow {
     let row = rows.get(clubId);
     if (!row) {
-      row = { clubId, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
+      row = {
+        clubId,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDifference: 0,
+        points: 0,
+        goalsForOfficial: 0,
+        goalsAgainstOfficial: 0,
+      };
       rows.set(clubId, row);
     }
     return row;
@@ -78,6 +99,12 @@ export function calculateStandings(matches: readonly Match[]): StandingsRow[] {
     home.goalsAgainst += awayGoals;
     away.goalsFor += awayGoals;
     away.goalsAgainst += homeGoals;
+    if (!match.wo) {
+      home.goalsForOfficial += homeGoals;
+      home.goalsAgainstOfficial += awayGoals;
+      away.goalsForOfficial += awayGoals;
+      away.goalsAgainstOfficial += homeGoals;
+    }
 
     if (homeGoals > awayGoals) {
       home.wins += 1;
@@ -125,12 +152,17 @@ export function calculateStats(matches: readonly Match[]): CompetitionStats {
   const homeWins = finished.filter((m) => (m.homeGoals as number) > (m.awayGoals as number)).length;
   const awayWins = finished.filter((m) => (m.awayGoals as number) > (m.homeGoals as number)).length;
 
+  // Only clubs with at least one finished match count — otherwise a
+  // competition with fixtures scheduled but no results yet would surface some
+  // arbitrary club sitting at 0 as a fake "leader" instead of showing no data.
+  const played = standings.filter((row) => row.played > 0);
+
   return {
-    topAttack: topBy(standings, (row) => row.goalsFor),
-    bestDefense: topBy(standings.filter((row) => row.played > 0), (row) => row.goalsAgainst, true),
-    mostWins: topBy(standings, (row) => row.wins),
-    mostDraws: topBy(standings, (row) => row.draws),
-    mostLosses: topBy(standings, (row) => row.losses),
+    topAttack: topBy(played, (row) => row.goalsForOfficial),
+    bestDefense: topBy(played, (row) => row.goalsAgainstOfficial, true),
+    mostWins: topBy(played, (row) => row.wins),
+    mostDraws: topBy(played, (row) => row.draws),
+    mostLosses: topBy(played, (row) => row.losses),
     homeWinRate: finished.length > 0 ? Math.round((homeWins / finished.length) * 100) : null,
     awayWinRate: finished.length > 0 ? Math.round((awayWins / finished.length) * 100) : null,
     topScorers: [],

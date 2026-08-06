@@ -74,6 +74,15 @@ export interface Match {
   /** Penalty shootout score — only set when a knockout-phase match (bracketSlot != null) ends in a draw. */
   penaltyHomeGoals?: number | null;
   penaltyAwayGoals?: number | null;
+  /**
+   * True when this match's score is a walkover (W.O.) — the team that showed
+   * up wins 3x0 administratively, nobody actually played. Counts for
+   * pontos/V-E-D and goalsFor/goalsAgainst (goal difference tiebreak in the
+   * classificação table), but the 3 goals are excluded from ataque/defesa
+   * rankings and from "gols em todas as competições" — see standings.ts and
+   * FafLabDashboard.tsx's labHighlights.
+   */
+  wo?: boolean;
 }
 
 /** One normalized row produced by the spreadsheet importer. */
@@ -678,8 +687,9 @@ class DataStoreController implements DataStore {
    */
   async ingest(competitionName: string, rows: readonly ExtractedRow[]): Promise<{ competitionId: string; count: number }> {
     const competitionId = slug(competitionName).toUpperCase();
+    const hasValidRow = rows.some((row) => row.home && row.away);
 
-    if (!this.snapshot.competitions.some((item) => item.id === competitionId)) {
+    if (hasValidRow && !this.snapshot.competitions.some((item) => item.id === competitionId)) {
       const record: CompetitionRecord = {
         id: competitionId,
         name: competitionName,
@@ -856,6 +866,35 @@ class DataStoreController implements DataStore {
     const home = clubDisplayName(match.homeClubId, this.snapshot.clubsById);
     const away = clubDisplayName(match.awayClubId, this.snapshot.clubsById);
     logActivity("match.created", `${home} × ${away} criado(a).`);
+  }
+
+  /** Permanently deletes one match — clears its FAFTV/Operação/Arbitragem/Escala/Histórico rows first (none of those cascade on delete), same as purgeCompetition does per-match. */
+  async deleteMatch(gameRef: string): Promise<void> {
+    const match = this.snapshot.matches.find((item) => buildGameRef(item) === gameRef);
+    if (!match) throw new Error("Partida não encontrada.");
+
+    await this.cleanupMatchOps(gameRef);
+    await this.matchRepo.remove(gameRef);
+
+    const matches = this.snapshot.matches.filter((item) => buildGameRef(item) !== gameRef);
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.delete(gameRef);
+
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      matches,
+      this.snapshot.staff,
+      matchOps,
+      this.snapshot.loadingRegistry,
+    );
+    this.listeners.forEach((listener) => listener());
+
+    const home = clubDisplayName(match.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(match.awayClubId, this.snapshot.clubsById);
+    logActivity("match.deleted", `${home} × ${away} excluído(a).`);
   }
 
   /**

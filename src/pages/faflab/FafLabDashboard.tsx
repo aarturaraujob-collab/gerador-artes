@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, FileText, Upload, X } from "lucide-react";
+import { Activity, ArrowDown, ArrowUp, ArrowUpDown, Download, FileText, Goal, MapPin, Trophy, Upload, Users, X } from "lucide-react";
 
 import { AppShell } from "@/components/ui/AppShell";
 import { PageHeader } from "@/components/ui/page-header";
@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +35,7 @@ import { calculateStandings, calculateStats, getRecentForm } from "@/modules/sta
 import { computeAttendanceStats } from "@/modules/attendance";
 import { isKnockoutPhase, computeBracket } from "@/modules/knockoutBracket";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
+import { resolveCompetitionStatus, STATUS_TONE } from "@/modules/competitionStatus";
 import type { Club } from "@/modules/clubRepository";
 import { exportElementAsImage } from "@/modules/exportElementAsImage";
 import { logActivity, getActivityLog } from "@/modules/activityLog";
@@ -81,6 +83,24 @@ type SortKey =
   | "cartoesVermelhos"
   | "entrou"
   | "saiu";
+
+/** Fixed display order for "Competições em destaque" on the public FAF Lab home — curated by hand, not derived from season/name. */
+const COMPETITION_DISPLAY_ORDER = [
+  "ALAGOANOA1",
+  "COPAALAGOAS",
+  "ALAGOANOB",
+  "COPAALAGOAS13",
+  "ALAGOANO17",
+  "COPAALAGOAS17",
+  "ALAGOANO20A1",
+  "ALAGOANO20A2",
+  "COPAFEM15",
+  "COPAFEM17",
+  "COPAFEM20",
+  "ALAGOANO15",
+  "COPAALAGOAS20",
+  "ALAGOANOFEM",
+];
 
 const QUICK_FILTERS = [
   { value: "jogou", label: "Só quem jogou" },
@@ -146,22 +166,42 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
   }, []);
   const seasonProgress = useMemo(() => computeSeasonProgress(matches, new Date(now)), [matches, now]);
 
-  // Shrinks the green header into a compact bar once the page scrolls past
-  // it — a sentinel just above the (sticky) header stops intersecting the
-  // viewport exactly when the header reaches the top and sticks.
-  const [headerCompact, setHeaderCompact] = useState(false);
-  const headerSentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const sentinel = headerSentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(([entry]) => setHeaderCompact(!entry.isIntersecting), { threshold: 0 });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-    // `competition` starts null while public-mode data is still loading — the
-    // sentinel below only mounts once we're past that early-return, so this
-    // must re-run when `competition` flips from null to a real value (an
-    // empty dep array would attach to a ref that was still null forever).
-  }, [competition]);
+  // Home-page highlights for the public FAF Lab landing — computed purely from
+  // data already fetched by usePublicFafLabData (no extra queries). Only
+  // meaningful in publicMode, but hooks must run unconditionally either way.
+  const labHighlights = useMemo(() => {
+    let totalGoals = 0;
+    const cityIds = new Set<string>();
+    const stadiumIds = new Set<string>();
+
+    for (const match of publicStore.matches) {
+      // W.O. matches count for the standings' points/V-E-D, but their 3x0
+      // isn't a real scoreline — excluded here same as from the ataque/
+      // defesa rankings (see standings.ts's goalsForOfficial).
+      if (match.homeGoals != null && match.awayGoals != null && !match.wo) {
+        totalGoals += match.homeGoals + match.awayGoals;
+      }
+      if (match.cityId) cityIds.add(match.cityId);
+      if (match.stadiumId) stadiumIds.add(match.stadiumId);
+    }
+
+    let emAndamento = 0;
+    let finalizadas = 0;
+    for (const item of publicStore.competitions) {
+      const itemMatches = publicStore.matches.filter((match) => match.competitionId === item.id);
+      const status = resolveCompetitionStatus(item, itemMatches);
+      if (status === "Em andamento") emAndamento += 1;
+      else if (status === "Finalizada") finalizadas += 1;
+    }
+
+    return {
+      totalGoals,
+      competitionsEmAndamento: emAndamento,
+      competitionsFinalizadas: finalizadas,
+      municipios: cityIds.size,
+      estadios: stadiumIds.size,
+    };
+  }, [publicStore.matches, publicStore.competitions]);
 
   const groupMatches = useMemo(() => matches.filter((match) => !isKnockoutPhase(match.phase)), [matches]);
   const knockoutMatches = useMemo(() => matches.filter((match) => isKnockoutPhase(match.phase)), [matches]);
@@ -509,55 +549,47 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
   }
 
   if (!competition) {
+    // Still fetching (Supabase's free-tier project can take a few seconds to
+    // wake up from a cold start) vs. genuinely no competitions registered —
+    // without this check the loading state briefly flashed the "cadastre uma
+    // competição" message, reading as if something had broken.
+    const stillLoading = publicMode ? !publicStore.loaded : authStore.loadingRegistry;
     return (
       <Shell publicMode={publicMode}>
         <div className="mx-auto max-w-3xl">
           <PageHeader hero title="FAF Lab" description="O laboratório do futebol alagoano." />
-          <p className="mt-4 text-sm text-foreground-muted">
-            Nenhuma competição cadastrada ainda — cadastre uma em "Competições" para começar.
-          </p>
+          {stillLoading ? (
+            <div className="mt-6 flex items-center gap-3 text-sm text-foreground-muted">
+              <Spinner />
+              Carregando dados do FAF Lab…
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-foreground-muted">
+              Nenhuma competição cadastrada ainda — cadastre uma em "Competições" para começar.
+            </p>
+          )}
         </div>
       </Shell>
     );
   }
 
-  const headerButtonClass = "border-white/30 bg-white/10 text-white hover:bg-white/20";
-
-  const competitionSelectors = (
-    <>
-      <Select value={currentGroup?.seriesId} onValueChange={handleSeriesChange}>
-        <SelectTrigger className="h-9 w-auto min-w-32 border-card-border bg-white text-xs font-semibold text-foreground shadow-sm">
-          <SelectValue placeholder="Competição" />
-        </SelectTrigger>
-        <SelectContent>
-          {groups.map((group) => (
-            <SelectItem key={group.seriesId} value={group.seriesId}>{group.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={competition.id} onValueChange={handleSeasonChange}>
-        <SelectTrigger className="h-9 w-auto min-w-20 border-card-border bg-white text-xs font-semibold text-foreground shadow-sm">
-          <SelectValue placeholder="Edição" />
-        </SelectTrigger>
-        <SelectContent>
-          {currentGroup?.seasons.map((season) => (
-            <SelectItem key={season.id} value={season.id}>{season.season}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </>
-  );
+  const heroStatsTop = [
+    { label: "Competições em andamento", value: labHighlights.competitionsEmAndamento, Icon: Activity },
+    { label: "Competições finalizadas", value: labHighlights.competitionsFinalizadas, Icon: Trophy },
+  ];
+  const heroStatsBottom = [
+    { label: "Atletas inscritos", value: publicStore.totalPlayers, Icon: Users },
+    { label: "Municípios que receberam jogos", value: labHighlights.municipios, Icon: MapPin },
+    { label: "Gols em todas as competições", value: labHighlights.totalGoals, Icon: Goal },
+  ];
 
   return (
     <Shell publicMode={publicMode}>
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div ref={headerSentinelRef} />
+      {publicMode && (
+        // Full-bleed: escapa o padding do Shell (p-4 sm:p-6 lg:p-8) pra ocupar
+        // 100% da largura da viewport, não só o max-w-7xl do resto da página.
         <div
-          className={cn(
-            "sticky z-20 -mx-4 flex flex-wrap items-center justify-between overflow-hidden bg-success-solid px-4 transition-[padding] sm:-mx-6 sm:px-8 lg:-mx-8",
-            publicMode ? "top-0" : "-top-4 sm:-top-6 lg:-top-8",
-            headerCompact ? "gap-3 py-2" : "gap-4 py-6 lg:py-8",
-          )}
+          className="relative -mx-4 -mt-4 flex min-h-[100dvh] flex-col justify-center gap-6 overflow-hidden bg-success-solid px-4 py-8 sm:-mx-6 sm:-mt-6 sm:gap-8 sm:px-8 sm:py-10 lg:-mx-8 lg:-mt-8 lg:gap-10 lg:px-16 lg:py-12"
           style={{
             backgroundImage:
               "radial-gradient(120% 140% at 8% 15%, rgba(255,255,255,0.28), transparent 55%)," +
@@ -565,70 +597,89 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
               "radial-gradient(80% 100% at 60% 0%, rgba(255,255,255,0.15), transparent 60%)",
           }}
         >
-          {headerCompact ? (
-            <>
-              <div className="relative flex items-center gap-3">
-                <span className="font-display text-base font-bold tracking-tight text-white">FAF LAB</span>
-                <span className="hidden h-6 w-px shrink-0 bg-white/30 sm:block" />
-                <div className="hidden items-center gap-2 sm:flex">
-                  <img src={publicPath("/assets/logos/faf_branco.png")} alt="FAF" className="h-7 w-7 shrink-0 object-contain" />
-                  <img src={publicPath("/assets/logos/ifpp.svg")} alt="IFPP" className="h-9 w-9 shrink-0 object-contain" />
-                </div>
+          <div className="relative mx-auto grid w-full max-w-7xl gap-8 md:grid-cols-2 md:items-center md:gap-10">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <span className="w-fit rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/90">
+                Observatório Oficial do Futebol Alagoano
+              </span>
+              <span className="font-display text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl">FAF LAB</span>
+              <p className="text-base font-medium text-white/85 sm:text-xl">O laboratório do futebol alagoano.</p>
+              <div className="h-px w-16 bg-white/30" />
+              <p className="max-w-md text-sm text-white/70 sm:text-base">
+                Transformando dados, competições, clubes e atletas em inteligência para o desenvolvimento do futebol de Alagoas.
+              </p>
+              <div className="mt-1 flex items-center gap-4 sm:mt-2">
+                <img src={publicPath("/assets/logos/faf_branco.png")} alt="FAF" className="h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12" />
+                <span className="h-8 w-px shrink-0 bg-white/25 sm:h-10" />
+                <img src={publicPath("/assets/logos/ifpp.svg")} alt="IFPP" className="h-14 w-14 shrink-0 object-contain sm:h-16 sm:w-16" />
               </div>
-              <div className="relative flex shrink-0 flex-wrap gap-2">{competitionSelectors}</div>
-            </>
-          ) : (
-            <>
-              <div className="relative flex items-center gap-4">
-                <span className="flex items-center gap-3 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  <img src={publicPath("/assets/logos/faflab.svg")} alt="" className="h-40 w-40 shrink-0 sm:h-48 sm:w-48" />
-                  FAFLab
-                </span>
-                <span className="hidden h-16 w-px shrink-0 bg-white/30 sm:block" />
-                <div className="hidden items-center gap-3 sm:flex">
-                  <img src={publicPath("/assets/logos/faf_branco.png")} alt="FAF" className="h-20 w-20 shrink-0 object-contain" />
-                  <img src={publicPath("/assets/logos/ifpp.svg")} alt="IFPP" className="h-32 w-32 shrink-0 object-contain" />
-                </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {heroStatsTop.map((stat) => (
+                  <HeroStatCard key={stat.label} {...stat} loaded={publicStore.loaded} />
+                ))}
               </div>
-              {publicMode ? (
-                report && (
-                  <Button type="button" variant="outline" className={cn("relative", headerButtonClass)} onClick={handleDownloadReport} title={report.fileName}>
-                    <Download size={16} />
-                    Baixar relatório
-                  </Button>
-                )
-              ) : (
-                <div className="relative flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" className={headerButtonClass} onClick={() => setImportOpen((open) => !open)}>
-                    <Upload size={16} />
-                    Importar estatísticas
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={headerButtonClass}
-                    onClick={() => reportInputRef.current?.click()}
-                    disabled={uploadingReport || !competitionId}
-                  >
-                    {uploadingReport ? <Spinner /> : <FileText size={16} />}
-                    Importar relatório externo
-                  </Button>
-                  <input
-                    ref={reportInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      if (file) void handleUploadReport(file);
-                    }}
-                  />
-                </div>
-              )}
-            </>
-          )}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                {heroStatsBottom.map((stat) => (
+                  <HeroStatCard key={stat.label} {...stat} loaded={publicStore.loaded} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mx-auto flex w-full max-w-7xl flex-col items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-5 backdrop-blur-sm sm:flex-row sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10">
+              <Activity size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="font-display text-sm font-bold uppercase tracking-wide text-white">Inteligência que move o futebol alagoano</p>
+              <p className="text-sm text-white/70">
+                Dados históricos, estatísticas e indicadores que revelam a força, a diversidade e o crescimento do futebol em todas as regiões de Alagoas.
+              </p>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className={cn("mx-auto max-w-7xl space-y-6", publicMode && "mt-6 sm:mt-8")}>
+        {!publicMode && (
+          // Mesmo padrão de header das outras abas (Competições, FAFTV, ...) — ver PageHeader.
+          <PageHeader
+            hero
+            title="FAF Lab"
+            description="O laboratório do futebol alagoano."
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" onClick={() => setImportOpen((open) => !open)}>
+                  <Upload size={16} />
+                  Importar estatísticas
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => reportInputRef.current?.click()}
+                  disabled={uploadingReport || !competitionId}
+                >
+                  {uploadingReport ? <Spinner /> : <FileText size={16} />}
+                  Importar relatório externo
+                </Button>
+                <input
+                  ref={reportInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (file) void handleUploadReport(file);
+                  }}
+                />
+              </div>
+            }
+          />
+        )}
 
         {importOpen && (
           <Card className="space-y-3 p-5">
@@ -676,6 +727,20 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
           </Card>
         )}
 
+        {publicMode && (
+          <div id="ecossistema" className="scroll-mt-24">
+            <p className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-chart-5">Ecossistema do Futebol Alagoano</p>
+            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+              <StatCard label="Competições" value={publicStore.competitions.length} accentClassName="border-t-chart-1" />
+              <StatCard label="Clubes" value={publicStore.clubsById.size} accentClassName="border-t-chart-2" />
+              <StatCard label="Atletas" value={publicStore.totalPlayers} accentClassName="border-t-chart-5" />
+              <StatCard label="Jogos" value={publicStore.matches.length} accentClassName="border-t-chart-4" />
+              <StatCard label="Municípios" value={labHighlights.municipios} accentClassName="border-t-chart-3" />
+              <StatCard label="Estádios" value={labHighlights.estadios} accentClassName="border-t-chart-2" />
+            </div>
+          </div>
+        )}
+
         <div
           className="relative -mx-4 space-y-5 overflow-hidden border border-black/5 bg-gray-100 px-4 py-6 text-foreground sm:mx-0 sm:rounded-2xl sm:px-8"
           style={{
@@ -720,6 +785,12 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
                   ))}
                 </SelectContent>
               </Select>
+              {publicMode && report && (
+                <Button type="button" variant="outline" size="sm" onClick={handleDownloadReport} title={report.fileName}>
+                  <Download size={16} />
+                  Baixar relatório
+                </Button>
+              )}
             </div>
 
             {lastImportedAt && (
@@ -741,7 +812,7 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
           )}
         </div>
 
-        <Card className="p-5">
+        <Card id="faflab-elenco" className="p-5">
           <Tabs defaultValue="inicio">
             <TabsList>
               <TabsTrigger value="inicio" className="font-display text-base font-semibold">Início</TabsTrigger>
@@ -1163,6 +1234,56 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
             </TabsContent>
           </Tabs>
         </Card>
+
+        {publicMode && (
+          <>
+            <div id="competicoes-destaque" className="scroll-mt-24">
+              <p className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-chart-5">Competições em destaque</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[...publicStore.competitions]
+                  .sort((a, b) => {
+                    const ai = COMPETITION_DISPLAY_ORDER.indexOf(a.id);
+                    const bi = COMPETITION_DISPLAY_ORDER.indexOf(b.id);
+                    if (ai === -1 && bi === -1) return b.season - a.season;
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                  })
+                  .map((item) => {
+                    const itemMatches = publicStore.matches.filter((match) => match.competitionId === item.id);
+                    const status = resolveCompetitionStatus(item, itemMatches);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => navigate(`${basePath}/${item.id}`)}
+                        className={cn(
+                          "flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-surface-hover",
+                          item.id === competitionId && "ring-2 ring-success-solid",
+                        )}
+                      >
+                        <img
+                          src={resolveCompetitionLogo(item.logo)}
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.src = publicPath("/assets/logos/faf.png");
+                          }}
+                          className="h-14 w-14 shrink-0 rounded-lg bg-gradient-to-br from-[#5c5c5c] via-[#454545] to-[#2e2e2e] object-contain p-1"
+                        />
+                        <div className="min-w-0 flex-1 basis-40">
+                          <p className="truncate font-display text-sm font-bold uppercase tracking-tight text-foreground">{item.name}</p>
+                          <p className="text-xs text-foreground-muted">Temporada {item.season} · {itemMatches.length} jogos</p>
+                        </div>
+                        <Badge variant={STATUS_TONE[status] === "neutral" ? "secondary" : STATUS_TONE[status]} className="shrink-0">
+                          {status}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <Sheet open={!!profilePlayer} onOpenChange={(open) => !open && setProfilePlayerId(null)}>
@@ -1483,6 +1604,31 @@ function SortableTh({
         {isActive ? dir === 1 ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : <ArrowUpDown size={12} className="opacity-40" />}
       </span>
     </th>
+  );
+}
+
+function HeroStatCard({
+  label,
+  value,
+  Icon,
+  loaded,
+}: {
+  label: string;
+  value: number;
+  Icon: typeof Activity;
+  loaded: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center backdrop-blur-sm sm:p-5">
+      <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-white/10 sm:h-10 sm:w-10">
+        <Icon size={16} className="text-white sm:hidden" />
+        <Icon size={18} className="hidden text-white sm:block" />
+      </div>
+      <p className="mt-2 text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/70 sm:mt-3 sm:text-[11px]">{label}</p>
+      <p className="mt-1.5 font-display text-2xl font-black text-white sm:mt-2 sm:text-4xl">
+        {loaded ? value.toLocaleString("pt-BR") : "—"}
+      </p>
+    </div>
   );
 }
 

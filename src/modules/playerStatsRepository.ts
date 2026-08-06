@@ -104,6 +104,35 @@ export class PlayerStatsRepository {
     return (data ?? []).map(fromRow);
   }
 
+  /**
+   * Distinct-athlete count across every competition — backs the public FAF
+   * Lab header's "Atletas inscritos" total. The same person (same CBF)
+   * routinely registers for more than one competition in a season (e.g. an
+   * ASA player in both Alagoano and Copa Alagoas), so this must dedupe by
+   * CBF rather than counting rows, or it overstates the real headcount.
+   * Rows without a CBF on file can't be matched to anyone else, so each
+   * counts as its own athlete.
+   */
+  async countAll(): Promise<number> {
+    const cbfs = new Set<string>();
+    let withoutCbf = 0;
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("player_competition_stats")
+        .select("cbf")
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const rows = data ?? [];
+      for (const row of rows) {
+        if (row.cbf) cbfs.add(row.cbf);
+        else withoutCbf++;
+      }
+      if (rows.length < pageSize) break;
+    }
+    return cbfs.size + withoutCbf;
+  }
+
   async listByCompetition(competitionId: string): Promise<PlayerCompetitionStats[]> {
     const { data, error } = await supabase
       .from("player_competition_stats")

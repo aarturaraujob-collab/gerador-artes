@@ -5,11 +5,14 @@ import {
   Archive,
   ArchiveRestore,
   Check,
+  ChevronUp,
   ClipboardList,
+  DollarSign,
   Download,
   Flag,
   ImageDown,
   ChevronDown,
+  MoreHorizontal,
   Pencil,
   Plus,
   Upload,
@@ -34,6 +37,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore } from "@/modules/dataStore";
@@ -42,7 +47,7 @@ import { computeFormatBracket, hasKnockoutPhase } from "@/modules/formatBracket"
 import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
 import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
-import { groupMatchesByRound } from "@/modules/rounds";
+import { groupMatchesByRound, compareRounds } from "@/modules/rounds";
 import { calculateStandings } from "@/modules/standings";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
 import { templates as templateRegistry } from "@/templates/templates";
@@ -57,6 +62,7 @@ import {
 } from "@/modules/standingsHighlightPreference";
 import { logActivity } from "@/modules/activityLog";
 import { GenerateIMTDialog, type StadiumOption } from "@/documents/ui/GenerateIMTDialog";
+import { GenerateBorderoDialog } from "./GenerateBorderoDialog";
 import { EditMatchDialog } from "./EditMatchDialog";
 import { CreateMatchDialog } from "./CreateMatchDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
@@ -69,6 +75,25 @@ import { triggerBlobDownload } from "@/documents/utils/downloadBlob";
 
 const ALL = "__all__";
 const INVALID_SCORE = Symbol("invalid-score");
+
+interface ScoreDraft {
+  home: string;
+  away: string;
+  penaltyHome: string;
+  penaltyAway: string;
+  wo: "" | "home" | "away";
+}
+
+function draftFromMatch(match: Match): ScoreDraft {
+  const woWinner: "" | "home" | "away" = match.wo ? (match.homeGoals === 3 ? "home" : "away") : "";
+  return {
+    home: match.homeGoals?.toString() ?? "",
+    away: match.awayGoals?.toString() ?? "",
+    penaltyHome: match.penaltyHomeGoals?.toString() ?? "",
+    penaltyAway: match.penaltyAwayGoals?.toString() ?? "",
+    wo: woWinner,
+  };
+}
 
 function fileToDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -96,6 +121,7 @@ export function CompetitionHub() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [imtMatch, setImtMatch] = useState<Match | null>(null);
+  const [borderoMatch, setBorderoMatch] = useState<Match | null>(null);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
@@ -109,9 +135,10 @@ export function CompetitionHub() {
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [editingScoreRef, setEditingScoreRef] = useState<string | null>(null);
-  const [scoreDraft, setScoreDraft] = useState({ home: "", away: "", penaltyHome: "", penaltyAway: "" });
-  const [savingScore, setSavingScore] = useState(false);
+  const [roundSortDir, setRoundSortDir] = useState<"asc" | "desc">("asc");
+  const [dateSortDir, setDateSortDir] = useState<"asc" | "desc">("asc");
+  const [scoreDrafts, setScoreDrafts] = useState<Map<string, ScoreDraft>>(new Map());
+  const [savingScoreRef, setSavingScoreRef] = useState<string | null>(null);
   const [report, setReport] = useState<CompetitionReport | null>(null);
   const [uploadingReport, setUploadingReport] = useState(false);
   const reportInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +199,7 @@ export function CompetitionHub() {
   );
 
   const visibleMatches = useMemo(() => {
-    return matches.filter((match) => {
+    const filtered = matches.filter((match) => {
       if (clubFilter !== ALL && match.homeClubId !== clubFilter && match.awayClubId !== clubFilter) return false;
       const finished = match.homeGoals !== null && match.awayGoals !== null;
       if (statusFilter === "finished" && !finished) return false;
@@ -185,22 +212,29 @@ export function CompetitionHub() {
       }
       return true;
     });
-  }, [matches, clubFilter, statusFilter, startDate, endDate]);
+
+    const roundDir = roundSortDir === "asc" ? 1 : -1;
+    const dateDir = dateSortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const roundDiff = compareRounds(a.round || "Sem rodada", b.round || "Sem rodada");
+      if (roundDiff !== 0) return roundDiff * roundDir;
+      const isoA = toIsoDate(a.date) ?? "";
+      const isoB = toIsoDate(b.date) ?? "";
+      if (isoA !== isoB) return isoA.localeCompare(isoB) * dateDir;
+      return (a.time || "").localeCompare(b.time || "") * dateDir;
+    });
+  }, [matches, clubFilter, statusFilter, startDate, endDate, roundSortDir, dateSortDir]);
 
   // Chegando do widget "Editar resultado do dia" da Home (?editarPlacar=hoje) —
-  // abre direto na aba Jogos, filtrado em hoje, já com o placar em edição.
+  // abre direto na aba Jogos, filtrado em hoje — os placares já ficam com steppers prontos ali.
   useEffect(() => {
     if (searchParams.get("editarPlacar") !== "hoje") return;
     const today = todayIso();
     setActiveTab("jogos");
     setStartDate(today);
     setEndDate(today);
-    const pending = matches.find(
-      (match) => toIsoDate(match.date) === today && (match.homeGoals === null || match.awayGoals === null),
-    );
-    if (pending) startEditScore(pending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, matches]);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!competition) {
@@ -310,18 +344,67 @@ export function CompetitionHub() {
     navigate(`/artes/${folder}?competicao=${competition.id}`);
   }
 
-  function startEditScore(match: Match) {
-    setEditingScoreRef(buildGameRef(match));
-    setScoreDraft({
-      home: match.homeGoals?.toString() ?? "",
-      away: match.awayGoals?.toString() ?? "",
-      penaltyHome: match.penaltyHomeGoals?.toString() ?? "",
-      penaltyAway: match.penaltyAwayGoals?.toString() ?? "",
+  /** Draft for a row — falls back to the match's saved values until the user touches a stepper/W.O./pênaltis for it. */
+  function draftFor(match: Match): ScoreDraft {
+    return scoreDrafts.get(buildGameRef(match)) ?? draftFromMatch(match);
+  }
+
+  // All three mutators below build the next draft from the updater's own `current`
+  // param, never from the `scoreDrafts` closure — rapid consecutive clicks (e.g.
+  // three fast taps on the stepper) each queue a setState call in the same tick,
+  // and reading the outer `scoreDrafts` in every one of them would have all three
+  // compute off the same pre-click snapshot instead of accumulating.
+  function updateDraft(match: Match, patch: Partial<ScoreDraft>) {
+    const gameRef = buildGameRef(match);
+    setScoreDrafts((current) => {
+      const previous = current.get(gameRef) ?? draftFromMatch(match);
+      const next = new Map(current);
+      next.set(gameRef, { ...previous, ...patch });
+      return next;
     });
   }
 
-  function cancelEditScore() {
-    setEditingScoreRef(null);
+  function adjustScore(match: Match, side: "home" | "away", delta: 1 | -1) {
+    const gameRef = buildGameRef(match);
+    setScoreDrafts((current) => {
+      const previous = current.get(gameRef) ?? draftFromMatch(match);
+      if (previous.wo !== "") return current; // score is locked to 3×0 while W.O. is set
+      const value = Math.max(0, (Number(previous[side]) || 0) + delta);
+      const next = new Map(current);
+      next.set(gameRef, { ...previous, [side]: String(value) });
+      return next;
+    });
+  }
+
+  /** Sets/clears the W.O. — the winner side's score locks at 3x0; picking "Sem W.O." restores manual score entry. */
+  function setWoWinner(match: Match, winner: "" | "home" | "away") {
+    const gameRef = buildGameRef(match);
+    setScoreDrafts((current) => {
+      const previous = current.get(gameRef) ?? draftFromMatch(match);
+      const next = new Map(current);
+      next.set(gameRef, {
+        ...previous,
+        wo: winner,
+        home: winner === "" ? previous.home : winner === "home" ? "3" : "0",
+        away: winner === "" ? previous.away : winner === "away" ? "3" : "0",
+      });
+      return next;
+    });
+  }
+
+  function cancelDraft(match: Match) {
+    setScoreDrafts((current) => {
+      const next = new Map(current);
+      next.delete(buildGameRef(match));
+      return next;
+    });
+  }
+
+  /** True when the draft differs from what's actually saved on the match — drives whether Salvar/Cancelar show up. */
+  function isDraftDirty(match: Match): boolean {
+    const draft = scoreDrafts.get(buildGameRef(match));
+    if (!draft) return false;
+    return JSON.stringify(draft) !== JSON.stringify(draftFromMatch(match));
   }
 
   function parseScoreInput(value: string): number | null | typeof INVALID_SCORE {
@@ -358,8 +441,9 @@ export function CompetitionHub() {
   }
 
   async function saveScore(match: Match) {
-    const homeGoals = parseScoreInput(scoreDraft.home);
-    const awayGoals = parseScoreInput(scoreDraft.away);
+    const draft = draftFor(match);
+    const homeGoals = parseScoreInput(draft.home);
+    const awayGoals = parseScoreInput(draft.away);
     if (homeGoals === INVALID_SCORE || awayGoals === INVALID_SCORE) {
       toast.error("Informe um placar válido (número inteiro ≥ 0) ou deixe em branco.");
       return;
@@ -368,8 +452,8 @@ export function CompetitionHub() {
     let penaltyHomeGoals: number | null = null;
     let penaltyAwayGoals: number | null = null;
     if (isPenaltyShootout(match, homeGoals, awayGoals)) {
-      const rawPenaltyHome = parseScoreInput(scoreDraft.penaltyHome);
-      const rawPenaltyAway = parseScoreInput(scoreDraft.penaltyAway);
+      const rawPenaltyHome = parseScoreInput(draft.penaltyHome);
+      const rawPenaltyAway = parseScoreInput(draft.penaltyAway);
       if (
         rawPenaltyHome === INVALID_SCORE ||
         rawPenaltyAway === INVALID_SCORE ||
@@ -384,15 +468,26 @@ export function CompetitionHub() {
       penaltyAwayGoals = rawPenaltyAway;
     }
 
-    setSavingScore(true);
+    const gameRef = buildGameRef(match);
+    setSavingScoreRef(gameRef);
     try {
-      await dataStore.updateMatch(buildGameRef(match), { homeGoals, awayGoals, penaltyHomeGoals, penaltyAwayGoals });
-      toast.success("Placar atualizado — classificação e tabela já refletem o novo resultado.");
-      setEditingScoreRef(null);
+      await dataStore.updateMatch(gameRef, {
+        homeGoals,
+        awayGoals,
+        penaltyHomeGoals,
+        penaltyAwayGoals,
+        wo: draft.wo !== "",
+      });
+      toast.success(
+        draft.wo !== ""
+          ? "W.O. registrado — vitória por 3×0 computada na classificação, sem contar pro ataque/gols da competição."
+          : "Placar atualizado — classificação e tabela já refletem o novo resultado.",
+      );
+      cancelDraft(match);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao atualizar o placar.");
     } finally {
-      setSavingScore(false);
+      setSavingScoreRef(null);
     }
   }
 
@@ -403,6 +498,16 @@ export function CompetitionHub() {
       toast.success(competition.active ? "Competição arquivada." : "Competição reativada.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao arquivar competição.");
+    }
+  }
+
+  async function handleBorderoToggle(enabled: boolean) {
+    if (!competition) return;
+    try {
+      await dataStore.updateCompetition(competition.id, { borderoEnabled: enabled });
+      toast.success(enabled ? "Borderô habilitado para esta competição." : "Borderô desabilitado para esta competição.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar a preferência de borderô.");
     }
   }
 
@@ -628,6 +733,26 @@ export function CompetitionHub() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="w-40">
+                <label className="text-xs font-semibold text-foreground-secondary">Ordenar por rodada</label>
+                <Select value={roundSortDir} onValueChange={(value) => setRoundSortDir(value as "asc" | "desc")}>
+                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">Crescente</SelectItem>
+                    <SelectItem value="desc">Decrescente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-40">
+                <label className="text-xs font-semibold text-foreground-secondary">Ordenar por data</label>
+                <Select value={dateSortDir} onValueChange={(value) => setDateSortDir(value as "asc" | "desc")}>
+                  <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">Crescente</SelectItem>
+                    <SelectItem value="desc">Decrescente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {visibleMatches.length === 0 ? (
@@ -642,74 +767,102 @@ export function CompetitionHub() {
                 {visibleMatches.map((match, index) => {
                   const finished = match.homeGoals !== null && match.awayGoals !== null;
                   const gameRef = buildGameRef(match);
-                  const isEditingScore = editingScoreRef === gameRef;
-                  const draftHomeGoals = parseScoreInput(scoreDraft.home);
-                  const draftAwayGoals = parseScoreInput(scoreDraft.away);
-                  const showPenaltyInputs =
-                    isEditingScore &&
-                    isPenaltyShootout(
-                      match,
-                      draftHomeGoals === INVALID_SCORE ? null : draftHomeGoals,
-                      draftAwayGoals === INVALID_SCORE ? null : draftAwayGoals,
-                    );
+                  const draft = draftFor(match);
+                  const dirty = isDraftDirty(match);
+                  const saving = savingScoreRef === gameRef;
+                  const draftHomeGoals = parseScoreInput(draft.home);
+                  const draftAwayGoals = parseScoreInput(draft.away);
+                  const showPenaltyInputs = isPenaltyShootout(
+                    match,
+                    draftHomeGoals === INVALID_SCORE ? null : draftHomeGoals,
+                    draftAwayGoals === INVALID_SCORE ? null : draftAwayGoals,
+                  );
                   const hasSavedPenalties = match.penaltyHomeGoals !== null && match.penaltyHomeGoals !== undefined;
                   return (
                     <div key={index} className="flex flex-wrap items-center gap-4 p-3">
                       <span className="w-16 shrink-0 text-xs text-foreground-muted">{match.round || "—"}</span>
                       <div className="flex flex-1 flex-col items-center gap-1">
-                        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
-                          <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 object-contain" />
-                          <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
-                          {isEditingScore ? (
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={scoreDraft.home}
-                                onChange={(event) => setScoreDraft((current) => ({ ...current, home: event.target.value }))}
-                                className="h-8 w-14 px-2 text-center"
-                                placeholder="-"
-                              />
-                              <span className="text-foreground-muted">×</span>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={scoreDraft.away}
-                                onChange={(event) => setScoreDraft((current) => ({ ...current, away: event.target.value }))}
-                                className="h-8 w-14 px-2 text-center"
-                                placeholder="-"
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-foreground-muted">
-                              {finished ? `${match.homeGoals} × ${match.awayGoals}` : "×"}
-                              {finished && hasSavedPenalties ? ` (pên. ${match.penaltyHomeGoals} × ${match.penaltyAwayGoals})` : ""}
-                            </span>
-                          )}
-                          <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
-                          <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 object-contain" />
-                        </div>
-                        {showPenaltyInputs && (
-                          <div className="flex items-center gap-1 text-xs text-foreground-muted">
-                            <span>Pênaltis:</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={scoreDraft.penaltyHome}
-                              onChange={(event) => setScoreDraft((current) => ({ ...current, penaltyHome: event.target.value }))}
-                              className="h-7 w-12 px-2 text-center"
-                              placeholder="-"
-                            />
-                            <span>×</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={scoreDraft.penaltyAway}
-                              onChange={(event) => setScoreDraft((current) => ({ ...current, penaltyAway: event.target.value }))}
-                              className="h-7 w-12 px-2 text-center"
-                              placeholder="-"
-                            />
+                        {/* Fixed 3-column grid — the two club-name columns are equal (1fr) and flank a
+                            fixed-width score column, so the score sits on the same vertical line on every
+                            row regardless of how long either club's name is (no more layout that shifts
+                            left/right per row depending on name length). */}
+                        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm font-semibold text-foreground">
+                          <div className="flex min-w-0 items-center justify-end gap-2">
+                            <span className="truncate">{clubDisplayName(match.homeClubId, store.clubsById)}</span>
+                            <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-6 w-6 shrink-0 object-contain" />
                           </div>
+                          <div className="flex items-center justify-center gap-1">
+                            <ScoreStepper
+                              value={draft.home}
+                              disabled={draft.wo !== ""}
+                              onDecrement={() => adjustScore(match, "home", -1)}
+                              onIncrement={() => adjustScore(match, "home", 1)}
+                            />
+                            <span className="text-foreground-muted">×</span>
+                            <ScoreStepper
+                              value={draft.away}
+                              disabled={draft.wo !== ""}
+                              onDecrement={() => adjustScore(match, "away", -1)}
+                              onIncrement={() => adjustScore(match, "away", 1)}
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <IconButton aria-label="Mais opções do placar" title="W.O. / pênaltis">
+                                  <MoreHorizontal size={16} />
+                                </IconButton>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 space-y-3">
+                                <div>
+                                  <label className="text-xs font-semibold text-foreground-secondary">W.O.</label>
+                                  <Select
+                                    value={draft.wo || "none"}
+                                    onValueChange={(value) => setWoWinner(match, value === "none" ? "" : (value as "home" | "away"))}
+                                  >
+                                    <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">Sem W.O.</SelectItem>
+                                      <SelectItem value="home">W.O. — {clubDisplayName(match.homeClubId, store.clubsById)} venceu</SelectItem>
+                                      <SelectItem value="away">W.O. — {clubDisplayName(match.awayClubId, store.clubsById)} venceu</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                {showPenaltyInputs && (
+                                  <div>
+                                    <label className="text-xs font-semibold text-foreground-secondary">Pênaltis</label>
+                                    <div className="mt-1 flex items-center gap-1">
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        value={draft.penaltyHome}
+                                        onChange={(event) => updateDraft(match, { penaltyHome: event.target.value })}
+                                        className="h-8 w-14 px-2 text-center"
+                                        placeholder="-"
+                                      />
+                                      <span className="text-foreground-muted">×</span>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        value={draft.penaltyAway}
+                                        onChange={(event) => updateDraft(match, { penaltyAway: event.target.value })}
+                                        className="h-8 w-14 px-2 text-center"
+                                        placeholder="-"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="flex min-w-0 items-center justify-start gap-2">
+                            <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-6 w-6 shrink-0 object-contain" />
+                            <span className="truncate">{clubDisplayName(match.awayClubId, store.clubsById)}</span>
+                          </div>
+                        </div>
+                        {finished && (hasSavedPenalties || match.wo) && !dirty && (
+                          <span className="text-xs text-foreground-muted">
+                            {hasSavedPenalties ? `Pên. ${match.penaltyHomeGoals} × ${match.penaltyAwayGoals}` : ""}
+                            {match.wo ? " W.O." : ""}
+                          </span>
                         )}
                       </div>
                       <span className="w-32 shrink-0 text-right text-xs text-foreground-muted">
@@ -718,33 +871,49 @@ export function CompetitionHub() {
                       <Status tone={finished ? "success" : "neutral"} className="shrink-0">
                         {finished ? "Finalizado" : "Pendente"}
                       </Status>
-                      {isEditingScore ? (
+                      {dirty && (
                         <>
                           <IconButton
                             aria-label="Salvar placar"
                             title="Salvar placar"
                             onClick={() => void saveScore(match)}
-                            disabled={savingScore}
+                            disabled={saving}
                           >
-                            {savingScore ? <Spinner /> : <Check size={16} />}
+                            {saving ? <Spinner /> : <Check size={16} />}
                           </IconButton>
-                          <IconButton aria-label="Cancelar" title="Cancelar" onClick={cancelEditScore} disabled={savingScore}>
+                          <IconButton aria-label="Cancelar" title="Cancelar" onClick={() => cancelDraft(match)} disabled={saving}>
                             <X size={16} />
                           </IconButton>
                         </>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() => startEditScore(match)}
-                        >
-                          <Pencil size={14} />
-                          Editar placar
-                        </Button>
                       )}
-                      {/* "Gerar IMT" guardado para uso futuro — Urano hoje é só MKT, sem geração de documentos. */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => setImtMatch(match)}
+                      >
+                        <Flag size={14} />
+                        Gerar IMT
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        disabled={!finished || competition.borderoEnabled === false}
+                        title={
+                          competition.borderoEnabled === false
+                            ? "Esta competição não usa borderô"
+                            : !finished
+                              ? "Disponível após o placar ser lançado"
+                              : undefined
+                        }
+                        onClick={() => setBorderoMatch(match)}
+                      >
+                        <DollarSign size={14} />
+                        Borderô
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -927,6 +1096,16 @@ export function CompetitionHub() {
                 }
               />
               <ConfigRow label="Assets vinculados" value={competition.logo || competition.background.thumb ? "Logo/background cadastrados" : "Nenhum"} />
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground-secondary">Usa borderô</p>
+                  <p className="text-xs text-foreground-muted">Habilita o botão "Borderô" nas partidas desta competição.</p>
+                </div>
+                <Switch
+                  checked={competition.borderoEnabled !== false}
+                  onCheckedChange={(checked) => void handleBorderoToggle(checked)}
+                />
+              </div>
             </Card>
             <Button variant="outline" onClick={() => navigate(`/cadastros/competicoes/${competition.id}/editar`)}>
               <Pencil size={16} />
@@ -961,6 +1140,17 @@ export function CompetitionHub() {
         />
       )}
 
+      {borderoMatch && (
+        <GenerateBorderoDialog
+          open={borderoMatch !== null}
+          onOpenChange={(next) => !next && setBorderoMatch(null)}
+          gameRef={buildGameRef(borderoMatch)}
+          competitionId={competition.id}
+          homeClubName={clubDisplayName(borderoMatch.homeClubId, store.clubsById)}
+          awayClubName={clubDisplayName(borderoMatch.awayClubId, store.clubsById)}
+        />
+      )}
+
       {editingMatch && (
         <EditMatchDialog
           open={editingMatch !== null}
@@ -970,7 +1160,12 @@ export function CompetitionHub() {
           awayClubName={clubDisplayName(editingMatch.awayClubId, store.clubsById)}
           currentStadiumName={store.stadiumsById.get(editingMatch.stadiumId)?.name ?? "—"}
           stadiumOptions={stadiumOptions}
+          clubs={store.clubs}
           onSaved={() => setDocumentsRefreshToken((token) => token + 1)}
+          onDeleted={() => {
+            setEditingMatch(null);
+            setDocumentsRefreshToken((token) => token + 1);
+          }}
         />
       )}
 
@@ -1233,6 +1428,43 @@ function EliminationFlowchart({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Score-adjust stepper — replaces the old "Editar placar" toggle-to-edit button with always-visible ▲▼ next to each club. */
+function ScoreStepper({
+  value,
+  disabled,
+  onDecrement,
+  onIncrement,
+}: {
+  value: string;
+  disabled: boolean;
+  onDecrement: () => void;
+  onIncrement: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5">
+      <IconButton
+        aria-label="Diminuir placar"
+        title="Diminuir"
+        className="h-6 w-6"
+        onClick={onDecrement}
+        disabled={disabled}
+      >
+        <ChevronDown size={12} />
+      </IconButton>
+      <span className="w-5 text-center font-mono text-base tabular-nums text-foreground">{value || "0"}</span>
+      <IconButton
+        aria-label="Aumentar placar"
+        title="Aumentar"
+        className="h-6 w-6"
+        onClick={onIncrement}
+        disabled={disabled}
+      >
+        <ChevronUp size={12} />
+      </IconButton>
     </div>
   );
 }

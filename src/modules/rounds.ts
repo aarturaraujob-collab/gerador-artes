@@ -13,7 +13,7 @@ function isFinished(match: Match): boolean {
 }
 
 /** First-appearance order, unless the round label starts with a number (then sorted numerically). */
-function compareRounds(a: string, b: string): number {
+export function compareRounds(a: string, b: string): number {
   const numA = a.match(/^(\d+)/);
   const numB = b.match(/^(\d+)/);
   if (numA && numB) return Number(numA[1]) - Number(numB[1]);

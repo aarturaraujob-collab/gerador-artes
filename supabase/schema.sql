@@ -590,3 +590,35 @@ alter table match_faftv_escala add column if not exists motivo_falha_live text;
 -- ─────────────────────────────────────────────────────────────────────────
 
 alter table faftv_payment_records add column if not exists game_refs text[];
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Borderô — Boletim Financeiro oficial de uma partida. Só público
+-- pagante/total viram campo estruturado; o resto do boletim real (receita
+-- por setor, despesas B1/B2/B3, INSS, divisão de renda entre clubes) só
+-- existe no PDF anexado, sem tentar replicar aqui. Um por partida (id =
+-- matches.id, mesmo padrão de match_faftv/match_operacao). Algumas
+-- competições não usam borderô — o toggle fica em competitions.bordero_enabled.
+-- ─────────────────────────────────────────────────────────────────────────
+
+alter table competitions add column if not exists bordero_enabled boolean not null default true;
+
+create table if not exists match_borderos (
+  id text primary key references matches(id),
+  game_ref text not null,
+  competition_id text references competitions(id),
+  publico_pagante integer,
+  publico_total integer,
+  observacoes text,
+  documento_nome text,
+  documento_data_uri text,
+  status text not null default 'preenchido',
+  updated_at timestamptz not null default now()
+);
+
+alter table match_borderos enable row level security;
+
+drop policy if exists "authenticated full access" on match_borderos;
+create policy "authenticated full access" on match_borderos
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+grant select, insert, update, delete on public.match_borderos to authenticated;

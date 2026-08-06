@@ -27,9 +27,11 @@ export type ActivityAction =
   | "import.faflabReport"
   | "match.updated"
   | "match.created"
+  | "match.deleted"
   | "export.png"
   | "imt.generated"
-  | "detailedTable.updated";
+  | "detailedTable.updated"
+  | "bordero.saved";
 
 export interface ActivityEntry {
   id: string;

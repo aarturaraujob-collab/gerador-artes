@@ -1,4 +1,4 @@
-import { Download, FileText, History, Pencil, Plus, RotateCcw, Table2, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { DollarSign, Download, FileText, History, Pencil, Plus, RotateCcw, Table2, Trash2, Upload, type LucideIcon } from "lucide-react";
 
 import type { ActivityAction } from "@/modules/activityLog";
 
@@ -28,7 +28,9 @@ export const ACTIVITY_ICON: Record<ActivityAction, { icon: LucideIcon; tone: str
   "import.faflabReport": { icon: FileText, tone: "text-info" },
   "match.updated": { icon: Pencil, tone: "text-info" },
   "match.created": { icon: Plus, tone: "text-success" },
+  "match.deleted": { icon: Trash2, tone: "text-danger" },
   "export.png": { icon: Download, tone: "text-success" },
   "imt.generated": { icon: FileText, tone: "text-info" },
   "detailedTable.updated": { icon: Table2, tone: "text-info" },
+  "bordero.saved": { icon: DollarSign, tone: "text-success" },
 };

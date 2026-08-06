@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ClubRepository, type Club } from "@/modules/clubRepository";
 import { CompetitionRepository, type CompetitionRecord } from "@/modules/competitionRepository";
 import { matchRepository } from "@/modules/matchRepository";
+import { playerStatsRepository } from "@/modules/playerStatsRepository";
 import type { Match } from "@/modules/dataStore";
 
 const clubRepo = new ClubRepository();
@@ -19,23 +20,28 @@ export function usePublicFafLabData() {
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [clubsById, setClubsById] = useState<Map<string, Club>>(new Map());
   const [matches, setMatches] = useState<Match[]>([]);
+  const [totalPlayers, setTotalPlayers] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([competitionRepo.list(), clubRepo.list(), matchRepository.list()]).then(
-      ([competitionRows, clubRows, matchRows]) => {
-        if (cancelled) return;
-        setCompetitions(competitionRows.filter((item) => !item.deletedAt));
-        setClubsById(new Map(clubRows.filter((item) => !item.deletedAt).map((club) => [club.id, club])));
-        setMatches(matchRows);
-        setLoaded(true);
-      },
-    );
+    void Promise.all([
+      competitionRepo.list(),
+      clubRepo.list(),
+      matchRepository.list(),
+      playerStatsRepository.countAll(),
+    ]).then(([competitionRows, clubRows, matchRows, playerCount]) => {
+      if (cancelled) return;
+      setCompetitions(competitionRows.filter((item) => !item.deletedAt));
+      setClubsById(new Map(clubRows.filter((item) => !item.deletedAt).map((club) => [club.id, club])));
+      setMatches(matchRows);
+      setTotalPlayers(playerCount);
+      setLoaded(true);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { competitions, clubsById, matches, loaded };
+  return { competitions, clubsById, matches, totalPlayers, loaded };
 }
