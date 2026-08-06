@@ -1571,6 +1571,11 @@ function Shell({ publicMode, children }: { publicMode: boolean; children: ReactN
   return (
     <div className="min-h-screen bg-background">
       <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+      <footer className="border-t border-border px-4 py-6 text-center text-sm text-foreground-muted sm:px-6 lg:px-8">
+        <a href="mailto:contato@futeboldealagoas.net" className="underline decoration-dotted underline-offset-4 hover:text-foreground">
+          Encontrou algum erro? Tem alguma sugestão? Fale conosco
+        </a>
+      </footer>
     </div>
   );
 }
