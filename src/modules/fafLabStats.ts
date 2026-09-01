@@ -28,11 +28,21 @@ export function computeFafLabKpis(players: readonly PlayerCompetitionStats[], ma
     .map((player) => player.idade)
     .filter((value): value is number => value != null);
 
+  // Somado das partidas, não dos jogadores — o placar já está lançado na aba
+  // Competições bem antes de qualquer súmula por atleta existir, então esse
+  // KPI fica correto mesmo antes da estatística individual ser importada.
+  // W.O. exclui aqui pelo mesmo motivo que exclui de goalsForOfficial em
+  // standings.ts: 3x0 de W.O. não é gol de jogo real.
+  const golsDasPartidas = matches.reduce((sum, match) => {
+    if (match.homeGoals == null || match.awayGoals == null || match.wo) return sum;
+    return sum + match.homeGoals + match.awayGoals;
+  }, 0);
+
   return {
     atletasInscritos: players.length,
     entraramEmCampo: players.filter((player) => player.jogos > 0).length,
     sumulasProcessadas: matches.filter(isFinished).length,
-    golsRegistrados: players.reduce((sum, player) => sum + player.gols, 0),
+    golsRegistrados: golsDasPartidas,
     cartoesAmarelos: players.reduce((sum, player) => sum + player.cartoesAmarelos, 0),
     cartoesVermelhos: players.reduce((sum, player) => sum + player.cartoesVermelhos, 0),
     minutosTotais: players.reduce((sum, player) => sum + player.minutos, 0),

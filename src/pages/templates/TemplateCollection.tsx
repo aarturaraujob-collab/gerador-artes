@@ -37,6 +37,8 @@ import { useDataStore } from "@/hooks/useDataStore";
 import type { Match } from "@/modules/dataStore";
 import { logActivity } from "@/modules/activityLog";
 import { clubDisplayName } from "@/modules/clubDisplay";
+import { matchPhaseLabel, matchPhaseLegLabel, matchLegLabel, isKnockoutPhase } from "@/modules/knockoutBracket";
+import { compareRounds } from "@/modules/rounds";
 import { loadArtesFilterPreferences, saveArtesFilterPreferences } from "@/modules/artesFilterPreferences";
 import {
   DEFAULT_DATE_FILTER,
@@ -49,6 +51,7 @@ import {
 import { templates as templateRegistry } from "@/templates/templates";
 
 const ALL_ROUNDS = "__all__";
+const ALL_LEGS = "__all__";
 
 const DATE_CHIPS: { mode: DateFilterState["mode"]; label: string }[] = [
   { mode: "all", label: "Todas" },
@@ -85,6 +88,7 @@ export function TemplateCollection() {
   });
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [round, setRound] = useState("");
+  const [leg, setLeg] = useState("");
   const [search, setSearch] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
 
@@ -125,7 +129,7 @@ export function TemplateCollection() {
   }, [dateFilteredMatches, competitionIds]);
 
   const rounds = useMemo(
-    () => [...new Set(competitionScopedMatches.map((match) => match.round))],
+    () => [...new Set(competitionScopedMatches.map((match) => matchPhaseLabel(match)).filter((label): label is string => !!label))].sort(compareRounds),
     [competitionScopedMatches],
   );
 
@@ -134,10 +138,16 @@ export function TemplateCollection() {
     setRound("");
   }, [competitionIds]);
 
+  // The leg (Ida/Volta) only makes sense for the knockout phase currently selected — reset when the phase changes.
+  useEffect(() => {
+    setLeg("");
+  }, [round]);
+
   const visibleMatches = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("pt-BR");
     return competitionScopedMatches.filter((match) => {
-      if (round && match.round !== round) return false;
+      if (round && matchPhaseLabel(match) !== round) return false;
+      if (leg && matchLegLabel(match) !== leg) return false;
       if (!query) return true;
       const values = [
         clubDisplayName(match.homeClubId, store.clubsById),
@@ -147,7 +157,7 @@ export function TemplateCollection() {
       ];
       return values.some((value) => value?.toLocaleLowerCase("pt-BR").includes(query));
     });
-  }, [store, competitionScopedMatches, round, search]);
+  }, [store, competitionScopedMatches, round, leg, search]);
 
   const visibleCompetitionCount = useMemo(
     () => new Set(visibleMatches.map((match) => match.competitionId)).size,
@@ -458,21 +468,41 @@ export function TemplateCollection() {
               </Button>
             </div>
 
-            <div>
-              <label className="text-sm font-semibold text-foreground-secondary" htmlFor="round">Rodada</label>
-              <Select
-                value={round || ALL_ROUNDS}
-                disabled={rounds.length === 0}
-                onValueChange={(value) => setRound(value === ALL_ROUNDS ? "" : value)}
-              >
-                <SelectTrigger id="round" className="mt-2 h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_ROUNDS}>Todas as rodadas</SelectItem>
-                  {rounds.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-foreground-secondary" htmlFor="round">Fase</label>
+                <Select
+                  value={round || ALL_ROUNDS}
+                  disabled={rounds.length === 0}
+                  onValueChange={(value) => setRound(value === ALL_ROUNDS ? "" : value)}
+                >
+                  <SelectTrigger id="round" className="mt-2 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_ROUNDS}>Todas as fases</SelectItem>
+                    {rounds.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-foreground-secondary" htmlFor="leg">Rodada</label>
+                <Select
+                  value={leg || ALL_LEGS}
+                  disabled={!isKnockoutPhase(round)}
+                  onValueChange={(value) => setLeg(value === ALL_LEGS ? "" : value)}
+                >
+                  <SelectTrigger id="leg" className="mt-2 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_LEGS}>Ida e volta</SelectItem>
+                    <SelectItem value="Ida">Ida</SelectItem>
+                    <SelectItem value="Volta">Volta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
@@ -521,7 +551,7 @@ export function TemplateCollection() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-foreground-muted">
-                      {match.round ? `${match.round} · ` : ""}{match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
+                      {matchPhaseLegLabel(match) ? `${matchPhaseLegLabel(match)} · ` : ""}{match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
                     </p>
                   </button>
                 );

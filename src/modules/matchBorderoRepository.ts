@@ -73,6 +73,11 @@ export class MatchBorderoRepository {
     const { error } = await supabase.from("match_borderos").upsert(toRow(record));
     if (error) throw error;
   }
+
+  async remove(gameRef: string): Promise<void> {
+    const { error } = await supabase.from("match_borderos").delete().eq("id", gameRef);
+    if (error) throw error;
+  }
 }
 
 export const matchBorderoRepository = new MatchBorderoRepository();

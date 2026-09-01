@@ -23,6 +23,7 @@ import { assetRepository } from "@/engine";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type CompetitionRecord, type Match } from "@/modules/dataStore";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
+import { matchPhaseLabel } from "@/modules/knockoutBracket";
 
 const ORDER_STORAGE_KEY = "competicoes.widgetOrder";
 const FINAL_PHASE_ROUNDS = new Set(["Semifinal", "Final"]);
@@ -62,7 +63,7 @@ function classifyTone(competition: CompetitionRecord, matches: Match[]): WidgetT
 
   if (status === "Em andamento") {
     const finalPhasePending = matches.some(
-      (match) => FINAL_PHASE_ROUNDS.has(match.round) && (match.homeGoals === null || match.awayGoals === null),
+      (match) => FINAL_PHASE_ROUNDS.has(matchPhaseLabel(match) ?? "") && (match.homeGoals === null || match.awayGoals === null),
     );
     if (finalPhasePending) return "red";
     return "green";

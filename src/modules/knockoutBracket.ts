@@ -8,6 +8,49 @@ export function isKnockoutPhase(phase: string | null | undefined): boolean {
   return KNOCKOUT_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
 
+/**
+ * The label that actually says "Semifinal"/"Final" for a match — `phase` when
+ * set, otherwise `round`. Matches created through the fórmula de disputa
+ * wizard set `phase`; matches typed/imported straight from the FAF's tabela
+ * detalhada (which has no separate "fase" column, only "ROD" showing "Final"/
+ * "Semifinal" for the knockout rounds) end up with that text in `round`
+ * instead, leaving `phase` empty — same knockout match, different field.
+ */
+export function matchPhaseLabel(match: Pick<Match, "phase" | "round">): string | null {
+  return match.phase || match.round || null;
+}
+
+/**
+ * The leg (Ida/Volta) of a knockout match, or null when the phase isn't
+ * knockout or the tie is single-leg (round equal to the phase name itself,
+ * e.g. "Oitavas de Final"). `round` holds just the leg marker for a knockout
+ * match — either the FAF's own "(Ida)"/"(Volta)" text or a bare ordinal
+ * ("1ª"/"2ª") from the wizard, which this maps to leg 1 = Ida, leg 2 = Volta.
+ */
+export function matchLegLabel(match: Pick<Match, "phase" | "round">): "Ida" | "Volta" | null {
+  if (!match.phase || !isKnockoutPhase(match.phase)) return null;
+  const round = (match.round || "").toLowerCase();
+  if (/volta/.test(round)) return "Volta";
+  if (/ida/.test(round)) return "Ida";
+  if (/^1/.test(round)) return "Ida";
+  if (/^2/.test(round)) return "Volta";
+  return null;
+}
+
+/**
+ * `matchPhaseLabel` plus the leg (Ida/Volta), for display and for the round-image
+ * lookup. A non-knockout phase (e.g. "Primeira Fase") just returns the plain
+ * round — its `round` is a real numbered round, not a leg.
+ */
+export function matchPhaseLegLabel(match: Pick<Match, "phase" | "round">): string | null {
+  const phase = matchPhaseLabel(match);
+  if (!phase) return null;
+  if (!match.phase || !isKnockoutPhase(match.phase)) return match.round || phase;
+
+  const leg = matchLegLabel(match);
+  return leg ? `${phase} (${leg})` : phase;
+}
+
 export interface BracketLeg {
   homeGoals: number;
   awayGoals: number;
@@ -48,10 +91,10 @@ function toSortableDate(value: string): string {
 export function computeBracket(matches: readonly Match[]): BracketPhase[] {
   const byPhase = new Map<string, Match[]>();
   for (const match of matches) {
-    if (!isKnockoutPhase(match.phase)) continue;
-    const phase = match.phase!;
-    if (!byPhase.has(phase)) byPhase.set(phase, []);
-    byPhase.get(phase)!.push(match);
+    const phase = matchPhaseLabel(match);
+    if (!isKnockoutPhase(phase)) continue;
+    if (!byPhase.has(phase!)) byPhase.set(phase!, []);
+    byPhase.get(phase!)!.push(match);
   }
 
   const orderedPhases = [...byPhase.keys()].sort((a, b) => {

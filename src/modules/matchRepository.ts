@@ -144,6 +144,18 @@ export class MatchRepository {
     const keepIds = new Set(stored.map((record) => record.id));
 
     const existingIds = await this.listIdsForCompetition(competitionId);
+
+    // A parse/scrape that comes back with zero valid rows (empty file,
+    // unreachable source, every row missing home/away) must never be read as
+    // "this competition now has no matches" — that's how a bad CSV or a
+    // flaky FAF fetch wipes an entire schedule. Only an explicit, dedicated
+    // action (not a side effect of importing nothing) should ever do that.
+    if (stored.length === 0 && existingIds.length > 0) {
+      throw new Error(
+        "A importação não trouxe nenhum jogo válido — os jogos já cadastrados desta competição não foram apagados. Confira o arquivo ou a fonte e tente de novo.",
+      );
+    }
+
     const idsToRemove = existingIds.filter((id) => !keepIds.has(id));
 
     if (idsToRemove.length > 0) {

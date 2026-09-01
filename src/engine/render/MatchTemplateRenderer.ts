@@ -5,6 +5,7 @@ import { SvgDocument } from "@/engine/document/SvgDocument";
 import { formatDateBadge, formatHeader, parseMatchDate } from "@/engine/render/dateFormat";
 import { applyTextField, slotId } from "@/engine/render/templateFields";
 import type { DataStore, Match } from "@/modules/dataStore";
+import { matchPhaseLegLabel } from "@/modules/knockoutBracket";
 
 /** Blank until a result is known — matches the "no goals yet" state as well as templates with no score field at all. */
 function formatGoals(goals: number | null): string {
@@ -97,7 +98,7 @@ export class MatchTemplateRenderer {
     }
 
     if (document.getNode("img_rodada")) {
-      const round = await this.assets.getRoundImageDataUri(match.round);
+      const round = await this.assets.getRoundImageDataUri(matchPhaseLegLabel(match) ?? "");
       if (round) document.setImage("img_rodada", round);
     }
 

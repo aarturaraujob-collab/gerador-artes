@@ -20,6 +20,9 @@ import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvReposit
 import { MatchOperacaoRepository, type MatchOperacaoRecord } from "./matchOperacaoRepository";
 import { MatchFaftvEscalaRepository } from "./matchFaftvEscalaRepository";
 import { MatchArbitragemRepository } from "./matchArbitragemRepository";
+import { matchBorderoRepository } from "./matchBorderoRepository";
+import { matchFafOficialRepository } from "./matchFafOficialRepository";
+import { competitionFafOficialRepository } from "./competitionFafOficialRepository";
 import { imtRepository } from "../documents/repository/imtRepository";
 import { detailedTableRepository } from "../documents/repository/detailedTableRepository";
 import { playerStatsRepository } from "./playerStatsRepository";
@@ -99,6 +102,9 @@ export interface ExtractedRow {
   tv: string | null;
   phase?: string | null;
   ref?: string | null;
+  penaltyHomeGoals?: number | null;
+  penaltyAwayGoals?: number | null;
+  wo?: boolean;
 }
 
 /** All operational data (FAFTV + Operação + Histórico) tracked for one match, keyed by its gameRef. */
@@ -663,6 +669,7 @@ class DataStoreController implements DataStore {
     await Promise.all(imts.map((imt) => imtRepository.remove(imt.id)));
     await Promise.all(detailedTables.map((table) => detailedTableRepository.remove(table.id)));
     await playerStatsRepository.replaceForCompetition(id, []);
+    await competitionFafOficialRepository.remove(id);
 
     await this.competitionRepo.remove(id);
   }
@@ -782,6 +789,9 @@ class DataStoreController implements DataStore {
         tv: row.tv,
         phase: row.phase ?? null,
         ref: row.ref ?? null,
+        penaltyHomeGoals: row.penaltyHomeGoals ?? null,
+        penaltyAwayGoals: row.penaltyAwayGoals ?? null,
+        wo: row.wo ?? false,
       });
     }
 
@@ -794,11 +804,16 @@ class DataStoreController implements DataStore {
     // its FAFTV/Operação/Arbitragem/Escala/Histórico rows FK-referencing that
     // old id — clear those first, or replaceForCompetition's delete of the
     // now-gone match rows fails/crashes the whole reimport.
+    // Diffs against the DB's current ids (not this.snapshot.matches) so this
+    // always matches exactly what matchRepo.replaceForCompetition below is
+    // about to delete — a stale in-memory snapshot (e.g. a match row that
+    // exists in Postgres but was never fetched into this session) would
+    // otherwise skip that row's cleanup here while still being deleted below,
+    // leaving its FAFTV/Operação/Arbitragem/Escala/Borderô rows to violate
+    // the FK the moment that DELETE runs.
     const keptIds = new Set(importedMatches.map((match) => buildGameRef(match)));
-    const droppedIds = this.snapshot.matches
-      .filter((match) => match.competitionId === competitionId)
-      .map((match) => buildGameRef(match))
-      .filter((id) => !keptIds.has(id));
+    const existingIds = await this.matchRepo.listIdsForCompetition(competitionId);
+    const droppedIds = existingIds.filter((id) => !keptIds.has(id));
     for (const id of droppedIds) {
       await this.cleanupMatchOps(id);
     }
@@ -960,12 +975,14 @@ class DataStoreController implements DataStore {
   }
 
   private async migrateMatchOps(oldGameRef: string, newGameRef: string): Promise<void> {
-    const [faftv, operacao, history, faftvEscala, arbitragem] = await Promise.all([
+    const [faftv, operacao, history, faftvEscala, arbitragem, bordero, fafOficial] = await Promise.all([
       this.faftvRepo.get(oldGameRef),
       this.operacaoRepo.get(oldGameRef),
       this.historyRepo.listByGameRef(oldGameRef),
       this.faftvEscalaRepo.listByGameRefs([oldGameRef]),
       this.arbitragemRepo.get(oldGameRef),
+      matchBorderoRepository.get(oldGameRef),
+      matchFafOficialRepository.get(oldGameRef),
     ]);
 
     if (faftv) {
@@ -994,15 +1011,23 @@ class DataStoreController implements DataStore {
       await this.arbitragemRepo.upsert({ ...arbitragem, id: newGameRef, gameRef: newGameRef });
       await this.arbitragemRepo.remove(oldGameRef);
     }
+    if (bordero) {
+      await matchBorderoRepository.upsert({ ...bordero, id: newGameRef, gameRef: newGameRef });
+      await matchBorderoRepository.remove(oldGameRef);
+    }
+    if (fafOficial) {
+      await matchFafOficialRepository.upsert({ ...fafOficial, id: newGameRef, gameRef: newGameRef });
+      await matchFafOficialRepository.remove(oldGameRef);
+    }
   }
 
   /**
-   * Clears every FAFTV/Operação/Arbitragem/Escala/Histórico row FK-referencing
-   * a match that is genuinely going away (not being rescheduled — see
-   * migrateMatchOps for that case). Needed before the match row itself can be
-   * deleted, since none of those tables cascade on delete. Used when a
-   * reimport drops a fixture from the schedule and when a competition is
-   * purged from the Lixeira.
+   * Clears every FAFTV/Operação/Arbitragem/Escala/Histórico/Borderô/Oficial-
+   * FAF row FK-referencing a match that is genuinely going away (not being
+   * rescheduled — see migrateMatchOps for that case). Needed before the match
+   * row itself can be deleted, since none of those tables cascade on delete.
+   * Used when a reimport drops a fixture from the schedule and when a
+   * competition is purged from the Lixeira.
    */
   private async cleanupMatchOps(gameRef: string): Promise<void> {
     await Promise.all([
@@ -1011,6 +1036,8 @@ class DataStoreController implements DataStore {
       this.historyRepo.removeByGameRef(gameRef),
       this.faftvEscalaRepo.remove(gameRef),
       this.arbitragemRepo.remove(gameRef),
+      matchBorderoRepository.remove(gameRef),
+      matchFafOficialRepository.remove(gameRef),
     ]);
   }
 

@@ -25,19 +25,25 @@ export function usePublicFafLabData() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([
-      competitionRepo.list(),
-      clubRepo.list(),
-      matchRepository.list(),
-      playerStatsRepository.countAll(),
-    ]).then(([competitionRows, clubRows, matchRows, playerCount]) => {
-      if (cancelled) return;
-      setCompetitions(competitionRows.filter((item) => !item.deletedAt));
-      setClubsById(new Map(clubRows.filter((item) => !item.deletedAt).map((club) => [club.id, club])));
-      setMatches(matchRows);
-      setTotalPlayers(playerCount);
-      setLoaded(true);
-    });
+    void Promise.all([competitionRepo.list(), clubRepo.list(), matchRepository.list()]).then(
+      async ([competitionRows, clubRows, matchRows]) => {
+        if (cancelled) return;
+        // Rollout gradual: só as edições marcadas como prontas
+        // (public_visible) aparecem no FAF Lab público — as outras ficam
+        // disponíveis só para quem está logado, enquanto o elenco/estatística
+        // ainda está sendo ajustado.
+        const visible = competitionRows.filter((item) => !item.deletedAt && item.publicVisible);
+        const visibleIds = new Set(visible.map((item) => item.id));
+        const visibleMatches = matchRows.filter((match) => visibleIds.has(match.competitionId));
+        const playerCount = await playerStatsRepository.countForCompetitions([...visibleIds]);
+        if (cancelled) return;
+        setCompetitions(visible);
+        setClubsById(new Map(clubRows.filter((item) => !item.deletedAt).map((club) => [club.id, club])));
+        setMatches(visibleMatches);
+        setTotalPlayers(playerCount);
+        setLoaded(true);
+      },
+    );
     return () => {
       cancelled = true;
     };

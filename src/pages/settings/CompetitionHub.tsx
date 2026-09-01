@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Upload,
   X,
 } from "lucide-react";
@@ -48,6 +49,7 @@ import { clubDisplayName, isPlaceholderClubId } from "@/modules/clubDisplay";
 import { resolveCompetitionStatus, parseMatchDate } from "@/modules/competitionStatus";
 import { toIsoDate, todayIso } from "@/pages/templates/matchDateFilter";
 import { groupMatchesByRound, compareRounds } from "@/modules/rounds";
+import { matchPhaseLegLabel } from "@/modules/knockoutBracket";
 import { calculateStandings } from "@/modules/standings";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
 import { templates as templateRegistry } from "@/templates/templates";
@@ -68,10 +70,32 @@ import { CreateMatchDialog } from "./CreateMatchDialog";
 import { DocumentsTab } from "@/documents/ui/DocumentsTab";
 import type { Match, ExtractedRow, Club } from "@/modules/dataStore";
 import { buildGameRef, encodeGameRefParam } from "@/modules/gameRef";
-import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
+import {
+  detectUnmatchedEntities,
+  hasUnmatchedEntities,
+  applyEntityAliases,
+  type UnmatchedEntities,
+  type EntityAliases,
+} from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 import { competitionReportRepository, type CompetitionReport } from "@/modules/competitionReportRepository";
 import { triggerBlobDownload } from "@/documents/utils/downloadBlob";
+import { supabase } from "@/lib/supabaseClient";
+import { slug } from "@/modules/dataStore";
+import {
+  competitionFafOficialRepository,
+  type CompetitionFafOficial,
+  type FafAviso,
+  type FafArtilheiro,
+  type FafClassificacaoEntry,
+  type FafDocumento,
+} from "@/modules/competitionFafOficialRepository";
+import {
+  matchFafOficialRepository,
+  type MatchFafOficial,
+  type FafArbitragemEntry,
+  type FafAlteracaoEntry,
+} from "@/modules/matchFafOficialRepository";
 
 const ALL = "__all__";
 const INVALID_SCORE = Symbol("invalid-score");
@@ -93,6 +117,28 @@ function draftFromMatch(match: Match): ScoreDraft {
     penaltyAway: match.penaltyAwayGoals?.toString() ?? "",
     wo: woWinner,
   };
+}
+
+/** Uma linha devolvida pela Edge Function atualizar-jogos-faf — um ExtractedRow (o que já vai pro import de jogos) mais os extras oficiais só deste jogo. */
+interface FafScrapeRow extends ExtractedRow {
+  sumulaUrl?: string;
+  borderoOficialUrl?: string;
+  adendoUrl?: string;
+  arbitragem?: FafArbitragemEntry[];
+  alteracoes?: FafAlteracaoEntry[];
+}
+
+interface FafCompetitionExtras {
+  avisos: FafAviso[];
+  artilharia: FafArtilheiro[];
+  classificacao: FafClassificacaoEntry[];
+  regulamento: FafDocumento[];
+  tabelaHistorico: FafDocumento[];
+}
+
+interface FafScrapeResponse extends FafCompetitionExtras {
+  rows: FafScrapeRow[];
+  error?: string;
 }
 
 function fileToDataUri(file: File): Promise<string> {
@@ -120,11 +166,16 @@ export function CompetitionHub() {
   const store = useDataStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [updatingFaf, setUpdatingFaf] = useState(false);
   const [imtMatch, setImtMatch] = useState<Match | null>(null);
   const [borderoMatch, setBorderoMatch] = useState<Match | null>(null);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [creatingMatch, setCreatingMatch] = useState(false);
-  const [pendingUnmatched, setPendingUnmatched] = useState<{ rows: ExtractedRow[]; entities: UnmatchedEntities } | null>(null);
+  const [pendingUnmatched, setPendingUnmatched] = useState<{
+    rows: ExtractedRow[];
+    entities: UnmatchedEntities;
+    fafExtras?: FafCompetitionExtras;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [documentsRefreshToken, setDocumentsRefreshToken] = useState(0);
   const [standingsFormat, setStandingsFormat] = useState<TemplateFormat>("feed");
@@ -140,6 +191,9 @@ export function CompetitionHub() {
   const [scoreDrafts, setScoreDrafts] = useState<Map<string, ScoreDraft>>(new Map());
   const [savingScoreRef, setSavingScoreRef] = useState<string | null>(null);
   const [report, setReport] = useState<CompetitionReport | null>(null);
+  const [fafOficial, setFafOficial] = useState<CompetitionFafOficial | null>(null);
+  const [matchFafOficialByGameRef, setMatchFafOficialByGameRef] = useState<Map<string, MatchFafOficial>>(new Map());
+  const [fafOficialRefreshToken, setFafOficialRefreshToken] = useState(0);
   const [uploadingReport, setUploadingReport] = useState(false);
   const reportInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,6 +304,26 @@ export function CompetitionHub() {
     };
   }, [competition]);
 
+  useEffect(() => {
+    if (!competition) {
+      setFafOficial(null);
+      setMatchFafOficialByGameRef(new Map());
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      competitionFafOficialRepository.get(competition.id),
+      matchFafOficialRepository.listByCompetition(competition.id),
+    ]).then(([competitionRecord, matchRecords]) => {
+      if (cancelled) return;
+      setFafOficial(competitionRecord ?? null);
+      setMatchFafOficialByGameRef(new Map(matchRecords.map((record) => [record.gameRef, record])));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [competition, fafOficialRefreshToken]);
+
   async function handleUploadReport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -295,6 +369,104 @@ export function CompetitionHub() {
     } finally {
       setImporting(false);
     }
+  }
+
+  async function handleAtualizarFaf() {
+    if (!competition) return;
+
+    let fafSiteId = competition.fafSiteId;
+    if (!fafSiteId) {
+      const input = window.prompt(
+        "ID desta competição na tabela pública do site da FAF (o número depois de \"?ID=\" em futeboldealagoas.net/novo/tabela?ID=...):",
+      );
+      if (!input) return;
+      fafSiteId = input.trim();
+      await dataStore.updateCompetition(competition.id, { fafSiteId });
+    }
+
+    setUpdatingFaf(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<FafScrapeResponse>("atualizar-jogos-faf", {
+        body: { fafSiteId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const rows = data?.rows ?? [];
+      if (rows.length === 0) {
+        toast.warning("Nenhum jogo encontrado na tabela da FAF para essa competição.");
+        return;
+      }
+      const fafExtras: FafCompetitionExtras = {
+        avisos: data?.avisos ?? [],
+        artilharia: data?.artilharia ?? [],
+        classificacao: data?.classificacao ?? [],
+        regulamento: data?.regulamento ?? [],
+        tabelaHistorico: data?.tabelaHistorico ?? [],
+      };
+
+      const entities = detectUnmatchedEntities(store, rows);
+      if (hasUnmatchedEntities(entities)) {
+        setPendingUnmatched({ rows, entities, fafExtras });
+        return;
+      }
+      await runImport(rows);
+      await persistFafOficial(rows, fafExtras);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao buscar os jogos no site da FAF.");
+    } finally {
+      setUpdatingFaf(false);
+    }
+  }
+
+  /**
+   * Persiste os extras oficiais da FAF (avisos/artilharia/classificação/
+   * documentos da competição + súmula/borderô/adendo/arbitragem/alterações
+   * por jogo) — sempre chamado DEPOIS de runImport, porque precisa recalcular
+   * o gameRef de cada linha do jeito que mergeMatches (dataStore.ts) já
+   * calculou pra guardar em `matches` — mesma fórmula, mesmo slug().
+   */
+  async function persistFafOficial(rows: FafScrapeRow[], extras: FafCompetitionExtras) {
+    if (!competition) return;
+
+    await competitionFafOficialRepository.upsert({
+      id: competition.id,
+      avisos: extras.avisos,
+      artilharia: extras.artilharia,
+      classificacao: extras.classificacao,
+      regulamento: extras.regulamento,
+      tabelaHistorico: extras.tabelaHistorico,
+      updatedAt: Date.now(),
+    });
+
+    const rowsWithExtras = rows.filter(
+      (row) =>
+        row.home &&
+        row.away &&
+        (row.sumulaUrl || row.borderoOficialUrl || row.adendoUrl || row.arbitragem?.length || row.alteracoes?.length),
+    );
+    await Promise.all(
+      rowsWithExtras.map((row) => {
+        // Mesma fórmula de src/modules/gameRef.ts (buildGameRef), recalculada
+        // aqui porque buildGameRef espera um Match completo e aqui só temos a
+        // linha crua da FAF.
+        const gameRef = [competition.id, row.round ?? "", row.date ?? "", row.time ?? "", slug(row.home!), slug(row.away!)].join(
+          "|",
+        );
+        return matchFafOficialRepository.upsert({
+          id: gameRef,
+          gameRef,
+          competitionId: competition.id,
+          sumulaUrl: row.sumulaUrl ?? "",
+          borderoOficialUrl: row.borderoOficialUrl ?? "",
+          adendoUrl: row.adendoUrl ?? "",
+          arbitragem: row.arbitragem ?? [],
+          alteracoes: row.alteracoes ?? [],
+          updatedAt: Date.now(),
+        });
+      }),
+    );
+
+    setFafOficialRefreshToken((token) => token + 1);
   }
 
   async function runImport(rows: ExtractedRow[]) {
@@ -511,6 +683,16 @@ export function CompetitionHub() {
     }
   }
 
+  async function handlePublicVisibleToggle(enabled: boolean) {
+    if (!competition) return;
+    try {
+      await dataStore.updateCompetition(competition.id, { publicVisible: enabled });
+      toast.success(enabled ? "Competição visível no FAF Lab público." : "Competição escondida do FAF Lab público.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar a visibilidade pública.");
+    }
+  }
+
   if (!competition) {
     return (
       <AppShell>
@@ -604,6 +786,10 @@ export function CompetitionHub() {
             {importing ? <Spinner /> : <Upload size={16} />}
             Importar CSV
           </Button>
+          <Button variant="outline" onClick={() => void handleAtualizarFaf()} disabled={updatingFaf}>
+            {updatingFaf ? <Spinner /> : <RefreshCw size={16} />}
+            Atualizar Info (FAF)
+          </Button>
           <Button variant="outline" onClick={() => setCreatingMatch(true)}>
             <Plus size={16} />
             Criar Partida
@@ -665,6 +851,7 @@ export function CompetitionHub() {
               Fase Eliminatória
             </TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
+            <TabsTrigger value="oficial-faf">Oficial FAF</TabsTrigger>
             <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
 
@@ -778,10 +965,11 @@ export function CompetitionHub() {
                     draftAwayGoals === INVALID_SCORE ? null : draftAwayGoals,
                   );
                   const hasSavedPenalties = match.penaltyHomeGoals !== null && match.penaltyHomeGoals !== undefined;
+                  const fafInfo = matchFafOficialByGameRef.get(gameRef);
                   return (
                     <div key={index} className="flex flex-wrap items-center gap-4 p-3">
-                      <span className="w-16 shrink-0 text-xs text-foreground-muted">{match.round || "—"}</span>
-                      <div className="flex flex-1 flex-col items-center gap-1">
+                      <span className="w-16 shrink-0 text-xs text-foreground-muted">{matchPhaseLegLabel(match) || "—"}</span>
+                      <div className="flex min-w-[420px] flex-1 flex-col items-center gap-1">
                         {/* Fixed 3-column grid — the two club-name columns are equal (1fr) and flank a
                             fixed-width score column, so the score sits on the same vertical line on every
                             row regardless of how long either club's name is (no more layout that shifts
@@ -934,6 +1122,70 @@ export function CompetitionHub() {
                         <ClipboardList size={14} />
                         Operação
                       </Button>
+                      {fafInfo &&
+                        (fafInfo.sumulaUrl ||
+                          fafInfo.borderoOficialUrl ||
+                          fafInfo.adendoUrl ||
+                          fafInfo.arbitragem.length > 0 ||
+                          fafInfo.alteracoes.length > 0) && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <IconButton aria-label="Informações oficiais da FAF" title="Informações oficiais da FAF">
+                                <Flag size={16} />
+                              </IconButton>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 space-y-3">
+                              {fafInfo.arbitragem.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-foreground-secondary">Arbitragem</p>
+                                  <ul className="mt-1 space-y-0.5 text-sm">
+                                    {fafInfo.arbitragem.map((entry, index) => (
+                                      <li key={index}>
+                                        <span className="text-foreground-muted">{entry.funcao}:</span> {entry.nome}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {fafInfo.alteracoes.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-foreground-secondary">Alterações de jogo</p>
+                                  {fafInfo.alteracoes.map((entry, index) => (
+                                    <p key={index} className="mt-1 text-sm text-foreground-secondary">
+                                      {entry.estadioOriginal} ({entry.dataOriginal} {entry.horarioOriginal}) → {entry.estadioFinal} (
+                                      {entry.dataFinal} {entry.horarioFinal}). {entry.motivo}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              {(fafInfo.sumulaUrl || fafInfo.borderoOficialUrl || fafInfo.adendoUrl) && (
+                                <div className="flex flex-wrap gap-2">
+                                  {fafInfo.sumulaUrl && (
+                                    <a href={fafInfo.sumulaUrl} target="_blank" rel="noreferrer">
+                                      <Button type="button" variant="outline" size="sm">
+                                        Súmula
+                                      </Button>
+                                    </a>
+                                  )}
+                                  {fafInfo.borderoOficialUrl && (
+                                    <a href={fafInfo.borderoOficialUrl} target="_blank" rel="noreferrer">
+                                      <Button type="button" variant="outline" size="sm">
+                                        Borderô oficial
+                                      </Button>
+                                    </a>
+                                  )}
+                                  {fafInfo.adendoUrl && (
+                                    <a href={fafInfo.adendoUrl} target="_blank" rel="noreferrer">
+                                      <Button type="button" variant="outline" size="sm">
+                                        Adendo
+                                      </Button>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        )}
                     </div>
                   );
                 })}
@@ -1081,6 +1333,146 @@ export function CompetitionHub() {
             </div>
           </TabsContent>
 
+          <TabsContent value="oficial-faf" className="mt-6 space-y-6">
+            {!fafOficial ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Nada importado ainda</EmptyTitle>
+                  <EmptyDescription>
+                    Clique em "Atualizar Info (FAF)" para trazer avisos, artilharia, classificação oficial e documentos do site da FAF.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <>
+                {fafOficial.avisos.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-foreground-secondary">Avisos oficiais</p>
+                    <div className="space-y-2">
+                      {fafOficial.avisos.map((aviso, index) => (
+                        <Card key={index} className="border-warning/30 bg-warning/5 p-4">
+                          <p className="font-semibold text-foreground">{aviso.titulo}</p>
+                          <p className="mt-1 text-sm text-foreground-secondary">{aviso.texto}</p>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-foreground-secondary">Documentos oficiais (FAF)</p>
+                    {fafOficial.regulamento.length === 0 && fafOficial.tabelaHistorico.length === 0 ? (
+                      <p className="text-sm text-foreground-muted">Nenhum documento encontrado.</p>
+                    ) : (
+                      <Card className="divide-y divide-border p-0">
+                        {[...fafOficial.regulamento, ...fafOficial.tabelaHistorico].map((doc, index) => (
+                          <a
+                            key={index}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-between gap-3 p-3 text-sm hover:bg-surface-hover"
+                          >
+                            <span>
+                              <span className="font-medium text-foreground">{doc.titulo}</span>
+                              <span className="ml-2 text-xs text-foreground-muted">{doc.data}</span>
+                            </span>
+                            <Download size={14} className="shrink-0 text-foreground-muted" />
+                          </a>
+                        ))}
+                      </Card>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-foreground-secondary">Artilharia (FAF)</p>
+                    {fafOficial.artilharia.length === 0 ? (
+                      <p className="text-sm text-foreground-muted">Nenhum artilheiro encontrado.</p>
+                    ) : (
+                      <Card className="max-h-80 overflow-y-auto p-0">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-card text-xs uppercase text-foreground-muted">
+                            <tr>
+                              <th className="p-2 text-left">Jogador</th>
+                              <th className="p-2 text-left">Clube</th>
+                              <th className="p-2 text-right">Gols</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {fafOficial.artilharia.map((artilheiro, index) => (
+                              <tr key={index}>
+                                <td className="p-2">{artilheiro.apelido || artilheiro.jogador}</td>
+                                <td className="p-2 text-foreground-secondary">{artilheiro.clube}</td>
+                                <td className="p-2 text-right font-semibold">{artilheiro.gols}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-foreground-secondary">Classificação oficial (CBF)</p>
+                  {fafOficial.classificacao.length === 0 ? (
+                    <p className="text-sm text-foreground-muted">Nenhuma classificação oficial encontrada.</p>
+                  ) : (
+                    Object.entries(
+                      fafOficial.classificacao.reduce<Record<string, FafClassificacaoEntry[]>>((groups, entry) => {
+                        const key = [entry.fase, entry.grupo].filter(Boolean).join(" — ") || "Geral";
+                        (groups[key] ??= []).push(entry);
+                        return groups;
+                      }, {}),
+                    ).map(([groupLabel, entries]) => (
+                      <Card key={groupLabel} className="mb-3 overflow-x-auto p-0">
+                        <p className="p-3 text-xs font-semibold uppercase tracking-wide text-foreground-muted">{groupLabel}</p>
+                        <table className="w-full text-sm">
+                          <thead className="text-xs uppercase text-foreground-muted">
+                            <tr>
+                              <th className="p-2 text-left">#</th>
+                              <th className="p-2 text-left">Clube</th>
+                              <th className="p-2 text-right">Pts</th>
+                              <th className="p-2 text-right">J</th>
+                              <th className="p-2 text-right">V</th>
+                              <th className="p-2 text-right">E</th>
+                              <th className="p-2 text-right">D</th>
+                              <th className="p-2 text-right">SG</th>
+                              <th className="p-2 text-right">%</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {entries
+                              .sort((a, b) => a.posicao - b.posicao)
+                              .map((entry, index) => (
+                                <tr key={index}>
+                                  <td className="p-2">{entry.posicao}º</td>
+                                  <td className="p-2 font-medium text-foreground">{entry.clube}</td>
+                                  <td className="p-2 text-right font-semibold">{entry.pontos}</td>
+                                  <td className="p-2 text-right">{entry.jogos}</td>
+                                  <td className="p-2 text-right">{entry.vitorias}</td>
+                                  <td className="p-2 text-right">{entry.empates}</td>
+                                  <td className="p-2 text-right">{entry.derrotas}</td>
+                                  <td className="p-2 text-right">{entry.saldoGols}</td>
+                                  <td className="p-2 text-right">{entry.aproveitamento}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </Card>
+                    ))
+                  )}
+                </div>
+
+                <p className="text-xs text-foreground-muted">
+                  Atualizado em {new Date(fafOficial.updatedAt).toLocaleString("pt-BR")} — clique em "Atualizar Info (FAF)" para
+                  trazer os dados mais recentes.
+                </p>
+              </>
+            )}
+          </TabsContent>
+
           <TabsContent value="configuracoes" className="mt-6 space-y-4">
             <Card className="divide-y divide-border p-0">
               <ConfigRow label="Nome" value={competition.name} />
@@ -1104,6 +1496,16 @@ export function CompetitionHub() {
                 <Switch
                   checked={competition.borderoEnabled !== false}
                   onCheckedChange={(checked) => void handleBorderoToggle(checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground-secondary">Visível no FAF Lab público</p>
+                  <p className="text-xs text-foreground-muted">Enquanto desligado, essa competição não aparece em /publico/faf-lab.</p>
+                </div>
+                <Switch
+                  checked={competition.publicVisible === true}
+                  onCheckedChange={(checked) => void handlePublicVisibleToggle(checked)}
                 />
               </div>
             </Card>
@@ -1182,11 +1584,17 @@ export function CompetitionHub() {
       <UnmatchedEntitiesDialog
         open={pendingUnmatched !== null}
         entities={pendingUnmatched?.entities ?? null}
+        store={store}
         onCancel={() => setPendingUnmatched(null)}
-        onConfirm={() => {
+        onConfirm={(aliases: EntityAliases) => {
           const rows = pendingUnmatched?.rows;
+          const fafExtras = pendingUnmatched?.fafExtras;
           setPendingUnmatched(null);
-          if (rows) void runImport(rows);
+          if (!rows) return;
+          const rewritten = applyEntityAliases(store, rows, aliases);
+          void runImport(rewritten).then(() => {
+            if (fafExtras) void persistFafOficial(rewritten as FafScrapeRow[], fafExtras);
+          });
         }}
       />
     </AppShell>

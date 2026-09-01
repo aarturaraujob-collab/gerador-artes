@@ -45,3 +45,47 @@ export function detectUnmatchedEntities(store: DataStore, rows: readonly Extract
 export function hasUnmatchedEntities(entities: UnmatchedEntities): boolean {
   return entities.clubs.length > 0 || entities.stadiums.length > 0 || entities.cities.length > 0;
 }
+
+/**
+ * "Nome que apareceu na planilha/FAF" → "id de um clube/estádio/cidade JÁ
+ * cadastrado" — escolhido pelo usuário no UnmatchedEntitiesDialog em vez de
+ * deixar mergeMatches cadastrar um registro novo. Vazio quando ninguém pediu
+ * pra linkar nada (comportamento de sempre: tudo que não bate por slug() é
+ * cadastrado como novo).
+ */
+export interface EntityAliases {
+  clubs: Map<string, string>;
+  stadiums: Map<string, string>;
+  cities: Map<string, string>;
+}
+
+export function emptyEntityAliases(): EntityAliases {
+  return { clubs: new Map(), stadiums: new Map(), cities: new Map() };
+}
+
+/**
+ * Reescreve row.home/away/stadium/city pelo nome CANÔNICO do registro
+ * escolhido em cada alias — como mergeMatches (dataStore.ts) decide o id de
+ * cada entidade rodando slug() no nome da própria linha, trocar o nome pelo
+ * nome do registro já cadastrado é o bastante pra linha "virar" aquele
+ * registro em vez de criar um duplicado. Não precisa mexer em mergeMatches.
+ */
+export function applyEntityAliases(store: DataStore, rows: readonly ExtractedRow[], aliases: EntityAliases): ExtractedRow[] {
+  if (aliases.clubs.size === 0 && aliases.stadiums.size === 0 && aliases.cities.size === 0) return [...rows];
+
+  const resolve = (name: string | null, aliasMap: Map<string, string>, byId: ReadonlyMap<string, { shortName?: string; fullName?: string; name?: string }>) => {
+    if (!name) return name;
+    const targetId = aliasMap.get(name);
+    if (!targetId) return name;
+    const target = byId.get(targetId);
+    return target ? (target.shortName ?? target.name ?? target.fullName ?? name) : name;
+  };
+
+  return rows.map((row) => ({
+    ...row,
+    home: resolve(row.home, aliases.clubs, store.clubsById),
+    away: resolve(row.away, aliases.clubs, store.clubsById),
+    stadium: resolve(row.stadium, aliases.stadiums, store.stadiumsById),
+    city: resolve(row.city, aliases.cities, store.citiesById),
+  }));
+}

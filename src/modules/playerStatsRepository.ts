@@ -114,14 +114,24 @@ export class PlayerStatsRepository {
    * counts as its own athlete.
    */
   async countAll(): Promise<number> {
+    return this.countForCompetitions(null);
+  }
+
+  /**
+   * Same dedupe-by-CBF as countAll(), scoped to a set of competitions —
+   * backs the public FAF Lab total while some editions are still hidden
+   * (competitions.public_visible), so it doesn't count rosters nobody can
+   * see yet. Pass null for the unscoped, every-competition count.
+   */
+  async countForCompetitions(competitionIds: readonly string[] | null): Promise<number> {
+    if (competitionIds != null && competitionIds.length === 0) return 0;
     const cbfs = new Set<string>();
     let withoutCbf = 0;
     const pageSize = 1000;
     for (let from = 0; ; from += pageSize) {
-      const { data, error } = await supabase
-        .from("player_competition_stats")
-        .select("cbf")
-        .range(from, from + pageSize - 1);
+      let query = supabase.from("player_competition_stats").select("cbf").range(from, from + pageSize - 1);
+      if (competitionIds != null) query = query.in("competition_id", competitionIds);
+      const { data, error } = await query;
       if (error) throw error;
       const rows = data ?? [];
       for (const row of rows) {

@@ -118,9 +118,6 @@ export class AssetRepository {
     const normalized = stripDiacritics(round);
     if (!normalized) return null;
 
-    const numeric = normalized.match(/(\d+)/);
-    if (numeric) return `${RODADAS_DIR}/img_rodada${numeric[1]}.png`;
-
     const phases: Array<[RegExp, string]> = [
       [/oitav/, "oitavas"],
       [/quart/, "quartas"],
@@ -128,10 +125,15 @@ export class AssetRepository {
       [/final/, "final"],
     ];
     const phase = phases.find(([pattern]) => pattern.test(normalized))?.[1];
-    if (!phase) return null;
+    if (phase) {
+      const leg = /volta/.test(normalized) ? "_volta" : /ida/.test(normalized) ? "_ida" : "";
+      return `${RODADAS_DIR}/img_rodada_${phase}${leg}.png`;
+    }
 
-    const leg = /volta/.test(normalized) ? "_volta" : /ida/.test(normalized) ? "_ida" : "";
-    return `${RODADAS_DIR}/img_rodada_${phase}${leg}.png`;
+    const numeric = normalized.match(/(\d+)/);
+    if (numeric) return `${RODADAS_DIR}/img_rodada${numeric[1]}.png`;
+
+    return null;
   }
 
   async getRoundImageDataUri(round: string): Promise<string | null> {

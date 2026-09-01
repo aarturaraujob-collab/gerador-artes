@@ -45,6 +45,10 @@ export interface CompetitionRecord {
   format?: CompetitionFormat;
   /** Whether this competition tracks borderô (match financial reports). Defaults to true — some competitions (base categories, amistosos) don't require it. */
   borderoEnabled?: boolean;
+  /** Whether this edition shows up on the public FAF Lab (/publico/faf-lab). Defaults to false at the DB level — a new/half-finished edition stays internal until someone flips this on. */
+  publicVisible?: boolean;
+  /** ID desta competição na tabela pública do site institucional da FAF (futeboldealagoas.net/novo/tabela?ID=...) — usado pelo botão "Atualizar Info (FAF)". */
+  fafSiteId?: string;
 }
 
 export function emptyBackground(): BackgroundAssets {
@@ -251,6 +255,8 @@ interface CompetitionRow {
   deleted_at: string | null;
   format: CompetitionFormat | null;
   bordero_enabled: boolean | null;
+  public_visible: boolean | null;
+  faf_site_id: string | null;
 }
 
 function fromRow(row: CompetitionRow): CompetitionRecord {
@@ -277,6 +283,12 @@ function fromRow(row: CompetitionRow): CompetitionRecord {
     // `format` above — absent both when the row predates this field and
     // when the migration hasn't run, so default to true (borderô on) either way.
     borderoEnabled: row.bordero_enabled ?? true,
+    // Same "column doesn't exist yet in this Supabase project" story as
+    // `format`/`bordero_enabled` above — absent defaults to true so nothing
+    // that's already public disappears the moment this field ships, before
+    // the migration has actually run.
+    publicVisible: row.public_visible ?? true,
+    fafSiteId: row.faf_site_id ?? undefined,
   };
 }
 
@@ -297,6 +309,8 @@ function toRow(record: CompetitionRecord): CompetitionRow {
     deleted_at: record.deletedAt ? new Date(record.deletedAt).toISOString() : null,
     format: record.format ?? null,
     bordero_enabled: record.borderoEnabled ?? true,
+    public_visible: record.publicVisible ?? false,
+    faf_site_id: record.fafSiteId || null,
   };
 }
 
@@ -330,6 +344,12 @@ export class CompetitionRepository {
       if (retryError) throw retryError;
       return OFFICIAL_COMPETITIONS_2026;
     }
+    if (error.message.includes("'public_visible' column")) {
+      const rowsWithoutPublicVisible = rows.map(({ public_visible: _omitted, ...rest }) => rest);
+      const { error: retryError } = await supabase.from("competitions").insert(rowsWithoutPublicVisible);
+      if (retryError) throw retryError;
+      return OFFICIAL_COMPETITIONS_2026;
+    }
     throw error;
   }
 
@@ -359,6 +379,22 @@ export class CompetitionRepository {
       if (retryError) throw retryError;
       throw new Error(
         "Competição salva, mas a preferência de borderô não foi — falta rodar a migração pendente (coluna 'bordero_enabled' em competitions) no Supabase.",
+      );
+    }
+    if (error.message.includes("'public_visible' column")) {
+      const { public_visible: _omitted, ...rowWithoutPublicVisible } = row;
+      const { error: retryError } = await supabase.from("competitions").upsert(rowWithoutPublicVisible);
+      if (retryError) throw retryError;
+      throw new Error(
+        "Competição salva, mas a visibilidade pública não foi — falta rodar a migração pendente (coluna 'public_visible' em competitions) no Supabase.",
+      );
+    }
+    if (error.message.includes("'faf_site_id' column")) {
+      const { faf_site_id: _omitted, ...rowWithoutFafSiteId } = row;
+      const { error: retryError } = await supabase.from("competitions").upsert(rowWithoutFafSiteId);
+      if (retryError) throw retryError;
+      throw new Error(
+        "Competição salva, mas o ID do site da FAF não foi — falta rodar a migração pendente (coluna 'faf_site_id' em competitions) no Supabase.",
       );
     }
     throw error;

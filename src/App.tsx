@@ -45,8 +45,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
     if (session && !announced.current && consumeJustSignedIn()) {
       announced.current = true;
       setWelcoming(true);
-      const timer = setTimeout(() => setWelcoming(false), 1000);
-      return () => clearTimeout(timer);
+      setTimeout(() => setWelcoming(false), 1000);
     }
   }, [session]);
 

@@ -1,4 +1,5 @@
 import type { Match } from "./dataStore";
+import { matchPhaseLabel } from "./knockoutBracket";
 
 /** A round is derived from Match.round, not stored as its own entity (yet). */
 export interface RoundSummary {
@@ -25,7 +26,7 @@ export function compareRounds(a: string, b: string): number {
 export function groupMatchesByRound(matches: readonly Match[]): RoundSummary[] {
   const byRound = new Map<string, Match[]>();
   for (const match of matches) {
-    const key = match.round || "Sem rodada";
+    const key = matchPhaseLabel(match) || "Sem rodada";
     const list = byRound.get(key);
     if (list) list.push(match);
     else byRound.set(key, [match]);

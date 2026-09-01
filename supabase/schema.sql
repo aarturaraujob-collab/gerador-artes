@@ -602,6 +602,13 @@ alter table faftv_payment_records add column if not exists game_refs text[];
 
 alter table competitions add column if not exists bordero_enabled boolean not null default true;
 
+-- Rollout gradual do FAF Lab público: enquanto uma edição ainda está sendo
+-- ajustada (elenco incompleto, sem estatística por jogador), fica fora de
+-- /publico/faf-lab até alguém marcar como pronta pelo toggle na aba
+-- Configurações da competição. Default false para não expor nada
+-- pela metade no momento em que essa coluna é criada.
+alter table competitions add column if not exists public_visible boolean not null default false;
+
 create table if not exists match_borderos (
   id text primary key references matches(id),
   game_ref text not null,
@@ -622,3 +629,54 @@ create policy "authenticated full access" on match_borderos
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
 grant select, insert, update, delete on public.match_borderos to authenticated;
+
+-- ID da competição na tabela pública do site institucional da FAF
+-- (futeboldealagoas.net/novo/tabela?ID=...) — usado pelo botão "Atualizar
+-- Info (FAF)" pra saber qual página buscar.
+alter table competitions add column if not exists faf_site_id text;
+
+-- Dados só de leitura, oficiais, trazidos do site da FAF pelo botão
+-- "Atualizar Info (FAF)" — nunca editados no Urano, só sobrescritos por um
+-- novo import. Um por partida (id = matches.id, mesmo padrão de
+-- match_faftv/match_operacao/match_borderos acima).
+create table if not exists match_faf_oficial (
+  id text primary key references matches(id),
+  game_ref text not null,
+  competition_id text references competitions(id),
+  sumula_url text,
+  bordero_oficial_url text,
+  adendo_url text,
+  arbitragem jsonb not null default '[]'::jsonb,
+  alteracoes jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table match_faf_oficial enable row level security;
+
+drop policy if exists "authenticated full access" on match_faf_oficial;
+create policy "authenticated full access" on match_faf_oficial
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+grant select, insert, update, delete on public.match_faf_oficial to authenticated;
+
+-- Mesma ideia de match_faf_oficial, só que por competição (não por jogo):
+-- avisos, artilharia, classificação oficial da CBF e os documentos
+-- (regulamento, histórico da tabela publicada) — um por competição, sempre
+-- substituído por completo no import seguinte.
+create table if not exists competition_faf_oficial (
+  id text primary key references competitions(id),
+  avisos jsonb not null default '[]'::jsonb,
+  artilharia jsonb not null default '[]'::jsonb,
+  classificacao jsonb not null default '[]'::jsonb,
+  regulamento jsonb not null default '[]'::jsonb,
+  tabela_historico jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table competition_faf_oficial enable row level security;
+
+drop policy if exists "authenticated full access" on competition_faf_oficial;
+create policy "authenticated full access" on competition_faf_oficial
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+grant select, insert, update, delete on public.competition_faf_oficial to authenticated;

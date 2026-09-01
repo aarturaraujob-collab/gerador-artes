@@ -38,7 +38,13 @@ import {
   type PhaseMatchup,
 } from "@/modules/competitionRepository";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
-import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
+import {
+  detectUnmatchedEntities,
+  hasUnmatchedEntities,
+  applyEntityAliases,
+  type UnmatchedEntities,
+  type EntityAliases,
+} from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 import { backgroundRepository, type BackgroundAsset } from "@/modules/backgroundRepository";
 
@@ -286,11 +292,11 @@ export function CompetitionWizard() {
     await runImport();
   }
 
-  async function runImport() {
-    if (!importPreview || !form.id) return;
+  async function runImport(rows: ExtractedRow[] = importPreview?.rows ?? []) {
+    if (!form.id || rows.length === 0) return;
     setImporting(true);
     try {
-      const { count } = await dataStore.importMatchesForCompetition(form.id, importPreview.rows);
+      const { count } = await dataStore.importMatchesForCompetition(form.id, rows);
       setImportConfirmed(true);
       toast.success(`${count} jogo(s) importado(s).`);
     } catch (error) {
@@ -875,10 +881,14 @@ export function CompetitionWizard() {
       <UnmatchedEntitiesDialog
         open={pendingUnmatched !== null}
         entities={pendingUnmatched}
+        store={store}
         onCancel={() => setPendingUnmatched(null)}
-        onConfirm={() => {
+        onConfirm={(aliases: EntityAliases) => {
           setPendingUnmatched(null);
-          void runImport();
+          if (!importPreview) return;
+          const rewritten = applyEntityAliases(store, importPreview.rows, aliases);
+          setImportPreview({ ...importPreview, rows: rewritten });
+          void runImport(rewritten);
         }}
       />
     </AppShell>

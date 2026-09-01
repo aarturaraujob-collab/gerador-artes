@@ -33,7 +33,7 @@ import { PERCENTILE_METRICS, computePercentiles, percentileBandClass } from "@/m
 import { computeHomeLeaderboards, type Leaderboard } from "@/modules/playerLeaderboards";
 import { calculateStandings, calculateStats, getRecentForm } from "@/modules/standings";
 import { computeAttendanceStats } from "@/modules/attendance";
-import { isKnockoutPhase, computeBracket } from "@/modules/knockoutBracket";
+import { isKnockoutPhase, computeBracket, matchPhaseLabel } from "@/modules/knockoutBracket";
 import { computeSeasonProgress } from "@/modules/seasonProgress";
 import { resolveCompetitionStatus, STATUS_TONE } from "@/modules/competitionStatus";
 import type { Club } from "@/modules/clubRepository";
@@ -116,6 +116,11 @@ const QUICK_FILTERS = [
 
 function minutosPorJogo(player: PlayerCompetitionStats): number {
   return player.jogos > 0 ? Math.round(player.minutos / player.jogos) : 0;
+}
+
+/** "0" nesses KPIs normalmente significa "estatística por jogador ainda não importada", não "zero de verdade" — mostra "—" pra não confundir com um dado real. */
+function statOrDash(value: number): string {
+  return value > 0 ? value.toLocaleString("pt-BR") : "—";
 }
 
 export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }) {
@@ -203,8 +208,8 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
     };
   }, [publicStore.matches, publicStore.competitions]);
 
-  const groupMatches = useMemo(() => matches.filter((match) => !isKnockoutPhase(match.phase)), [matches]);
-  const knockoutMatches = useMemo(() => matches.filter((match) => isKnockoutPhase(match.phase)), [matches]);
+  const groupMatches = useMemo(() => matches.filter((match) => !isKnockoutPhase(matchPhaseLabel(match))), [matches]);
+  const knockoutMatches = useMemo(() => matches.filter((match) => isKnockoutPhase(matchPhaseLabel(match))), [matches]);
   const standings = useMemo(() => calculateStandings(groupMatches), [groupMatches]);
   const bracket = useMemo(() => computeBracket(knockoutMatches), [knockoutMatches]);
   const competitionStats = useMemo(() => calculateStats(matches), [matches]);
@@ -844,12 +849,12 @@ export function FafLabDashboard({ publicMode = false }: { publicMode?: boolean }
                   <>
                     <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
                       <StatCard label="Atletas inscritos" value={kpis.atletasInscritos} accentClassName="border-t-chart-1" />
-                      <StatCard label="Entraram em campo" value={kpis.entraramEmCampo} accentClassName="border-t-chart-2" />
+                      <StatCard label="Entraram em campo" value={statOrDash(kpis.entraramEmCampo)} accentClassName="border-t-chart-2" />
                       <StatCard label="Súmulas processadas" value={kpis.sumulasProcessadas} accentClassName="border-t-chart-5" />
-                      <StatCard label="Gols registrados" value={kpis.golsRegistrados} accentClassName="border-t-chart-2" />
-                      <StatCard label="Cartões amarelos" value={kpis.cartoesAmarelos} accentClassName="border-t-chart-4" />
-                      <StatCard label="Cartões vermelhos" value={kpis.cartoesVermelhos} accentClassName="border-t-chart-3" />
-                      <StatCard label="Minutos totais jogados" value={kpis.minutosTotais.toLocaleString("pt-BR")} accentClassName="border-t-chart-1" />
+                      <StatCard label="Gols registrados" value={statOrDash(kpis.golsRegistrados)} accentClassName="border-t-chart-2" />
+                      <StatCard label="Cartões amarelos" value={statOrDash(kpis.cartoesAmarelos)} accentClassName="border-t-chart-4" />
+                      <StatCard label="Cartões vermelhos" value={statOrDash(kpis.cartoesVermelhos)} accentClassName="border-t-chart-3" />
+                      <StatCard label="Minutos totais jogados" value={statOrDash(kpis.minutosTotais)} accentClassName="border-t-chart-1" />
                       <StatCard label="Idade média (campeonato)" value={kpis.idadeMedia?.toFixed(1) ?? "—"} accentClassName="border-t-chart-5" />
                       <StatCard label="Idade média (titulares)" value={kpis.idadeMediaTitulares?.toFixed(1) ?? "—"} accentClassName="border-t-chart-5" />
                     </div>
