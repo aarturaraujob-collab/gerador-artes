@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, Pencil, Plus, Trash2, Video, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/ui/AppShell";
@@ -27,11 +27,21 @@ interface OperationalStaffPageProps {
 }
 
 function basePath(area: StaffArea): string {
-  return area === "FAFTV" ? "/cadastros/faftv" : "/cadastros/oficiais-dco";
+  if (area === "FAFTV") return "/cadastros/faftv/equipe";
+  if (area === "DCO") return "/cadastros/oficiais-dco";
+  return "/cadastros/arbitros";
 }
 
 function pageTitle(area: StaffArea): string {
-  return area === "FAFTV" ? "FAFTV" : "Oficiais DCO";
+  if (area === "FAFTV") return "FAFTV";
+  if (area === "DCO") return "Oficiais DCO";
+  return "Árbitros";
+}
+
+function pageDescription(area: StaffArea): string {
+  if (area === "FAFTV") return "Cadastro de equipe de transmissão, reutilizado em todas as partidas.";
+  if (area === "DCO") return "Cadastro de equipe de operação (DCO/Oficiais), reutilizado em todas as partidas.";
+  return "Cadastro de árbitros, assistentes, delegados e observadores, reutilizado na escala de oficiais de cada partida.";
 }
 
 export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
@@ -56,18 +66,39 @@ export function OperationalStaffPage({ area }: OperationalStaffPageProps) {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
+        {area === "FAFTV" && (
+          <Link
+            href="/cadastros/faftv"
+            className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground"
+          >
+            <ArrowLeft size={14} />
+            Voltar para FAFTV
+          </Link>
+        )}
+
         <PageHeader
+          hero
           title={pageTitle(area)}
-          description={
-            area === "FAFTV"
-              ? "Cadastro de equipe de transmissão, reutilizado em todas as partidas."
-              : "Cadastro de equipe de operação (DCO/Oficiais), reutilizado em todas as partidas."
-          }
+          description={pageDescription(area)}
           actions={
-            <Button onClick={() => navigate(`${base}/novo`)}>
-              <Plus size={16} />
-              Nova Pessoa
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {area === "FAFTV" && (
+                <>
+                  <Button variant="outline" onClick={() => navigate("/cadastros/faftv/operacoes")}>
+                    <Video size={16} />
+                    Operações
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/cadastros/faftv/pagamentos")}>
+                    <Wallet size={16} />
+                    Pagamentos
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => navigate(`${base}/novo`)}>
+                <Plus size={16} />
+                Nova Pessoa
+              </Button>
+            </div>
           }
         />
 

@@ -34,7 +34,15 @@ export class SpreadsheetImporter {
 
   async parse(file: File): Promise<ParsedSpreadsheet> {
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(new Uint8Array(buffer), { type: "array", raw: false });
+    // CSV has no charset metadata of its own, and SheetJS falls back to a
+    // non-UTF-8 guess for a byte array without a BOM — mangling accented
+    // names ("Atlético" → "AtlÃ©tico"). Decoding it as text ourselves first
+    // sidesteps that guess; XLSX files keep their own encoding info, so they
+    // still go through the binary path.
+    const isCsv = /\.csv$/i.test(file.name);
+    const workbook = isCsv
+      ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string", raw: false })
+      : XLSX.read(new Uint8Array(buffer), { type: "array", raw: false });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) throw new Error("A planilha está vazia.");
 
@@ -57,7 +65,7 @@ export class SpreadsheetImporter {
     if (rows.length === 0) throw new Error("Nenhuma partida encontrada na planilha.");
 
     const competitionName = baseName(file.name);
-    const { competitionId, count } = this.store.ingest(competitionName, rows);
+    const { competitionId, count } = await this.store.ingest(competitionName, rows);
 
     if (count === 0) throw new Error("Nenhuma partida válida na planilha.");
     return { competitionId, competitionName, count };

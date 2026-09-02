@@ -9,7 +9,7 @@ export const clubs = [
     "id": "CEO",
     "shortName": "CEO",
     "fullName": "Centro Esportivo Olhodaguense",
-    "shield": ""
+    "shield": "ceo.png"
   },
   {
     "id": "ind-atalaia",
@@ -102,78 +102,6 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "u-cse",
-    "shortName": "cse",
-    "fullName": "cse",
-    "shield": ""
-  },
-  {
-    "id": "8o-colocado",
-    "shortName": "8º Colocado",
-    "fullName": "8º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "1o-colocado",
-    "shortName": "1º Colocado",
-    "fullName": "1º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "7o-colocado",
-    "shortName": "7º Colocado",
-    "fullName": "7º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "2o-colocado",
-    "shortName": "2º Colocado",
-    "fullName": "2º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "6o-colocado",
-    "shortName": "6º Colocado",
-    "fullName": "6º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "3o-colocado",
-    "shortName": "3º Colocado",
-    "fullName": "3º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "5o-colocado",
-    "shortName": "5º Colocado",
-    "fullName": "5º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "4o-colocado",
-    "shortName": "4º Colocado",
-    "fullName": "4º Colocado",
-    "shield": ""
-  },
-  {
-    "id": "1o-gr-b-ou-e",
-    "shortName": "1º Gr. B ou E",
-    "fullName": "1º Gr. B ou E",
-    "shield": ""
-  },
-  {
-    "id": "1o-gr-c-ou-d",
-    "shortName": "1º Gr. C ou D",
-    "fullName": "1º Gr. C ou D",
-    "shield": ""
-  },
-  {
-    "id": "1o-gr-f-ou-g",
-    "shortName": "1º Gr. F ou G",
-    "fullName": "1º Gr. F ou G",
-    "shield": ""
-  },
-  {
     "id": "dimensao-saude",
     "shortName": "Dimensão Saúde",
     "fullName": "Dimensão Saúde",
@@ -198,10 +126,10 @@ export const clubs = [
     "shield": ""
   },
   {
-    "id": "cruzeiro-al",
+    "id": "cruzeiro",
     "shortName": "Cruzeiro",
     "fullName": "Cruzeiro Alagoano",
-    "shield": "cruzeiro_alagoano.png"
+    "shield": ""
   },
   {
     "id": "unec",
@@ -219,7 +147,7 @@ export const clubs = [
     "id": "chuts-fc",
     "shortName": "Chuts FC",
     "fullName": "Chuts FC",
-    "shield": ""
+    "shield": "chuts.png"
   },
   {
     "id": "chute-inicial",
@@ -243,7 +171,7 @@ export const clubs = [
     "id": "liga-penedense",
     "shortName": "Liga Penedense",
     "fullName": "Liga Penedense",
-    "shield": ""
+    "shield": "liga-penedense.png"
   },
   {
     "id": "atletico-alagoano",

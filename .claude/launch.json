@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "faf-mkt-ops-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "faf-mkt-ops-faflab-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:faflab"],
+      "port": 5174,
+      "autoPort": true
+    }
+  ]
+}

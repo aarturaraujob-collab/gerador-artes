@@ -43,6 +43,7 @@ export function StadiumsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Estádios"
           description="Cadastro de estádios usados nos jogos das competições."
           actions={

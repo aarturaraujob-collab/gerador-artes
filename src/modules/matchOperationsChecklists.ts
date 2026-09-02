@@ -73,3 +73,44 @@ export function computeOperacaoStatus(record: OperacaoStatusInput): OperacaoStat
   const checklistComplete = OPERACAO_CHECKLIST_ITEMS.every((item) => record.checklist[item.id]);
   return rolesAssigned && checklistComplete ? "pronto" : "em_preparacao";
 }
+
+/** Escala FAFTV (Coordenador/Produtor/Cinegrafista) checklist. "Live Criada?", "Cinegrafista" e "Coordenador" são travados: só marcam quando o campo correspondente já está preenchido na escala. */
+export const FAFTV_ESCALA_CHECKLIST_ITEMS: ChecklistItemDef[] = [
+  { id: "thumbnail", label: "Thumbnail" },
+  { id: "live-criada", label: "Live criada?" },
+  { id: "cinegrafista", label: "Cinegrafista" },
+  { id: "coordenador", label: "Coordenador" },
+  { id: "internet", label: "Estádio possui internet?" },
+  { id: "estrutura", label: "Estádio possui estrutura?" },
+  { id: "falha-live", label: "Live apresentou falha?" },
+];
+
+/** Checklist items that can only be checked once a prerequisite field is filled — id of the item mapped to a check against the escala record. */
+export const FAFTV_ESCALA_CHECKLIST_GATES: Record<string, (record: { broadcastLink: string; cinegrafistaStaffId: string | null; coordenadorStaffIds: string[] }) => boolean> = {
+  "live-criada": (record) => record.broadcastLink.trim().length > 0,
+  cinegrafista: (record) => record.cinegrafistaStaffId !== null,
+  coordenador: (record) => record.coordenadorStaffIds.length > 0,
+};
+
+export type ArbitragemStatus = "pendente" | "parcial" | "completo";
+
+interface ArbitragemStatusInput {
+  arbitroStaffId: string | null;
+  primeiroAssistenteStaffId: string | null;
+  segundoAssistenteStaffId: string | null;
+  delegadoStaffId: string | null;
+}
+
+/** Observador e 4º Árbitro são opcionais — o núcleo obrigatório de uma escala é árbitro + 2 assistentes + delegado. */
+export function computeArbitragemStatus(record: ArbitragemStatusInput): ArbitragemStatus {
+  const roles = [
+    record.arbitroStaffId,
+    record.primeiroAssistenteStaffId,
+    record.segundoAssistenteStaffId,
+    record.delegadoStaffId,
+  ];
+  const filled = roles.filter((value) => value !== null).length;
+  if (filled === 0) return "pendente";
+  if (filled === roles.length) return "completo";
+  return "parcial";
+}

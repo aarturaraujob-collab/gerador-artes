@@ -85,6 +85,12 @@ export class SvgDocument {
     }
   }
 
+  setAttribute(id: string, attr: string, value: string) {
+    const node = this.getNode(id);
+    if (!node) return;
+    node.element.setAttribute(attr, value);
+  }
+
   hide(id: string) {
     const node = this.getNode(id);
     if (!node) return;

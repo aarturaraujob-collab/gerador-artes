@@ -1,3 +1,5 @@
+import { publicPath } from "@/lib/publicPath";
+
 export interface AssetItem {
   name: string;
   path: string;
@@ -11,7 +13,7 @@ export interface AssetCategory {
 }
 
 function fromFolder(folder: string, files: string[]): AssetItem[] {
-  return files.map((file) => ({ name: file, path: `/assets/${folder}/${file}` }));
+  return files.map((file) => ({ name: file, path: publicPath(`/assets/${folder}/${file}`) }));
 }
 
 /**

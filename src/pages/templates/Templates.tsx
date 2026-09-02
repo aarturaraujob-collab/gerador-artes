@@ -6,7 +6,7 @@ export function Templates() {
   return (
     <AppShell>
       <div className="space-y-8">
-        <PageHeader title="Templates" description="Escolha um template para editar." />
+        <PageHeader hero title="Templates" description="Escolha um template para editar." />
         <TemplateGallery />
       </div>
     </AppShell>

@@ -31,6 +31,8 @@ export interface IMT {
   homeClubName: string;
   awayClubName: string;
   round: string;
+  /** External match reference (the REF column from the official schedule), if known — shown as "Jogo: {ref} ...". */
+  matchRef?: string | null;
   /** Sequential number within `season`, starting at 1 (see nextIMTNumber). */
   number: number;
   season: string;
@@ -50,45 +52,72 @@ export function formatIMTNumber(number: number, season: string): string {
   return `IMT ${String(number).padStart(3, "0")}/${season}`;
 }
 
+/** Formats "IMT – 03/26" — the short form used on the official document header (2-digit sequence, 2-digit year). */
+export function formatIMTShortNumber(number: number, season: string): string {
+  return `IMT – ${String(number).padStart(2, "0")}/${season.slice(-2)}`;
+}
+
+const WEEKDAYS_PT_BR = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+/** "DD/MM/AAAA" → "Terça-feira" (or "" if the date is missing/malformed — dates aren't always known yet for TBD fixtures). */
+function weekdayPtBr(date: string): string {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date);
+  if (!match) return "";
+  const [, day, month, year] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  return WEEKDAYS_PT_BR[parsed.getDay()] ?? "";
+}
+
 /** Flat view of an IMT's fields the template placeholders map onto 1:1. */
 export interface IMTPlaceholders {
   competition: string;
+  competitionUpper: string;
   season: string;
   imtNumber: string;
+  ref: string;
   home: string;
   away: string;
   oldDate: string;
+  oldWeekday: string;
   newDate: string;
-  oldTime: string;
+  newWeekday: string;
   newTime: string;
-  oldStadium: string;
+  timeStatus: string;
   newStadium: string;
+  stadiumStatus: string;
   requester: string;
   reason: string;
-  responsible: string;
-  createdAt: string;
+  issueDate: string;
+  createdStamp: string;
 }
 
 /** Builds the placeholder map from an (unsaved) IMT — the sole bridge between the domain shape and the template. */
 export function toPlaceholders(imt: Pick<IMT,
   "competitionName" | "season" | "number" | "homeClubName" | "awayClubName" |
-  "oldGame" | "newGame" | "requester" | "reason" | "responsible" | "createdAt"
+  "matchRef" | "oldGame" | "newGame" | "requester" | "reason" | "createdAt"
 >): IMTPlaceholders {
+  const stadiumChanged = imt.oldGame.stadiumName !== imt.newGame.stadiumName || imt.oldGame.cityName !== imt.newGame.cityName;
+  const timeChanged = imt.oldGame.time !== imt.newGame.time;
+
   return {
     competition: imt.competitionName,
+    competitionUpper: imt.competitionName.toUpperCase(),
     season: imt.season,
-    imtNumber: formatIMTNumber(imt.number, imt.season),
+    imtNumber: formatIMTShortNumber(imt.number, imt.season),
+    ref: imt.matchRef ?? "",
     home: imt.homeClubName,
     away: imt.awayClubName,
     oldDate: imt.oldGame.date,
+    oldWeekday: weekdayPtBr(imt.oldGame.date),
     newDate: imt.newGame.date,
-    oldTime: imt.oldGame.time,
+    newWeekday: weekdayPtBr(imt.newGame.date),
     newTime: imt.newGame.time,
-    oldStadium: `${imt.oldGame.stadiumName} — ${imt.oldGame.cityName}`,
-    newStadium: `${imt.newGame.stadiumName} — ${imt.newGame.cityName}`,
+    timeStatus: timeChanged ? "alterado" : "mantido",
+    newStadium: `${imt.newGame.stadiumName}, em ${imt.newGame.cityName}/AL`,
+    stadiumStatus: stadiumChanged ? "alterado" : "mantido",
     requester: imt.requester,
     reason: imt.reason,
-    responsible: imt.responsible,
-    createdAt: imt.createdAt.toLocaleDateString("pt-BR"),
+    issueDate: imt.createdAt.toLocaleDateString("pt-BR"),
+    createdStamp: `${imt.createdAt.toLocaleDateString("pt-BR")} às ${imt.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
   };
 }

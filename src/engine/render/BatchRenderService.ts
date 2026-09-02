@@ -31,7 +31,8 @@ export interface RenderBatchInput {
 const DEFAULT_WIDTH = 1080;
 const DEFAULT_HEIGHT = 1350;
 
-function readDimensions(svg: string): { width: number; height: number } {
+/** Reads the pixel size a rendered SVG will export at — from explicit width/height, falling back to viewBox, then a hardcoded default. Shared by anything that exports a single art outside the batch flow (e.g. the Classificação renderer). */
+export function readSvgDimensions(svg: string): { width: number; height: number } {
   const root = new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("svg");
   const width = Number.parseInt(root?.getAttribute("width") ?? "", 10);
   const height = Number.parseInt(root?.getAttribute("height") ?? "", 10);
@@ -63,23 +64,42 @@ export class BatchRenderService {
     if (matches.length === 0) return [];
 
     const config = await this.templates.load(template);
-    const batches = TemplateLayoutResolver.resolve(variantSizes(config, format), matches.length);
+    const sizes = variantSizes(config, format);
+
+    // Group by competition first, in order of first appearance — a template's
+    // shared assets (competition logo/background/round image, applied once per
+    // art from the batch's first match — see MatchTemplateRenderer.applySharedAssets)
+    // only make sense when every match in that art belongs to the same
+    // competition. Slicing the flat selection by size alone (the previous
+    // behavior) could mix competitions into one art whenever the user selected
+    // matches from more than one competition, showing the wrong badge for
+    // every match after the first.
+    const byCompetition = new Map<string, Match[]>();
+    for (const match of matches) {
+      const group = byCompetition.get(match.competitionId);
+      if (group) group.push(match);
+      else byCompetition.set(match.competitionId, [match]);
+    }
 
     const results: RenderResult[] = [];
-    let cursor = 0;
 
-    for (const size of batches) {
-      const group = matches.slice(cursor, cursor + size);
-      cursor += group.length;
-      if (group.length === 0) break;
+    for (const competitionMatches of byCompetition.values()) {
+      const batches = TemplateLayoutResolver.resolve(sizes, competitionMatches.length);
+      let cursor = 0;
 
-      const svg = await this.renderer.render(template, group, format);
-      results.push({
-        index: results.length + 1,
-        svg,
-        matches: [...group],
-        ...readDimensions(svg),
-      });
+      for (const size of batches) {
+        const group = competitionMatches.slice(cursor, cursor + size);
+        cursor += group.length;
+        if (group.length === 0) break;
+
+        const svg = await this.renderer.render(template, group, format);
+        results.push({
+          index: results.length + 1,
+          svg,
+          matches: [...group],
+          ...readSvgDimensions(svg),
+        });
+      }
     }
 
     return results;

@@ -24,6 +24,7 @@ import {
   type OperacaoStatus,
 } from "@/modules/matchOperationsChecklists";
 import { assetRepository } from "@/engine";
+import { clubDisplayName } from "@/modules/clubDisplay";
 
 const FAFTV_STATUS_LABEL: Record<FaftvStatus, string> = {
   planejamento: "Planejamento",
@@ -97,8 +98,6 @@ export function MatchPage() {
     );
   }
 
-  const home = store.clubsById.get(match.homeClubId);
-  const away = store.clubsById.get(match.awayClubId);
   const stadium = store.stadiumsById.get(match.stadiumId);
 
   const faftvTone = ops.faftv.status === "pronto" ? "success" : ops.faftv.status === "em_preparacao" ? "warning" : "neutral";
@@ -117,15 +116,16 @@ export function MatchPage() {
         </Link>
 
         <PageHeader
+          hero
           title="Central Operacional da Partida"
           description={`${match.round || "Rodada a definir"} · ${match.date || "Data a definir"}${match.time ? ` · ${match.time}` : ""}${stadium ? ` · ${stadium.name}` : ""}`}
         />
 
         <Card className="flex items-center justify-center gap-3 p-4 text-sm font-semibold text-foreground">
           <img src={assetRepository.clubShieldPath(match.homeClubId)} alt="" className="h-8 w-8 object-contain" />
-          <span>{home?.shortName ?? match.homeClubId}</span>
+          <span>{clubDisplayName(match.homeClubId, store.clubsById)}</span>
           <span className="text-foreground-muted">×</span>
-          <span>{away?.shortName ?? match.awayClubId}</span>
+          <span>{clubDisplayName(match.awayClubId, store.clubsById)}</span>
           <img src={assetRepository.clubShieldPath(match.awayClubId)} alt="" className="h-8 w-8 object-contain" />
         </Card>
 

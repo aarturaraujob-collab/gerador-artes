@@ -11,11 +11,19 @@ import { Typography } from "@/components/ui/typography";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Card } from "@/components/ui/card";
 import { dashboardModules } from "@/config/dashboard";
+import { DailyActionsSection } from "@/pages/dashboard/dailyActionWidgets";
 import { ACTIVITY_ICON } from "@/config/activityIcons";
 import { useDataStore } from "@/hooks/useDataStore";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { useFavoriteTemplates } from "@/hooks/useFavoriteTemplates";
 import { templates } from "@/templates/templates";
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 export function Home() {
   const store = useDataStore();
@@ -31,11 +39,15 @@ export function Home() {
     <AppShell>
       <div className="space-y-10">
         <div>
-          <Typography variant="h1">Bem-vindo ao Urano FAF</Typography>
+          <Typography variant="h1" className="text-4xl font-display sm:text-5xl">
+            {getGreeting()}, FAF!
+          </Typography>
           <Typography variant="subtitle" className="mt-2">
-            Centro de operações de marketing e comunicação da Federação Alagoana de Futebol.
+            Seja bem-vindo ao Urano: o Centro de operações do MKT da FAF.
           </Typography>
         </div>
+
+        <DailyActionsSection />
 
         <Section title="Resumo operacional">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

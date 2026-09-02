@@ -18,7 +18,9 @@ interface OperationalStaffFormProps {
 }
 
 function basePath(area: StaffArea): string {
-  return area === "FAFTV" ? "/cadastros/faftv" : "/cadastros/oficiais-dco";
+  if (area === "FAFTV") return "/cadastros/faftv/equipe";
+  if (area === "DCO") return "/cadastros/oficiais-dco";
+  return "/cadastros/arbitros";
 }
 
 interface FormState {
@@ -27,11 +29,12 @@ interface FormState {
   cpf: string;
   phone: string;
   address: string;
+  pixKey: string;
   role: string;
 }
 
 function emptyForm(area: StaffArea): FormState {
-  return { name: "", photo: "", cpf: "", phone: "", address: "", role: rolesForArea(area)[0] };
+  return { name: "", photo: "", cpf: "", phone: "", address: "", pixKey: "", role: rolesForArea(area)[0] };
 }
 
 function fileToDataUri(file: File): Promise<string> {
@@ -66,7 +69,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
     const existing = store.staff.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -75,12 +78,12 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
         cpf: existing.cpf ?? "",
         phone: existing.phone ?? "",
         address: existing.address ?? "",
+        pixKey: existing.pixKey ?? "",
         role: existing.role,
       });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.staff]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -104,6 +107,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
         cpf: form.cpf.trim() || undefined,
         phone: form.phone.trim() || undefined,
         address: form.address.trim() || undefined,
+        pixKey: form.pixKey.trim() || undefined,
         role: form.role,
         area,
       };
@@ -133,7 +137,13 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Registro não encontrado.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Registro não encontrado.</p>
+          )}
         </div>
       </AppShell>
     );
@@ -142,7 +152,7 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <PageHeader title={isEditing ? "Editar Pessoa" : "Nova Pessoa"} />
+        <PageHeader hero title={isEditing ? "Editar Pessoa" : "Nova Pessoa"} />
 
         <Card className="space-y-4 p-6">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -191,14 +201,25 @@ export function OperationalStaffForm({ area }: OperationalStaffFormProps) {
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-foreground-secondary">Endereço</label>
-            <Input
-              value={form.address}
-              onChange={(event) => update("address", event.target.value)}
-              placeholder="Rua, número, bairro"
-              className="mt-2 h-11"
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-semibold text-foreground-secondary">Endereço</label>
+              <Input
+                value={form.address}
+                onChange={(event) => update("address", event.target.value)}
+                placeholder="Rua, número, bairro"
+                className="mt-2 h-11"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground-secondary">Chave Pix</label>
+              <Input
+                value={form.pixKey}
+                onChange={(event) => update("pixKey", event.target.value)}
+                placeholder="CPF, telefone, e-mail ou chave aleatória"
+                className="mt-2 h-11"
+              />
+            </div>
           </div>
 
           <div>

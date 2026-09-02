@@ -13,6 +13,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type Club } from "@/modules/dataStore";
+import { resolveClubShieldValue } from "@/engine/assets/AssetRepository";
+import { assetRepository } from "@/engine";
 
 const BRAZILIAN_STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
@@ -74,6 +76,71 @@ function fileToDataUri(file: File): Promise<string> {
   });
 }
 
+function toHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function colorDistance(a: [number, number, number], b: [number, number, number]): number {
+  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+}
+
+/** Amostra os pixels do escudo (ignorando fundo transparente/quase-branco/quase-preto) e devolve as duas cores mais frequentes. */
+async function extractDominantColors(dataUri: string): Promise<{ primary: string; secondary: string } | null> {
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Falha ao ler a imagem."));
+    image.src = dataUri;
+  });
+
+  const size = 48;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(image, 0, 0, size, size);
+  const pixels = ctx.getImageData(0, 0, size, size).data;
+
+  const BUCKET = 24;
+  const buckets = new Map<string, { count: number; r: number; g: number; b: number }>();
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+    const a = pixels[i + 3];
+    if (a < 128) continue;
+    if (r > 235 && g > 235 && b > 235) continue;
+    if (r < 20 && g < 20 && b < 20) continue;
+    const key = [r, g, b].map((channel) => Math.round(channel / BUCKET) * BUCKET).join(",");
+    const bucket = buckets.get(key) ?? { count: 0, r: 0, g: 0, b: 0 };
+    bucket.count += 1;
+    bucket.r += r;
+    bucket.g += g;
+    bucket.b += b;
+    buckets.set(key, bucket);
+  }
+
+  const sorted = [...buckets.values()]
+    .map((bucket) => ({
+      count: bucket.count,
+      r: Math.round(bucket.r / bucket.count),
+      g: Math.round(bucket.g / bucket.count),
+      b: Math.round(bucket.b / bucket.count),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  if (sorted.length === 0) return null;
+
+  const primary = sorted[0];
+  const secondary =
+    sorted.find((candidate) => colorDistance([candidate.r, candidate.g, candidate.b], [primary.r, primary.g, primary.b]) > 60) ??
+    sorted[1] ??
+    primary;
+
+  return { primary: toHex(primary.r, primary.g, primary.b), secondary: toHex(secondary.r, secondary.g, secondary.b) };
+}
+
 export function ClubForm() {
   const { id: editingId } = useParams<{ id?: string }>();
   const [, navigate] = useLocation();
@@ -85,7 +152,11 @@ export function ClubForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
+    // Clubes agora vêm do Supabase (Fase 1 da migração) — carregam
+    // assincronamente, então esse efeito precisa reagir a `store.clubs`
+    // preenchendo depois do primeiro render, não só na chegada da rota.
+    // `loaded` no guard acima garante que só aplicamos uma vez.
     const existing = store.clubs.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -100,18 +171,28 @@ export function ClubForm() {
       });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.clubs]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
   async function handleShieldUpload(file: File) {
-    update("shield", await fileToDataUri(file));
+    const dataUri = await fileToDataUri(file);
+    const colors = await extractDominantColors(dataUri).catch(() => null);
+    setForm((current) => ({
+      ...current,
+      shield: dataUri,
+      ...(colors ? { primaryColor: colors.primary, secondaryColor: colors.secondary } : {}),
+    }));
   }
 
   const cityOptions = store.cities.map((city) => ({ value: city.id, label: city.name }));
+
+  // Um clube sem `shield` salvo ainda pode ter um escudo visível em todo o
+  // resto do app via convenção de nome de arquivo (ver AssetRepository.clubShieldPath) —
+  // o preview aqui precisa cair no mesmo fallback, não só no valor bruto do form.
+  const shieldPreview = form.shield ? resolveClubShieldValue(form.shield) : editingId ? assetRepository.clubShieldPath(editingId) : null;
 
   async function handleSave() {
     const result = clubFormSchema.safeParse(form);
@@ -159,7 +240,13 @@ export function ClubForm() {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Clube não encontrado.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Clube não encontrado.</p>
+          )}
         </div>
       </AppShell>
     );
@@ -168,7 +255,7 @@ export function ClubForm() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <PageHeader title={isEditing ? "Editar Clube" : "Novo Clube"} />
+        <PageHeader hero title={isEditing ? "Editar Clube" : "Novo Clube"} />
 
         <Card className="space-y-4 p-6">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -259,8 +346,15 @@ export function ClubForm() {
           <div>
             <label className="text-sm font-semibold text-foreground-secondary">Escudo</label>
             <div className="mt-2 flex items-center gap-3">
-              {form.shield && (
-                <img src={form.shield} alt="" className="h-14 w-14 rounded-lg border border-border object-contain" />
+              {shieldPreview && (
+                <img
+                  src={shieldPreview}
+                  alt=""
+                  className="h-14 w-14 rounded-lg border border-border object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.visibility = "hidden";
+                  }}
+                />
               )}
               <input
                 type="file"

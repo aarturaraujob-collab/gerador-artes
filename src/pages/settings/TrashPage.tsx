@@ -94,6 +94,7 @@ export function TrashPage() {
     <AppShell>
       <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
+          hero
           title="Lixeira"
           description="Nada é excluído para sempre por engano — restaure ou exclua definitivamente aqui."
         />

@@ -4,6 +4,10 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
+  // Production is served as https://www.futeboldealagoas.net/urano.
+  // Keep the development server at the root for the existing local workflow.
+  base: process.env.NODE_ENV === "production" ? "/urano/" : "/",
+
   plugins: [
     react(),
     tailwindcss(),

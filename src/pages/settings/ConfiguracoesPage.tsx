@@ -42,7 +42,7 @@ export function ConfiguracoesPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-10">
-        <PageHeader title="Configurações" description="Preferências do Urano FAF." />
+        <PageHeader hero title="Configurações" description="Preferências do Urano FAF." />
 
         <Section title="Tema">
           <Card className="flex flex-wrap gap-2 p-4">

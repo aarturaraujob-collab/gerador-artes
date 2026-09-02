@@ -1,8 +1,8 @@
 <!--
-  MODELO PROVISÓRIO — mesmo aviso de imt.html: este layout não foi validado
-  contra um documento oficial de referência. Ajustar aqui e em document.css
-  quando houver um modelo oficial — nenhum outro módulo (renderer, pdf,
-  repository, types, UI) precisa mudar.
+  Mesma identidade visual do IMT (ver imt.html/document.css) — timbre da FAF,
+  Arial, paleta verde/dourada, assinatura institucional e selo de geração no
+  rodapé. Ajustar aqui e em document.css se um novo modelo oficial chegar —
+  nenhum outro módulo (renderer, pdf, repository, types, UI) precisa mudar.
 
   Fragmento puro — sem <html>/<head>/<body>, sem lógica própria. Marcação
   estática + placeholders {{chave}} (escapados) e {{{chave}}} (blocos HTML
@@ -10,28 +10,21 @@
   renderDetailedTable.ts via replace de texto simples.
 -->
 <div class="imt-document">
-  <div class="imt-provisional-notice">
-    Modelo provisório — pendente de validação com o documento oficial da FAF
-  </div>
-
-  <header class="imt-header">
-    <div class="imt-header-title">
+  <header class="imt-letterhead">
+    <img class="imt-logo" src="/assets/logos/faf.png" alt="FAF" />
+    <div class="imt-letterhead-text">
       <p class="imt-federation">Federação Alagoana de Futebol</p>
-      <h1>Tabela Detalhada</h1>
+      <p class="imt-competition-name">{{competition}}</p>
     </div>
-    <div class="imt-header-number">v{{version}}</div>
+    <div class="imt-number-badge">v{{version}}</div>
   </header>
 
-  <section class="imt-meta">
-    <div class="imt-meta-item">
-      <span class="imt-label">Competição</span>
-      <span class="imt-value">{{competition}}</span>
-    </div>
-    <div class="imt-meta-item">
-      <span class="imt-label">Temporada</span>
-      <span class="imt-value">{{season}}</span>
-    </div>
-  </section>
+  <h1 class="imt-title">Tabela Detalhada</h1>
+
+  <div class="imt-date-box">
+    <span class="imt-label">Temporada</span>
+    <span class="imt-date-value">{{season}}</span>
+  </div>
 
   <section class="dt-standings">
     <span class="imt-label">Classificação</span>
@@ -59,7 +52,13 @@
     {{{roundsSections}}}
   </section>
 
+  <div class="imt-signature-block">
+    <p class="imt-signature-mark">Diretoria de Competições FAF</p>
+    <p class="imt-signature-name">Diretoria de Competições FAF</p>
+    <p class="imt-signature-org">Federação Alagoana de Futebol</p>
+  </div>
+
   <footer class="imt-footer">
-    <p>Documento gerado automaticamente pelo Urano FAF em {{generatedAt}}.</p>
+    <p>Documento criado em {{generatedAt}}.</p>
   </footer>
 </div>

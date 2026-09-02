@@ -16,6 +16,7 @@ export function HistoryPage() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
+          hero
           title="Histórico"
           description="Cadastros, importações e exportações recentes — guardado neste navegador, sem backend ainda."
         />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Check } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -24,13 +25,31 @@ import { templates as templateRegistry } from "@/templates/templates";
 import { useDataStore } from "@/hooks/useDataStore";
 import { dataStore, type BackgroundAssets, type CompetitionRecord, type ExtractedRow } from "@/modules/dataStore";
 import { assetRepository, spreadsheetImporter } from "@/engine";
-import { emptyBackground } from "@/modules/competitionRepository";
+import {
+  emptyBackground,
+  emptyCompetitionFormat,
+  emptyPontosPhase,
+  emptyMataMataPhase,
+  describeCompetitionFormat,
+  computeFormatSeeding,
+  type CompetitionFormat,
+  type CompetitionPhaseConfig,
+  type CompetitionPhaseType,
+  type PhaseMatchup,
+} from "@/modules/competitionRepository";
 import { groupCompetitionsBySeries } from "@/modules/competitionSeries";
-import { detectUnmatchedEntities, hasUnmatchedEntities, type UnmatchedEntities } from "@/modules/importPreview";
+import {
+  detectUnmatchedEntities,
+  hasUnmatchedEntities,
+  applyEntityAliases,
+  type UnmatchedEntities,
+  type EntityAliases,
+} from "@/modules/importPreview";
 import { UnmatchedEntitiesDialog } from "@/components/import/UnmatchedEntitiesDialog";
 import { backgroundRepository, type BackgroundAsset } from "@/modules/backgroundRepository";
 
-const STEP_LABELS = ["Dados", "Assets", "Importação", "Templates", "Resumo"];
+const STEP_LABELS = ["Dados", "Fórmula", "Assets", "Importação", "Templates", "Resumo"];
+const LAST_STEP = STEP_LABELS.length;
 
 const CATEGORY_OPTIONS = ["Profissional", "Base", "Amador", "Universitário"] as const;
 const AGE_GROUP_OPTIONS = ["Livre", "Sub-13", "Sub-15", "Sub-17", "Sub-20", "Máster"] as const;
@@ -54,6 +73,7 @@ interface FormState {
   logo: string;
   background: BackgroundAssets;
   templates: string[];
+  format: CompetitionFormat;
 }
 
 function emptyForm(): FormState {
@@ -68,6 +88,7 @@ function emptyForm(): FormState {
     logo: "",
     background: emptyBackground(),
     templates: [],
+    format: emptyCompetitionFormat(),
   };
 }
 
@@ -136,7 +157,7 @@ export function CompetitionWizard() {
   }, []);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
     const existing = store.competitions.find((item) => item.id === editingId);
     if (existing) {
       setForm({
@@ -150,12 +171,12 @@ export function CompetitionWizard() {
         logo: existing.logo,
         background: existing.background,
         templates: existing.templates,
+        format: existing.format ?? emptyCompetitionFormat(),
       });
       setLoaded(true);
     }
-    // Only sync from the store once, on arrival — further edits are local until saved.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+    // Only sync from the store once it resolves — further edits are local until saved.
+  }, [isEditing, editingId, loaded, store.competitions]);
 
   const existingMatchCount = form.id ? store.matches.filter((match) => match.competitionId === form.id).length : 0;
   const seriesOptions = groupCompetitionsBySeries(store.competitions).map((group) => ({
@@ -164,20 +185,79 @@ export function CompetitionWizard() {
   }));
   const templateOptions = templateRegistry.map((template) => ({ value: template.id, label: template.name }));
 
+  const phaseSeeding = computeFormatSeeding(form.format.phases);
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function setPhases(phases: CompetitionPhaseConfig[]) {
+    setForm((current) => ({ ...current, format: { ...current.format, phases } }));
+  }
+
+  function addPhase(type: CompetitionPhaseType) {
+    const phase = type === "pontos" ? emptyPontosPhase(`Fase ${form.format.phases.length + 1}`) : emptyMataMataPhase();
+    setPhases([...form.format.phases, phase]);
+  }
+
+  function updatePhase(id: string, patch: Partial<CompetitionPhaseConfig>) {
+    setPhases(form.format.phases.map((phase) => (phase.id === id ? { ...phase, ...patch } : phase)));
+  }
+
+  function changePhaseType(id: string, type: CompetitionPhaseType) {
+    const current = form.format.phases.find((phase) => phase.id === id);
+    const name = current?.name ?? "";
+    const replacement = type === "pontos" ? emptyPontosPhase(name) : emptyMataMataPhase(name);
+    setPhases(form.format.phases.map((phase) => (phase.id === id ? { ...replacement, id } : phase)));
+  }
+
+  function removePhase(id: string) {
+    setPhases(form.format.phases.filter((phase) => phase.id !== id));
+  }
+
+  function movePhase(id: string, direction: -1 | 1) {
+    const phases = [...form.format.phases];
+    const index = phases.findIndex((phase) => phase.id === id);
+    const targetIndex = index + direction;
+    if (index === -1 || targetIndex < 0 || targetIndex >= phases.length) return;
+    [phases[index], phases[targetIndex]] = [phases[targetIndex], phases[index]];
+    setPhases(phases);
+  }
+
+  function addMatchup(phaseId: string) {
+    const matchup: PhaseMatchup = { id: crypto.randomUUID(), home: "", away: "" };
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    updatePhase(phaseId, { matchups: [...(phase?.matchups ?? []), matchup] });
+  }
+
+  function updateMatchup(phaseId: string, matchupId: string, patch: Partial<PhaseMatchup>) {
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    if (!phase) return;
+    updatePhase(phaseId, {
+      matchups: (phase.matchups ?? []).map((matchup) => (matchup.id === matchupId ? { ...matchup, ...patch } : matchup)),
+    });
+  }
+
+  function removeMatchup(phaseId: string, matchupId: string) {
+    const phase = form.format.phases.find((item) => item.id === phaseId);
+    if (!phase) return;
+    updatePhase(phaseId, { matchups: (phase.matchups ?? []).filter((matchup) => matchup.id !== matchupId) });
+  }
+
   function canAdvanceFromStep1(): boolean {
-    return form.id.trim().length > 0 && form.name.trim().length > 0;
+    return form.name.trim().length > 0 && /^[A-Za-z0-9_-]+$/.test(form.id.trim());
   }
 
   function goNext() {
     if (step === 1 && !canAdvanceFromStep1()) {
-      toast.error("Preencha ao menos Nome e ID para continuar.");
+      toast.error(
+        form.id.trim().length === 0
+          ? "Preencha ao menos Nome e ID para continuar."
+          : "O ID deve conter apenas letras, números, hífen ou underscore.",
+      );
       return;
     }
-    setStep((current) => Math.min(5, current + 1));
+    setStep((current) => Math.min(LAST_STEP, current + 1));
   }
 
   function goBack() {
@@ -212,11 +292,11 @@ export function CompetitionWizard() {
     await runImport();
   }
 
-  async function runImport() {
-    if (!importPreview || !form.id) return;
+  async function runImport(rows: ExtractedRow[] = importPreview?.rows ?? []) {
+    if (!form.id || rows.length === 0) return;
     setImporting(true);
     try {
-      const { count } = dataStore.importMatchesForCompetition(form.id, importPreview.rows);
+      const { count } = await dataStore.importMatchesForCompetition(form.id, rows);
       setImportConfirmed(true);
       toast.success(`${count} jogo(s) importado(s).`);
     } catch (error) {
@@ -246,6 +326,7 @@ export function CompetitionWizard() {
         logo: form.logo,
         background: form.background,
         templates: form.templates,
+        format: form.format,
         active: true,
       };
 
@@ -277,7 +358,13 @@ export function CompetitionWizard() {
     return (
       <AppShell>
         <div className="mx-auto max-w-3xl">
-          <p className="text-sm text-foreground-muted">Competição não encontrada.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Competição não encontrada.</p>
+          )}
         </div>
       </AppShell>
     );
@@ -287,6 +374,7 @@ export function CompetitionWizard() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
+          hero
           title={isEditing ? "Editar Competição" : "Nova Competição"}
           description="Cadastro guiado em 5 etapas — nada precisa ser editado por fora daqui."
         />
@@ -417,6 +505,202 @@ export function CompetitionWizard() {
           )}
 
           {step === 2 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-foreground-secondary">
+                  Monte as fases na ordem em que são disputadas. Qualquer fase pode ser pontos corridos ou
+                  mata-mata — inclusive a primeira, para competições que já começam eliminando. Cada grupo e
+                  cada confronto recebe automaticamente uma letra (Grupo A, B, C…), na sequência oficial da FAF.
+                </p>
+              </div>
+
+              {form.format.phases.length === 0 && (
+                <p className="rounded-xl bg-muted p-4 text-sm text-foreground-muted">
+                  Nenhuma fase definida ainda.
+                </p>
+              )}
+
+              <div className="space-y-3">
+                {form.format.phases.map((phase, index) => {
+                  const seeding = phaseSeeding[index];
+                  const matchupOptions = seeding.availableOptions.map((label) => ({ value: label, label }));
+                  return (
+                  <div key={phase.id} className="rounded-xl border border-border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex shrink-0 flex-col">
+                        <IconButton
+                          aria-label="Mover fase para cima"
+                          title="Mover fase para cima"
+                          onClick={() => movePhase(phase.id, -1)}
+                          disabled={index === 0}
+                        >
+                          <ChevronUp size={14} />
+                        </IconButton>
+                        <IconButton
+                          aria-label="Mover fase para baixo"
+                          title="Mover fase para baixo"
+                          onClick={() => movePhase(phase.id, 1)}
+                          disabled={index === form.format.phases.length - 1}
+                        >
+                          <ChevronDown size={14} />
+                        </IconButton>
+                      </div>
+                      <span className="w-6 shrink-0 text-center text-xs font-semibold text-foreground-muted">
+                        {index + 1}ª
+                      </span>
+                      <Input
+                        value={phase.name}
+                        onChange={(event) => updatePhase(phase.id, { name: event.target.value })}
+                        placeholder="Nome da fase"
+                        className="h-10 min-w-[10rem] flex-1"
+                      />
+                      <Select value={phase.type} onValueChange={(value) => changePhaseType(phase.id, value as CompetitionPhaseType)}>
+                        <SelectTrigger className="h-10 w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pontos">Pontos corridos</SelectItem>
+                          <SelectItem value="mata-mata">Mata-mata</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <IconButton aria-label="Remover fase" title="Remover fase" onClick={() => removePhase(phase.id)}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </div>
+
+                    {phase.type === "pontos" && seeding.letters.length > 0 && (
+                      <p className="mt-2 pl-9 text-xs text-foreground-muted">
+                        Grupo(s): {seeding.letters.map((letter) => `Grupo ${letter}`).join(", ")}
+                      </p>
+                    )}
+
+                    {phase.type === "pontos" ? (
+                      <div className="mt-3 grid gap-3 pl-9 sm:grid-cols-2">
+                        <div>
+                          <label className="text-xs font-semibold text-foreground-secondary">Grupos</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={phase.groupCount ?? 1}
+                            onChange={(event) =>
+                              updatePhase(phase.id, { groupCount: Math.max(1, Number(event.target.value) || 1) })
+                            }
+                            className="mt-1 h-10"
+                          />
+                          <p className="mt-1 text-xs text-foreground-muted">1 = grupo único (todos contra todos).</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground-secondary">Classificados por grupo</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={phase.advancePerGroup ?? 0}
+                            onChange={(event) =>
+                              updatePhase(phase.id, { advancePerGroup: Math.max(0, Number(event.target.value) || 0) })
+                            }
+                            className="mt-1 h-10"
+                          />
+                          <p className="mt-1 text-xs text-foreground-muted">0 se esta fase encerrar a competição.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-3 pl-9">
+                        <div className="w-40">
+                          <label className="text-xs font-semibold text-foreground-secondary">Formato</label>
+                          <Select
+                            value={String(phase.legs ?? 1)}
+                            onValueChange={(value) => updatePhase(phase.id, { legs: Number(value) as 1 | 2 })}
+                          >
+                            <SelectTrigger className="mt-1 h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Jogo único</SelectItem>
+                              <SelectItem value="2">Ida e volta</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between gap-3">
+                            <label className="text-xs font-semibold text-foreground-secondary">
+                              Chaveamento — quem pega quem
+                            </label>
+                            <Button type="button" variant="outline" size="sm" onClick={() => addMatchup(phase.id)}>
+                              <Plus size={14} />
+                              Adicionar confronto
+                            </Button>
+                          </div>
+                          <p className="mt-1 text-xs text-foreground-muted">
+                            Sempre por seleção — só posições definidas por uma fase anterior (ex.: "1º Grupo A",
+                            "Vencedor Grupo C"). Um clube nunca entra direto: só chega a uma fase sendo
+                            classificado na fase anterior.
+                          </p>
+
+                          {matchupOptions.length === 0 && (
+                            <p className="mt-2 rounded-xl bg-warning/10 p-3 text-xs text-warning-solid">
+                              Nenhuma opção disponível ainda — esta fase precisa de uma fase anterior (de pontos
+                              corridos ou mata-mata) para gerar as posições que os confrontos podem usar.
+                            </p>
+                          )}
+
+                          {(phase.matchups ?? []).length === 0 ? (
+                            <p className="mt-2 rounded-xl bg-muted p-3 text-sm text-foreground-muted">
+                              Nenhum confronto definido ainda.
+                            </p>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              {(phase.matchups ?? []).map((matchup, matchupIndex) => (
+                                <div key={matchup.id} className="flex flex-wrap items-center gap-2">
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground-secondary">
+                                    {seeding.letters[matchupIndex] ?? "?"}
+                                  </span>
+                                  <Combobox
+                                    className="h-10 min-w-[8rem] flex-1"
+                                    options={matchupOptions}
+                                    value={matchup.home || undefined}
+                                    onValueChange={(value) => updateMatchup(phase.id, matchup.id, { home: value })}
+                                    placeholder="Selecione"
+                                    searchPlaceholder="Buscar..."
+                                  />
+                                  <span className="text-xs text-foreground-muted">×</span>
+                                  <Combobox
+                                    className="h-10 min-w-[8rem] flex-1"
+                                    options={matchupOptions}
+                                    value={matchup.away || undefined}
+                                    onValueChange={(value) => updateMatchup(phase.id, matchup.id, { away: value })}
+                                    placeholder="Selecione"
+                                    searchPlaceholder="Buscar..."
+                                  />
+                                  <IconButton
+                                    aria-label="Remover confronto"
+                                    title="Remover confronto"
+                                    onClick={() => removeMatchup(phase.id, matchup.id)}
+                                  >
+                                    <Trash2 size={16} />
+                                  </IconButton>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => addPhase("pontos")}>
+                  <Plus size={14} />
+                  Adicionar fase de pontos corridos
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => addPhase("mata-mata")}>
+                  <Plus size={14} />
+                  Adicionar fase de mata-mata
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
             <div className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <AssetUploadField
@@ -463,7 +747,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-semibold text-foreground-secondary">Planilha (CSV ou XLSX)</label>
@@ -519,7 +803,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="space-y-3">
               <p className="text-sm text-foreground-secondary">Escolha os templates disponíveis para esta competição.</p>
               <MultiSelect
@@ -532,7 +816,7 @@ export function CompetitionWizard() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <SummaryPreview label="Logo" src={form.logo} />
@@ -552,6 +836,11 @@ export function CompetitionWizard() {
                   <p className="text-2xl font-bold text-foreground">{summaryRounds.size}</p>
                   <p className="text-xs text-foreground-muted">rodadas</p>
                 </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-foreground-secondary">Fórmula de disputa</p>
+                <p className="mt-1 text-sm text-foreground-secondary">{describeCompetitionFormat(form.format)}</p>
               </div>
 
               <div>
@@ -581,7 +870,7 @@ export function CompetitionWizard() {
           <Button type="button" variant="outline" onClick={goBack} disabled={step === 1}>
             Voltar
           </Button>
-          {step < 5 && (
+          {step < LAST_STEP && (
             <Button type="button" onClick={goNext}>
               Avançar
             </Button>
@@ -592,10 +881,14 @@ export function CompetitionWizard() {
       <UnmatchedEntitiesDialog
         open={pendingUnmatched !== null}
         entities={pendingUnmatched}
+        store={store}
         onCancel={() => setPendingUnmatched(null)}
-        onConfirm={() => {
+        onConfirm={(aliases: EntityAliases) => {
           setPendingUnmatched(null);
-          void runImport();
+          if (!importPreview) return;
+          const rewritten = applyEntityAliases(store, importPreview.rows, aliases);
+          setImportPreview({ ...importPreview, rows: rewritten });
+          void runImport(rewritten);
         }}
       />
     </AppShell>

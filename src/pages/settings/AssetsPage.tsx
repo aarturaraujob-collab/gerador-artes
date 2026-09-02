@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { publicPath } from "@/lib/publicPath";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -180,12 +181,13 @@ export function AssetsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Gerenciador de Assets"
           description="Escudos, logos, backgrounds e demais arquivos usados na geração de artes — tudo pela interface, sem precisar abrir a pasta do projeto."
         />
 
         <Tabs defaultValue="escudos">
-          <TabsList className="flex-wrap">
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="escudos">
               Escudos<span className="ml-1.5 text-foreground-muted">{store.clubs.length}</span>
             </TabsTrigger>
@@ -246,7 +248,7 @@ export function AssetsPage() {
                   <AssetManagedCard
                     key={competition.id}
                     name={competition.name}
-                    imageSrc={competition.logo ? assetRepository.logoPath(competition.logo) : "/assets/logos/faf.png"}
+                    imageSrc={competition.logo ? assetRepository.logoPath(competition.logo) : publicPath("/assets/logos/faf.png")}
                     onUpload={(file) => void handleCompetitionLogoUpload(competition.id, file)}
                     onRemove={competition.logo ? () => void handleCompetitionLogoRemove(competition.id) : undefined}
                   />

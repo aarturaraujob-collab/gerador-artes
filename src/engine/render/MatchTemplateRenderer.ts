@@ -2,14 +2,10 @@ import { AssetRepository } from "@/engine/assets/AssetRepository";
 import { TemplateResolver } from "@/engine/core/TemplateResolver";
 import type { TemplateConfig, TemplateFormat } from "@/engine/core/TemplateConfig";
 import { SvgDocument } from "@/engine/document/SvgDocument";
-import { fitText } from "@/engine/document/fitText";
-import { applyAlignment } from "@/engine/layout/TextAlignmentEngine";
 import { formatDateBadge, formatHeader, parseMatchDate } from "@/engine/render/dateFormat";
+import { applyTextField, slotId } from "@/engine/render/templateFields";
 import type { DataStore, Match } from "@/modules/dataStore";
-
-function slotId(base: string, index: number): string {
-  return index === 0 ? base : `${base}_${index + 1}`;
-}
+import { matchPhaseLegLabel } from "@/modules/knockoutBracket";
 
 /** Blank until a result is known — matches the "no goals yet" state as well as templates with no score field at all. */
 function formatGoals(goals: number | null): string {
@@ -37,13 +33,13 @@ export class MatchTemplateRenderer {
     this.templates.diagnose(path, svg, config);
     const document = new SvgDocument(svg);
 
-    await Promise.all(matches.map((match, index) => this.applyMatch(document, config, match, index)));
-    await this.applySharedAssets(document, config, matches[0]);
+    await Promise.all(matches.map((match, index) => this.applyMatch(document, config, match, index, matches.length)));
+    await this.applySharedAssets(document, config, matches[0], matches.length);
 
     return document.toString();
   }
 
-  private async applyMatch(document: SvgDocument, config: TemplateConfig, match: Match, index: number): Promise<void> {
+  private async applyMatch(document: SvgDocument, config: TemplateConfig, match: Match, index: number, games: number): Promise<void> {
     const date = parseMatchDate(match.date);
     const stadium = this.store.stadiumsById.get(match.stadiumId)?.name ?? "";
     const city = this.store.citiesById.get(match.cityId)?.name ?? "";
@@ -52,20 +48,20 @@ export class MatchTemplateRenderer {
       this.assets.getClubShieldDataUri(match.awayClubId),
     ]);
 
-    this.setText(document, config, "txt_dia", index, date.weekday);
-    this.setText(document, config, "txt_data", index, formatDateBadge(date));
-    this.setText(document, config, "txt_hora", index, match.time);
-    this.setText(document, config, "txt_cidade", index, city.toUpperCase());
-    this.setText(document, config, "txt_estadio", index, stadium.toUpperCase());
+    applyTextField(document, config, "txt_dia", index, date.weekday, games);
+    applyTextField(document, config, "txt_data", index, formatDateBadge(date), games);
+    applyTextField(document, config, "txt_hora", index, match.time, games);
+    applyTextField(document, config, "txt_cidade", index, city.toUpperCase(), games);
+    applyTextField(document, config, "txt_estadio", index, stadium.toUpperCase(), games);
 
     // Resultados do Dia score fields — no-op today on templates whose SVG
     // doesn't declare these ids yet (e.g. jogos-do-dia); populates
     // automatically the moment a template adds them (CP7).
-    if (document.getNode(slotId("txt_placar_mandante", index))) {
-      this.setText(document, config, "txt_placar_mandante", index, formatGoals(match.homeGoals));
+    if (document.getNode(slotId("txt_placar_home", index))) {
+      applyTextField(document, config, "txt_placar_home", index, formatGoals(match.homeGoals), games);
     }
-    if (document.getNode(slotId("txt_placar_visitante", index))) {
-      this.setText(document, config, "txt_placar_visitante", index, formatGoals(match.awayGoals));
+    if (document.getNode(slotId("txt_placar_away", index))) {
+      applyTextField(document, config, "txt_placar_away", index, formatGoals(match.awayGoals), games);
     }
 
     document.setImage(slotId("img_escudo_mandante", index), homeShield);
@@ -73,35 +69,36 @@ export class MatchTemplateRenderer {
   }
 
   /**
-   * Sets a text slot and, when the template declares field hints, applies
-   * them in order: fitText may shrink the font to fit `maxWidth`, then
-   * applyAlignment repositions the text to preserve the anchor the designer
-   * drew (derived from the field's own original placeholder, not a cached
-   * value) — using the post-fitText font-size. Templates that declare
-   * nothing keep today's exact raw-replace behavior; both steps are opt-in.
+   * Fills every repeated instance of a once-per-art field — `baseId`,
+   * `baseId_2`, `baseId_3`, ... (same `slotId` convention as per-match
+   * slots) — with the same value. Taller multi-game layouts (4+ games)
+   * sometimes repeat the header/competition label once per visual "page" of
+   * the story; every instance found gets the same shared value.
    */
-  private setText(document: SvgDocument, config: TemplateConfig, baseId: string, index: number, value: string): void {
-    const id = slotId(baseId, index);
-    document.setText(id, value);
-
-    const field = config.fields?.[baseId];
-    if (!field) return;
-
-    const node = document.getNode(id);
-    if (!node) return;
-
-    if (field.maxWidth) fitText(node.element, field.maxWidth, { minFontSize: field.minFontSize });
-    if (field.align) applyAlignment(node, field.align, value);
+  private fillRepeatedText(
+    document: SvgDocument,
+    config: TemplateConfig,
+    baseId: string,
+    value: string,
+    games: number,
+    forceAlign?: "start" | "middle" | "end",
+  ): void {
+    for (let index = 0; document.getNode(slotId(baseId, index)); index++) {
+      applyTextField(document, config, baseId, index, value, games, forceAlign);
+    }
   }
 
   /** Assets shared by the whole art, driven by the first match of the batch. */
-  private async applySharedAssets(document: SvgDocument, config: TemplateConfig, match: Match): Promise<void> {
-    if (document.getNode("txt_dia_cabecalho")) {
-      this.setText(document, config, "txt_dia_cabecalho", 0, formatHeader(parseMatchDate(match.date)));
+  private async applySharedAssets(document: SvgDocument, config: TemplateConfig, match: Match, games: number): Promise<void> {
+    this.fillRepeatedText(document, config, "txt_dia_cabecalho", formatHeader(parseMatchDate(match.date)), games, "middle");
+
+    const competition = this.store.competitions.find((item) => item.id === match.competitionId);
+    if (competition) {
+      this.fillRepeatedText(document, config, "txt_competicao", competition.name.toUpperCase(), games, "middle");
     }
 
     if (document.getNode("img_rodada")) {
-      const round = await this.assets.getRoundImageDataUri(match.round);
+      const round = await this.assets.getRoundImageDataUri(matchPhaseLegLabel(match) ?? "");
       if (round) document.setImage("img_rodada", round);
     }
 

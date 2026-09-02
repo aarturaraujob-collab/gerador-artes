@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import {
   Select,
   SelectContent,
@@ -36,6 +36,9 @@ import { exportToPng } from "@/engine/export/PngExporter";
 import { useDataStore } from "@/hooks/useDataStore";
 import type { Match } from "@/modules/dataStore";
 import { logActivity } from "@/modules/activityLog";
+import { clubDisplayName } from "@/modules/clubDisplay";
+import { matchPhaseLabel, matchPhaseLegLabel, matchLegLabel, isKnockoutPhase } from "@/modules/knockoutBracket";
+import { compareRounds } from "@/modules/rounds";
 import { loadArtesFilterPreferences, saveArtesFilterPreferences } from "@/modules/artesFilterPreferences";
 import {
   DEFAULT_DATE_FILTER,
@@ -48,6 +51,7 @@ import {
 import { templates as templateRegistry } from "@/templates/templates";
 
 const ALL_ROUNDS = "__all__";
+const ALL_LEGS = "__all__";
 
 const DATE_CHIPS: { mode: DateFilterState["mode"]; label: string }[] = [
   { mode: "all", label: "Todas" },
@@ -76,13 +80,15 @@ export function TemplateCollection() {
     if (deepLinked) return [deepLinked];
     return initialPreferences.competitionIds ?? [];
   });
-  const [dateFilter, setDateFilter] = useState<DateFilterState>(() =>
-    initialPreferences.dateMode
+  const [dateFilter, setDateFilter] = useState<DateFilterState>(() => {
+    if (searchParams.get("data") === "hoje") return { mode: "today" };
+    return initialPreferences.dateMode
       ? { mode: initialPreferences.dateMode, customIso: initialPreferences.customIso }
-      : DEFAULT_DATE_FILTER,
-  );
+      : DEFAULT_DATE_FILTER;
+  });
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [round, setRound] = useState("");
+  const [leg, setLeg] = useState("");
   const [search, setSearch] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
 
@@ -123,7 +129,7 @@ export function TemplateCollection() {
   }, [dateFilteredMatches, competitionIds]);
 
   const rounds = useMemo(
-    () => [...new Set(competitionScopedMatches.map((match) => match.round))],
+    () => [...new Set(competitionScopedMatches.map((match) => matchPhaseLabel(match)).filter((label): label is string => !!label))].sort(compareRounds),
     [competitionScopedMatches],
   );
 
@@ -132,20 +138,26 @@ export function TemplateCollection() {
     setRound("");
   }, [competitionIds]);
 
+  // The leg (Ida/Volta) only makes sense for the knockout phase currently selected — reset when the phase changes.
+  useEffect(() => {
+    setLeg("");
+  }, [round]);
+
   const visibleMatches = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("pt-BR");
     return competitionScopedMatches.filter((match) => {
-      if (round && match.round !== round) return false;
+      if (round && matchPhaseLabel(match) !== round) return false;
+      if (leg && matchLegLabel(match) !== leg) return false;
       if (!query) return true;
       const values = [
-        store.clubsById.get(match.homeClubId)?.shortName,
-        store.clubsById.get(match.awayClubId)?.shortName,
+        clubDisplayName(match.homeClubId, store.clubsById),
+        clubDisplayName(match.awayClubId, store.clubsById),
         store.citiesById.get(match.cityId)?.name,
         store.stadiumsById.get(match.stadiumId)?.name,
       ];
       return values.some((value) => value?.toLocaleLowerCase("pt-BR").includes(query));
     });
-  }, [store, competitionScopedMatches, round, search]);
+  }, [store, competitionScopedMatches, round, leg, search]);
 
   const visibleCompetitionCount = useMemo(
     () => new Set(visibleMatches.map((match) => match.competitionId)).size,
@@ -289,10 +301,41 @@ export function TemplateCollection() {
 
   const current = results[previewIndex];
 
+  // Competition-scoped templates (e.g. Classificação) render a whole
+  // competition via calculateStandings, not a hand-picked list of matches —
+  // they have no place in this match/date/round-driven flow. Reachable only
+  // by a stale link or a hand-edited URL, since the "Tipo de Arte" picker
+  // below and the gallery card both route those templates elsewhere.
+  const currentTemplateEntry = templateRegistry.find((item) => item.folder === folder);
+  if (currentTemplateEntry?.scope === "competition") {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-7xl">
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ImageIcon />
+              </EmptyMedia>
+              <EmptyTitle>"{currentTemplateEntry.name}" não usa esta tela</EmptyTitle>
+              <EmptyDescription>
+                Esse template é gerado a partir de uma competição inteira, não de jogos avulsos. Abra a
+                competição desejada e use a aba "Classificação".
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => navigate("/cadastros/competicoes")}>Ir para Competições</Button>
+            </EmptyContent>
+          </Empty>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Central de Geração"
           description="Encontre jogos por data, competição e formato para gerar as artes em lote."
           actions={
@@ -371,9 +414,11 @@ export function TemplateCollection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {templateRegistry.map((template) => (
-                  <SelectItem key={template.folder} value={template.folder}>{template.name}</SelectItem>
-                ))}
+                {templateRegistry
+                  .filter((template) => template.scope !== "competition")
+                  .map((template) => (
+                    <SelectItem key={template.folder} value={template.folder}>{template.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -423,21 +468,41 @@ export function TemplateCollection() {
               </Button>
             </div>
 
-            <div>
-              <label className="text-sm font-semibold text-foreground-secondary" htmlFor="round">Rodada</label>
-              <Select
-                value={round || ALL_ROUNDS}
-                disabled={rounds.length === 0}
-                onValueChange={(value) => setRound(value === ALL_ROUNDS ? "" : value)}
-              >
-                <SelectTrigger id="round" className="mt-2 h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_ROUNDS}>Todas as rodadas</SelectItem>
-                  {rounds.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-foreground-secondary" htmlFor="round">Fase</label>
+                <Select
+                  value={round || ALL_ROUNDS}
+                  disabled={rounds.length === 0}
+                  onValueChange={(value) => setRound(value === ALL_ROUNDS ? "" : value)}
+                >
+                  <SelectTrigger id="round" className="mt-2 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_ROUNDS}>Todas as fases</SelectItem>
+                    {rounds.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-foreground-secondary" htmlFor="leg">Rodada</label>
+                <Select
+                  value={leg || ALL_LEGS}
+                  disabled={!isKnockoutPhase(round)}
+                  onValueChange={(value) => setLeg(value === ALL_LEGS ? "" : value)}
+                >
+                  <SelectTrigger id="leg" className="mt-2 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_LEGS}>Ida e volta</SelectItem>
+                    <SelectItem value="Ida">Ida</SelectItem>
+                    <SelectItem value="Volta">Volta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
@@ -461,8 +526,6 @@ export function TemplateCollection() {
               )}
 
               {visibleMatches.map((match) => {
-                const home = store.clubsById.get(match.homeClubId);
-                const away = store.clubsById.get(match.awayClubId);
                 const isSelected = selectedKeys.has(matchKey(match));
                 return (
                   <button
@@ -479,16 +542,16 @@ export function TemplateCollection() {
                     <div className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.homeClubId)} alt="" />
-                        {home?.shortName ?? match.homeClubId}
+                        <span className="truncate">{clubDisplayName(match.homeClubId, store.clubsById)}</span>
                       </span>
-                      <span className="text-foreground-muted">×</span>
+                      <span className="shrink-0 text-foreground-muted">×</span>
                       <span className="flex min-w-0 items-center gap-2">
                         <img className="h-7 w-7 shrink-0 object-contain" src={assetRepository.clubShieldPath(match.awayClubId)} alt="" />
-                        {away?.shortName ?? match.awayClubId}
+                        <span className="truncate">{clubDisplayName(match.awayClubId, store.clubsById)}</span>
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-foreground-muted">
-                      {match.round ? `${match.round} · ` : ""}{match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
+                      {matchPhaseLegLabel(match) ? `${matchPhaseLegLabel(match)} · ` : ""}{match.date || "Data a definir"}{match.time ? ` · ${match.time}` : ""}
                     </p>
                   </button>
                 );

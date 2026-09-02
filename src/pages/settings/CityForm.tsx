@@ -31,14 +31,17 @@ export function CityForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || loaded) return;
+    // Cidades agora vêm do Supabase (Fase 1 da migração) — carregam
+    // assincronamente, então esse efeito precisa reagir a `store.cities`
+    // preenchendo depois do primeiro render. `loaded` no guard acima garante
+    // que só aplicamos uma vez.
     const existing = store.cities.find((item) => item.id === editingId);
     if (existing) {
       setForm({ name: existing.name, state: existing.state ?? "" });
       setLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, editingId]);
+  }, [isEditing, editingId, loaded, store.cities]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -82,7 +85,13 @@ export function CityForm() {
     return (
       <AppShell>
         <div className="mx-auto max-w-2xl">
-          <p className="text-sm text-foreground-muted">Cidade não encontrada.</p>
+          {store.loadingRegistry ? (
+            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+              <Spinner /> Carregando…
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">Cidade não encontrada.</p>
+          )}
         </div>
       </AppShell>
     );
@@ -91,7 +100,7 @@ export function CityForm() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
-        <PageHeader title={isEditing ? "Editar Cidade" : "Nova Cidade"} />
+        <PageHeader hero title={isEditing ? "Editar Cidade" : "Nova Cidade"} />
 
         <Card className="space-y-4 p-6">
           <div className="grid gap-4 sm:grid-cols-[1fr_auto]">

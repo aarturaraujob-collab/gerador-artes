@@ -1,9 +1,6 @@
 import slugify from "slugify";
 
-import { cities as cityRows } from "../../tables/cities";
-import { clubs as clubRows } from "../../tables/clubs";
 import { matches as matchRows } from "../../tables/matches";
-import { stadiums as stadiumRows } from "../../tables/stadiums";
 import {
   CompetitionRepository,
   emptyBackground,
@@ -14,10 +11,21 @@ import { ClubRepository, type Club } from "./clubRepository";
 import { StadiumRepository, type Stadium } from "./stadiumRepository";
 import { CityRepository, type City } from "./cityRepository";
 import { MatchRepository } from "./matchRepository";
+import { buildGameRef } from "./gameRef";
+import { clubDisplayName } from "./clubDisplay";
+import { computeBracketResolutionPatches } from "./bracketResolution";
 import { logActivity } from "./activityLog";
 import { OperationalStaffRepository, type OperationalStaff } from "./operationalStaffRepository";
 import { MatchFaftvRepository, type MatchFaftvRecord } from "./matchFaftvRepository";
 import { MatchOperacaoRepository, type MatchOperacaoRecord } from "./matchOperacaoRepository";
+import { MatchFaftvEscalaRepository } from "./matchFaftvEscalaRepository";
+import { MatchArbitragemRepository } from "./matchArbitragemRepository";
+import { matchBorderoRepository } from "./matchBorderoRepository";
+import { matchFafOficialRepository } from "./matchFafOficialRepository";
+import { competitionFafOficialRepository } from "./competitionFafOficialRepository";
+import { imtRepository } from "../documents/repository/imtRepository";
+import { detailedTableRepository } from "../documents/repository/detailedTableRepository";
+import { playerStatsRepository } from "./playerStatsRepository";
 import {
   MatchOperationsHistoryRepository,
   type MatchHistoryEntry,
@@ -58,8 +66,26 @@ export interface Match {
   tv: string | null;
   /** Competition phase (e.g. "Fase de Grupos", "Mata-mata") — optional, informational, from the FASE column. */
   phase?: string | null;
+  /** Which mata-mata confronto (CompetitionPhaseConfig.matchups[].id) this match settles — see bracketResolution.ts. Null for pontos-phase matches. */
+  bracketSlot?: string | null;
   /** External match reference from the REF column — optional, informational only, not used as a dedup key. */
   ref?: string | null;
+  /** Attendance for this match — optional, filled in manually or by a future import; null until then. */
+  publico?: number | null;
+  /** Gate revenue for this match (R$) — optional, same as `publico`. */
+  renda?: number | null;
+  /** Penalty shootout score — only set when a knockout-phase match (bracketSlot != null) ends in a draw. */
+  penaltyHomeGoals?: number | null;
+  penaltyAwayGoals?: number | null;
+  /**
+   * True when this match's score is a walkover (W.O.) — the team that showed
+   * up wins 3x0 administratively, nobody actually played. Counts for
+   * pontos/V-E-D and goalsFor/goalsAgainst (goal difference tiebreak in the
+   * classificação table), but the 3 goals are excluded from ataque/defesa
+   * rankings and from "gols em todas as competições" — see standings.ts and
+   * FafLabDashboard.tsx's labHighlights.
+   */
+  wo?: boolean;
 }
 
 /** One normalized row produced by the spreadsheet importer. */
@@ -76,6 +102,9 @@ export interface ExtractedRow {
   tv: string | null;
   phase?: string | null;
   ref?: string | null;
+  penaltyHomeGoals?: number | null;
+  penaltyAwayGoals?: number | null;
+  wo?: boolean;
 }
 
 /** All operational data (FAFTV + Operação + Histórico) tracked for one match, keyed by its gameRef. */
@@ -99,6 +128,8 @@ export interface DataStore {
   staffById: ReadonlyMap<string, OperationalStaff>;
   matchOps: ReadonlyMap<string, MatchOperationsEntry>;
   lastUpdated: string;
+  /** True until the first Supabase fetch of clubs/estádios/cidades resolves. */
+  loadingRegistry: boolean;
 }
 
 interface Snapshot {
@@ -114,6 +145,7 @@ interface Snapshot {
   staffById: Map<string, OperationalStaff>;
   matchOps: ReadonlyMap<string, MatchOperationsEntry>;
   lastUpdated: string;
+  loadingRegistry: boolean;
 }
 
 function faftvStatusLabel(status: FaftvStatus): string {
@@ -152,6 +184,7 @@ function buildSnapshot(
   matches: Match[],
   staff: OperationalStaff[],
   matchOps: ReadonlyMap<string, MatchOperationsEntry>,
+  loadingRegistry: boolean,
 ): Snapshot {
   return {
     competitions,
@@ -166,6 +199,7 @@ function buildSnapshot(
     staffById: new Map(staff.map((person) => [person.id, person])),
     matchOps,
     lastUpdated: latestTableDate(matches),
+    loadingRegistry,
   };
 }
 
@@ -187,41 +221,45 @@ class DataStoreController implements DataStore {
   private readonly faftvRepo = new MatchFaftvRepository();
   private readonly operacaoRepo = new MatchOperacaoRepository();
   private readonly historyRepo = new MatchOperationsHistoryRepository();
+  private readonly faftvEscalaRepo = new MatchFaftvEscalaRepository();
+  private readonly arbitragemRepo = new MatchArbitragemRepository();
 
   constructor() {
-    // Clubs/stadiums render synchronously from the bundled seed on first
-    // paint (engine template rendering depends on clubsById/stadiumsById
-    // being populated immediately) — the IndexedDB-backed version (which
-    // may include user edits from the Clubes/Estádios screens) then swaps
-    // in once it resolves, same pattern as competitions below.
-    this.snapshot = buildSnapshot(
-      [],
-      clubRows as unknown as Club[],
-      cityRows as unknown as City[],
-      stadiumRows as unknown as Stadium[],
-      matchRows as unknown as Match[],
-      [],
-      new Map(),
-    );
+    // Every collection (Fases 1-6 da migração pro Supabase) starts empty and
+    // populates once the initial fetch resolves — see `loadingRegistry`.
+    this.snapshot = buildSnapshot([], [], [], [], [], [], new Map(), true);
 
-    void this.competitionRepo.seedIfEmpty().then((competitions) => {
-      this.replaceCompetitions(competitions);
+    void Promise.all([
+      this.competitionRepo.seedIfEmpty(),
+      this.clubRepo.list(),
+      this.stadiumRepo.list(),
+      this.cityRepo.list(),
+      this.matchRepo.seedIfEmpty(matchRows as unknown as Match[]),
+      this.staffRepo.list(),
+    ]).then(([competitions, clubs, stadiums, cities, matches, staff]: [
+      CompetitionRecord[],
+      Club[],
+      Stadium[],
+      City[],
+      Match[],
+      OperationalStaff[],
+    ]) => {
+      this.snapshot = buildSnapshot(
+        competitions.filter((item) => !item.deletedAt),
+        clubs.filter((item) => !item.deletedAt),
+        cities.filter((item) => !item.deletedAt),
+        stadiums.filter((item) => !item.deletedAt),
+        matches,
+        staff.filter((item) => !item.deletedAt),
+        this.snapshot.matchOps,
+        false,
+      );
+      this.listeners.forEach((listener) => listener());
     });
-    void this.clubRepo.seedIfEmpty(clubRows as unknown as Club[]).then((clubs) => {
-      this.replaceClubs(clubs);
-    });
-    void this.stadiumRepo.seedIfEmpty(stadiumRows as unknown as Stadium[]).then((stadiums) => {
-      this.replaceStadiums(stadiums);
-    });
-    void this.cityRepo.seedIfEmpty(cityRows as unknown as City[]).then((cities) => {
-      this.replaceCities(cities);
-    });
-    void this.matchRepo.seedIfEmpty(matchRows as unknown as Match[]).then((matches) => {
-      this.replaceMatches(matches);
-    });
-    void this.staffRepo.list().then((staff) => {
-      this.replaceStaff(staff);
-    });
+  }
+
+  get loadingRegistry() {
+    return this.snapshot.loadingRegistry;
   }
 
   get competitions() {
@@ -281,6 +319,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -294,6 +333,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -307,6 +347,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -320,6 +361,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -333,6 +375,7 @@ class DataStoreController implements DataStore {
       matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -346,6 +389,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       staff.filter((item) => !item.deletedAt),
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -359,6 +403,7 @@ class DataStoreController implements DataStore {
       this.snapshot.matches,
       this.snapshot.staff,
       matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
   }
@@ -601,8 +646,31 @@ class DataStoreController implements DataStore {
     return all.filter((item) => item.deletedAt);
   }
 
-  /** Permanent delete — only reachable from the Lixeira screen. */
+  /**
+   * Permanent delete — only reachable from the Lixeira screen. None of a
+   * competition's dependents (matches and their FAFTV/Operação/Arbitragem/
+   * Escala/Histórico, IMTs, Tabela Detalhada versions, estatísticas de
+   * jogadores) cascade on delete, so they're torn down explicitly first —
+   * otherwise this throws an FK violation for any competition that ever had
+   * matches or documents generated.
+   */
   async purgeCompetition(id: string): Promise<void> {
+    const competitionMatches = this.snapshot.matches.filter((match) => match.competitionId === id);
+    for (const match of competitionMatches) {
+      const gameRef = buildGameRef(match);
+      await this.cleanupMatchOps(gameRef);
+      await this.matchRepo.remove(gameRef);
+    }
+
+    const [imts, detailedTables] = await Promise.all([
+      imtRepository.listByCompetition(id),
+      detailedTableRepository.listByCompetition(id),
+    ]);
+    await Promise.all(imts.map((imt) => imtRepository.remove(imt.id)));
+    await Promise.all(detailedTables.map((table) => detailedTableRepository.remove(table.id)));
+    await playerStatsRepository.replaceForCompetition(id, []);
+    await competitionFafOficialRepository.remove(id);
+
     await this.competitionRepo.remove(id);
   }
 
@@ -613,7 +681,7 @@ class DataStoreController implements DataStore {
    * reused; matches for that competition are replaced wholesale (re-running
    * an import corrects the table rather than appending to it).
    */
-  importMatchesForCompetition(competitionId: string, rows: readonly ExtractedRow[]): { count: number } {
+  async importMatchesForCompetition(competitionId: string, rows: readonly ExtractedRow[]): Promise<{ count: number }> {
     return this.mergeMatches(competitionId, rows);
   }
 
@@ -624,10 +692,11 @@ class DataStoreController implements DataStore {
    * the quick "Importar CSV/XLSX" shortcut keeps working without forcing a
    * trip through the full registration wizard.
    */
-  ingest(competitionName: string, rows: readonly ExtractedRow[]): { competitionId: string; count: number } {
+  async ingest(competitionName: string, rows: readonly ExtractedRow[]): Promise<{ competitionId: string; count: number }> {
     const competitionId = slug(competitionName).toUpperCase();
+    const hasValidRow = rows.some((row) => row.home && row.away);
 
-    if (!this.snapshot.competitions.some((item) => item.id === competitionId)) {
+    if (hasValidRow && !this.snapshot.competitions.some((item) => item.id === competitionId)) {
       const record: CompetitionRecord = {
         id: competitionId,
         name: competitionName,
@@ -640,6 +709,7 @@ class DataStoreController implements DataStore {
         templates: ["jogos-do-dia", "thumb-faftv"],
         active: true,
       };
+      await this.competitionRepo.upsert(record);
       this.snapshot = buildSnapshot(
         [...this.snapshot.competitions, record],
         this.snapshot.clubs,
@@ -648,25 +718,36 @@ class DataStoreController implements DataStore {
         this.snapshot.matches,
         this.snapshot.staff,
         this.snapshot.matchOps,
+        this.snapshot.loadingRegistry,
       );
-      void this.competitionRepo.upsert(record);
     }
 
-    const { count } = this.mergeMatches(competitionId, rows);
+    const { count } = await this.mergeMatches(competitionId, rows);
     return { competitionId, count };
   }
 
-  private mergeMatches(competitionId: string, rows: readonly ExtractedRow[]): { count: number } {
+  /**
+   * Persists cities → stadiums → matches in that order and awaits each step:
+   * `matches.stadium_id`/`city_id` are foreign keys, so inserting a match
+   * before its stadium/city row has actually committed fails with an FK
+   * violation. Nothing here fires-and-forgets — a failed write throws instead
+   * of silently leaving the local snapshot out of sync with the database.
+   */
+  private async mergeMatches(competitionId: string, rows: readonly ExtractedRow[]): Promise<{ count: number }> {
     const clubs = [...this.snapshot.clubs];
     const cities = [...this.snapshot.cities];
     const stadiums = [...this.snapshot.stadiums];
+
+    const newClubs: Club[] = [];
+    const newCities: City[] = [];
+    const newStadiums: Stadium[] = [];
 
     const upsertClub = (name: string): string => {
       const id = slug(name);
       if (!clubs.some((club) => club.id === id)) {
         const club: Club = { id, shortName: name, fullName: name, shield: "" };
         clubs.push(club);
-        void this.clubRepo.upsert(club);
+        newClubs.push(club);
       }
       return id;
     };
@@ -683,7 +764,7 @@ class DataStoreController implements DataStore {
       if (cityName && !cities.some((city) => city.id === cityId)) {
         const city: City = { id: cityId, name: cityName };
         cities.push(city);
-        void this.cityRepo.upsert(city);
+        newCities.push(city);
       }
 
       const stadiumName = row.stadium ?? "";
@@ -691,7 +772,7 @@ class DataStoreController implements DataStore {
       if (stadiumName && !stadiums.some((stadium) => stadium.id === stadiumId)) {
         const stadium: Stadium = { id: stadiumId, name: stadiumName, cityId };
         stadiums.push(stadium);
-        void this.stadiumRepo.upsert(stadium);
+        newStadiums.push(stadium);
       }
 
       importedMatches.push({
@@ -708,14 +789,41 @@ class DataStoreController implements DataStore {
         tv: row.tv,
         phase: row.phase ?? null,
         ref: row.ref ?? null,
+        penaltyHomeGoals: row.penaltyHomeGoals ?? null,
+        penaltyAwayGoals: row.penaltyAwayGoals ?? null,
+        wo: row.wo ?? false,
       });
     }
+
+    await Promise.all(newClubs.map((club) => this.clubRepo.upsert(club)));
+    await Promise.all(newCities.map((city) => this.cityRepo.upsert(city)));
+    await Promise.all(newStadiums.map((stadium) => this.stadiumRepo.upsert(stadium)));
+
+    // A fixture that disappears from this reimport (round/date/time/clubs no
+    // longer match anything, so its old id isn't in the new set) still has
+    // its FAFTV/Operação/Arbitragem/Escala/Histórico rows FK-referencing that
+    // old id — clear those first, or replaceForCompetition's delete of the
+    // now-gone match rows fails/crashes the whole reimport.
+    // Diffs against the DB's current ids (not this.snapshot.matches) so this
+    // always matches exactly what matchRepo.replaceForCompetition below is
+    // about to delete — a stale in-memory snapshot (e.g. a match row that
+    // exists in Postgres but was never fetched into this session) would
+    // otherwise skip that row's cleanup here while still being deleted below,
+    // leaving its FAFTV/Operação/Arbitragem/Escala/Borderô rows to violate
+    // the FK the moment that DELETE runs.
+    const keptIds = new Set(importedMatches.map((match) => buildGameRef(match)));
+    const existingIds = await this.matchRepo.listIdsForCompetition(competitionId);
+    const droppedIds = existingIds.filter((id) => !keptIds.has(id));
+    for (const id of droppedIds) {
+      await this.cleanupMatchOps(id);
+    }
+
+    await this.matchRepo.replaceForCompetition(competitionId, importedMatches);
 
     const matches = [
       ...this.snapshot.matches.filter((match) => match.competitionId !== competitionId),
       ...importedMatches,
     ];
-    void this.matchRepo.replaceForCompetition(competitionId, importedMatches);
 
     this.snapshot = buildSnapshot(
       this.snapshot.competitions,
@@ -725,6 +833,7 @@ class DataStoreController implements DataStore {
       matches,
       this.snapshot.staff,
       this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
     );
     this.listeners.forEach((listener) => listener());
 
@@ -732,6 +841,204 @@ class DataStoreController implements DataStore {
     logActivity("import.matches", `${importedMatches.length} jogo(s) importado(s) para "${competitionName}".`);
 
     return { count: importedMatches.length };
+  }
+
+  // ─── Single-match edits (backs "Editar placar" and the IMT reschedule) ───
+  // Classificação/Estatísticas/Tabela Detalhada all derive live from
+  // store.matches (calculateStandings et al.), so persisting the edit here is
+  // the only step needed for them to reflect it — no separate "recalculate"
+  // step exists or is needed.
+
+  /**
+   * Updates one match in place (score, or — from GenerateIMTDialog — a
+   * reschedule). `gameRef` is derived from round/date/time/clubs, so a
+   * reschedule changes it; any FAFTV/Operação/Histórico already tied to the
+   * match is migrated to the new gameRef so rescheduling never silently
+   * drops operational planning already done for that match.
+   */
+  async updateMatch(gameRef: string, patch: Partial<Match>): Promise<void> {
+    const match = this.snapshot.matches.find((item) => buildGameRef(item) === gameRef);
+    await this.applyMatchUpdate(gameRef, patch);
+    if (match) await this.runBracketResolution(match.competitionId);
+  }
+
+  /** Creates a brand-new match row — backs the "Criar Partida" dialog. Triggers the same bracket resolution pass as a score edit. */
+  async createMatch(match: Match): Promise<void> {
+    await this.matchRepo.update(match, match);
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      [...this.snapshot.matches, match],
+      this.snapshot.staff,
+      this.snapshot.matchOps,
+      this.snapshot.loadingRegistry,
+    );
+    this.listeners.forEach((listener) => listener());
+    await this.runBracketResolution(match.competitionId);
+
+    const home = clubDisplayName(match.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(match.awayClubId, this.snapshot.clubsById);
+    logActivity("match.created", `${home} × ${away} criado(a).`);
+  }
+
+  /** Permanently deletes one match — clears its FAFTV/Operação/Arbitragem/Escala/Histórico rows first (none of those cascade on delete), same as purgeCompetition does per-match. */
+  async deleteMatch(gameRef: string): Promise<void> {
+    const match = this.snapshot.matches.find((item) => buildGameRef(item) === gameRef);
+    if (!match) throw new Error("Partida não encontrada.");
+
+    await this.cleanupMatchOps(gameRef);
+    await this.matchRepo.remove(gameRef);
+
+    const matches = this.snapshot.matches.filter((item) => buildGameRef(item) !== gameRef);
+    const matchOps = new Map(this.snapshot.matchOps);
+    matchOps.delete(gameRef);
+
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      matches,
+      this.snapshot.staff,
+      matchOps,
+      this.snapshot.loadingRegistry,
+    );
+    this.listeners.forEach((listener) => listener());
+
+    const home = clubDisplayName(match.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(match.awayClubId, this.snapshot.clubsById);
+    logActivity("match.deleted", `${home} × ${away} excluído(a).`);
+  }
+
+  /**
+   * Replaces every "vencedor-<matchupId>" placeholder that just became
+   * resolvable (see bracketResolution.ts) across the competition's matches —
+   * called after every score edit and every new match so the fase
+   * eliminatória's later rounds fill in on their own as results come in.
+   */
+  private async runBracketResolution(competitionId: string): Promise<void> {
+    const competition = this.snapshot.competitions.find((item) => item.id === competitionId);
+    if (!competition?.format) return;
+    const matches = this.snapshot.matches.filter((item) => item.competitionId === competitionId);
+    const patches = computeBracketResolutionPatches(competition.format, matches);
+    for (const { gameRef, patch } of patches) {
+      await this.applyMatchUpdate(gameRef, patch);
+    }
+  }
+
+  private async applyMatchUpdate(gameRef: string, patch: Partial<Match>): Promise<void> {
+    const index = this.snapshot.matches.findIndex((item) => buildGameRef(item) === gameRef);
+    if (index === -1) throw new Error("Partida não encontrada.");
+
+    const previous = this.snapshot.matches[index];
+    const updated: Match = { ...previous, ...patch };
+    const newGameRef = buildGameRef(updated);
+
+    // Insert the new row first, then migrate FAFTV/Operação/Histórico off the
+    // old gameRef (they FK-reference matches.id), and only then remove the
+    // old row — removing it before the migration would violate those FKs.
+    await this.matchRepo.update(previous, updated);
+    if (newGameRef !== gameRef) {
+      await this.migrateMatchOps(gameRef, newGameRef);
+      await this.matchRepo.remove(gameRef);
+    }
+
+    const matches = [...this.snapshot.matches];
+    matches[index] = updated;
+
+    let matchOps: ReadonlyMap<string, MatchOperationsEntry> = this.snapshot.matchOps;
+    if (newGameRef !== gameRef && matchOps.has(gameRef)) {
+      const next = new Map(matchOps);
+      const entry = next.get(gameRef)!;
+      next.delete(gameRef);
+      next.set(newGameRef, entry);
+      matchOps = next;
+    }
+
+    this.snapshot = buildSnapshot(
+      this.snapshot.competitions,
+      this.snapshot.clubs,
+      this.snapshot.cities,
+      this.snapshot.stadiums,
+      matches,
+      this.snapshot.staff,
+      matchOps,
+      this.snapshot.loadingRegistry,
+    );
+    this.listeners.forEach((listener) => listener());
+
+    const home = clubDisplayName(updated.homeClubId, this.snapshot.clubsById);
+    const away = clubDisplayName(updated.awayClubId, this.snapshot.clubsById);
+    logActivity("match.updated", `${home} × ${away} atualizado.`);
+  }
+
+  private async migrateMatchOps(oldGameRef: string, newGameRef: string): Promise<void> {
+    const [faftv, operacao, history, faftvEscala, arbitragem, bordero, fafOficial] = await Promise.all([
+      this.faftvRepo.get(oldGameRef),
+      this.operacaoRepo.get(oldGameRef),
+      this.historyRepo.listByGameRef(oldGameRef),
+      this.faftvEscalaRepo.listByGameRefs([oldGameRef]),
+      this.arbitragemRepo.get(oldGameRef),
+      matchBorderoRepository.get(oldGameRef),
+      matchFafOficialRepository.get(oldGameRef),
+    ]);
+
+    if (faftv) {
+      await this.faftvRepo.upsert({ ...faftv, id: newGameRef, gameRef: newGameRef });
+      await this.faftvRepo.remove(oldGameRef);
+    }
+    if (operacao) {
+      await this.operacaoRepo.upsert({ ...operacao, id: newGameRef, gameRef: newGameRef });
+      await this.operacaoRepo.remove(oldGameRef);
+    }
+    for (const entry of history) {
+      await this.historyRepo.append({ ...entry, gameRef: newGameRef });
+    }
+    if (history.length > 0) {
+      // Copies land under newGameRef above — without this, the old rows keep
+      // FK-referencing the old match id and the remove() below (which deletes
+      // that row) fails with a foreign-key violation, silently leaving a
+      // duplicate fixture behind under the old date/time.
+      await this.historyRepo.removeByGameRef(oldGameRef);
+    }
+    if (faftvEscala[0]) {
+      await this.faftvEscalaRepo.upsert({ ...faftvEscala[0], id: newGameRef, gameRef: newGameRef });
+      await this.faftvEscalaRepo.remove(oldGameRef);
+    }
+    if (arbitragem) {
+      await this.arbitragemRepo.upsert({ ...arbitragem, id: newGameRef, gameRef: newGameRef });
+      await this.arbitragemRepo.remove(oldGameRef);
+    }
+    if (bordero) {
+      await matchBorderoRepository.upsert({ ...bordero, id: newGameRef, gameRef: newGameRef });
+      await matchBorderoRepository.remove(oldGameRef);
+    }
+    if (fafOficial) {
+      await matchFafOficialRepository.upsert({ ...fafOficial, id: newGameRef, gameRef: newGameRef });
+      await matchFafOficialRepository.remove(oldGameRef);
+    }
+  }
+
+  /**
+   * Clears every FAFTV/Operação/Arbitragem/Escala/Histórico/Borderô/Oficial-
+   * FAF row FK-referencing a match that is genuinely going away (not being
+   * rescheduled — see migrateMatchOps for that case). Needed before the match
+   * row itself can be deleted, since none of those tables cascade on delete.
+   * Used when a reimport drops a fixture from the schedule and when a
+   * competition is purged from the Lixeira.
+   */
+  private async cleanupMatchOps(gameRef: string): Promise<void> {
+    await Promise.all([
+      this.faftvRepo.remove(gameRef),
+      this.operacaoRepo.remove(gameRef),
+      this.historyRepo.removeByGameRef(gameRef),
+      this.faftvEscalaRepo.remove(gameRef),
+      this.arbitragemRepo.remove(gameRef),
+      matchBorderoRepository.remove(gameRef),
+      matchFafOficialRepository.remove(gameRef),
+    ]);
   }
 
   // ─── Match-scoped FAFTV/Operação (backs the match page's "Central Operacional") ───
@@ -822,7 +1129,12 @@ class DataStoreController implements DataStore {
       history = await this.recordHistory(gameRef, "faftv", `Comentarista FAFTV: ${name}`, history);
     }
     if (updated.status !== entry.faftv.status) {
-      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+      history = await this.recordHistory(
+        gameRef,
+        "faftv",
+        `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`,
+        history,
+      );
     }
 
     const matchOps = new Map(this.snapshot.matchOps);
@@ -838,7 +1150,12 @@ class DataStoreController implements DataStore {
 
     let history = await this.recordHistory(gameRef, "faftv", "Link de transmissão atualizado", entry.history);
     if (updated.status !== entry.faftv.status) {
-      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+      history = await this.recordHistory(
+        gameRef,
+        "faftv",
+        `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`,
+        history,
+      );
     }
 
     const matchOps = new Map(this.snapshot.matchOps);
@@ -858,9 +1175,19 @@ class DataStoreController implements DataStore {
     await this.faftvRepo.upsert(updated);
 
     const label = FAFTV_CHECKLIST_ITEMS.find((item) => item.id === itemId)?.label ?? itemId;
-    let history = await this.recordHistory(gameRef, "faftv", `Item "${label}" ${checked ? "concluído" : "reaberto"}`, entry.history);
+    let history = await this.recordHistory(
+      gameRef,
+      "faftv",
+      `Item "${label}" ${checked ? "concluído" : "reaberto"}`,
+      entry.history,
+    );
     if (updated.status !== entry.faftv.status) {
-      history = await this.recordHistory(gameRef, "faftv", `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`, history);
+      history = await this.recordHistory(
+        gameRef,
+        "faftv",
+        `Status FAFTV alterado para "${faftvStatusLabel(updated.status)}"`,
+        history,
+      );
     }
 
     const matchOps = new Map(this.snapshot.matchOps);
@@ -918,7 +1245,12 @@ class DataStoreController implements DataStore {
     await this.operacaoRepo.upsert(updated);
 
     const label = OPERACAO_CHECKLIST_ITEMS.find((item) => item.id === itemId)?.label ?? itemId;
-    let history = await this.recordHistory(gameRef, "operacao", `Item "${label}" ${checked ? "concluído" : "reaberto"}`, entry.history);
+    let history = await this.recordHistory(
+      gameRef,
+      "operacao",
+      `Item "${label}" ${checked ? "concluído" : "reaberto"}`,
+      entry.history,
+    );
     if (updated.status !== entry.operacao.status) {
       history = await this.recordHistory(
         gameRef,

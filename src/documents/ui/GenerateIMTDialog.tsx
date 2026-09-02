@@ -17,6 +17,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Spinner } from "@/components/ui/spinner";
 
 import { logActivity } from "@/modules/activityLog";
+import { dataStore } from "@/modules/dataStore";
 
 import { renderIMT } from "../renderer/renderIMT";
 import { renderDetailedTable } from "../renderer/renderDetailedTable";
@@ -37,6 +38,7 @@ export interface StadiumOption {
   value: string;
   label: string;
   cityName: string;
+  cityId: string;
 }
 
 export interface GenerateIMTDialogProps {
@@ -47,6 +49,8 @@ export interface GenerateIMTDialogProps {
   season: string;
   round: string;
   gameRef: string;
+  /** External match reference (the REF column from the official schedule), if known. */
+  matchRef?: string | null;
   homeClubName: string;
   awayClubName: string;
   currentDate: string;
@@ -97,6 +101,7 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
     season,
     round,
     gameRef,
+    matchRef,
     homeClubName,
     awayClubName,
     currentDate,
@@ -165,13 +170,13 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
             competitionName,
             season,
             number: previewNumber,
+            matchRef,
             homeClubName,
             awayClubName,
             oldGame: { date: currentDate, time: currentTime, stadiumName: currentStadiumName, cityName: currentCityName },
             newGame: { date: form.newDate, time: form.newTime, stadiumName: newStadiumName, cityName: newCityName },
             requester: form.requester,
             reason: form.reason,
-            responsible: form.responsible,
             createdAt: previewCreatedAt,
           }),
         )
@@ -188,6 +193,7 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
         competitionId,
         competitionName,
         gameRef,
+        matchRef,
         homeClubName,
         awayClubName,
         round,
@@ -204,6 +210,15 @@ export function GenerateIMTDialog(props: GenerateIMTDialogProps) {
       };
 
       await imtRepository.save(imt);
+
+      // The IMT documents the reschedule — apply it to the actual match too,
+      // so Jogos/Classificação/Tabela Detalhada already reflect the new
+      // date/hora/estádio without a separate manual edit.
+      await dataStore.updateMatch(gameRef, {
+        date: form.newDate,
+        time: form.newTime,
+        ...(newStadium ? { stadiumId: newStadium.value, cityId: newStadium.cityId } : {}),
+      });
 
       logActivity(
         "imt.generated",

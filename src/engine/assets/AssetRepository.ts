@@ -1,9 +1,11 @@
 import type { DataStore } from "@/modules/dataStore";
+import { isPlaceholderClubId } from "@/modules/clubDisplay";
+import { publicPath } from "@/lib/publicPath";
 
-const ESCUDOS_DIR = "/assets/escudos";
-const LOGOS_DIR = "/assets/logos";
-const BACKGROUNDS_DIR = "/assets/backgrounds";
-const RODADAS_DIR = "/assets/rodadas";
+const ESCUDOS_DIR = publicPath("/assets/escudos");
+const LOGOS_DIR = publicPath("/assets/logos");
+const BACKGROUNDS_DIR = publicPath("/assets/backgrounds");
+const RODADAS_DIR = publicPath("/assets/rodadas");
 
 const FALLBACK_CLUB_SHIELD = `${LOGOS_DIR}/faf.png`;
 
@@ -27,6 +29,11 @@ function resolveAssetValue(value: string, dir: string): string {
   return `${dir}/${value}`;
 }
 
+/** Same resolution as clubShieldPath, but for a raw shield value not yet saved to a club — e.g. a live form preview. */
+export function resolveClubShieldValue(shield: string): string {
+  return resolveAssetValue(shield, ESCUDOS_DIR);
+}
+
 /**
  * Single source of truth for every visual asset (shields, backgrounds,
  * round images). No React component or renderer builds asset paths on its own —
@@ -42,9 +49,12 @@ export class AssetRepository {
   /**
    * Resolves a club shield path. Uses the club's `shield` field when set,
    * otherwise derives it from the club id (`inter-arabia` → `inter_arabia.png`).
-   * Missing assets fall back at load time to the FAF badge.
+   * Missing assets fall back at load time to the FAF badge — TBD knockout
+   * slots (`isPlaceholderClubId`, e.g. "1º Colocado") always use the FAF
+   * badge directly, since they're not a real club and never get their own shield.
    */
   clubShieldPath(clubId: string): string {
+    if (isPlaceholderClubId(clubId)) return FALLBACK_CLUB_SHIELD;
     const club = this.store.clubsById.get(clubId);
     const shield = club?.shield?.trim();
     if (shield) return resolveAssetValue(shield, ESCUDOS_DIR);
@@ -108,9 +118,6 @@ export class AssetRepository {
     const normalized = stripDiacritics(round);
     if (!normalized) return null;
 
-    const numeric = normalized.match(/(\d+)/);
-    if (numeric) return `${RODADAS_DIR}/img_rodada${numeric[1]}.png`;
-
     const phases: Array<[RegExp, string]> = [
       [/oitav/, "oitavas"],
       [/quart/, "quartas"],
@@ -118,10 +125,15 @@ export class AssetRepository {
       [/final/, "final"],
     ];
     const phase = phases.find(([pattern]) => pattern.test(normalized))?.[1];
-    if (!phase) return null;
+    if (phase) {
+      const leg = /volta/.test(normalized) ? "_volta" : /ida/.test(normalized) ? "_ida" : "";
+      return `${RODADAS_DIR}/img_rodada_${phase}${leg}.png`;
+    }
 
-    const leg = /volta/.test(normalized) ? "_volta" : /ida/.test(normalized) ? "_ida" : "";
-    return `${RODADAS_DIR}/img_rodada_${phase}${leg}.png`;
+    const numeric = normalized.match(/(\d+)/);
+    if (numeric) return `${RODADAS_DIR}/img_rodada${numeric[1]}.png`;
+
+    return null;
   }
 
   async getRoundImageDataUri(round: string): Promise<string | null> {
@@ -141,6 +153,12 @@ export class AssetRepository {
     const dataUri = fetch(path)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Asset não encontrado: ${path}`);
+        // Some hosts (Vite's own dev server included) answer a missing static
+        // path with 200 + the SPA's index.html rather than a 404 — treating
+        // that as success would bake a corrupted "image" (actually HTML) into
+        // the art. Only a real image response counts as found.
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!contentType.startsWith("image/")) throw new Error(`Asset não é uma imagem: ${path}`);
         return toDataUri(await response.blob());
       })
       .catch((error: unknown) => {

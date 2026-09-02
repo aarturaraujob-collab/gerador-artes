@@ -43,6 +43,7 @@ export function ClubsPage() {
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
+          hero
           title="Clubes"
           description="Cadastro de clubes participantes das competições."
           actions={

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 
 import { cn } from "@/lib/utils";
+import { publicPath } from "@/lib/publicPath";
 import { navigationGroups, navigationItems } from "@/config/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,7 +32,7 @@ export function Sidebar({ collapsed = false, onToggleCollapsed }: SidebarProps) 
           )}
         >
           <img
-            src="/assets/logos/faf.png"
+            src={publicPath("/assets/logos/faf.png")}
             alt="FAF"
             className="h-9 w-9 shrink-0 rounded-lg object-contain"
           />
